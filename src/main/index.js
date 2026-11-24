@@ -1926,7 +1926,10 @@ app.whenReady().then(() => {
       saveRunpod({ gpu, gpuPerHour: perHour ?? null, idleSeconds, volumeId: volume.id, dataCenter: volume.dataCenter, url: null, podId: null })
       send('cloud:log', `Starting a pod in ${volume.dataCenter}. The first time, it installs ComfyUI and downloads the H3 models onto your volume (20–40 minutes).`)
       const pod = await runpod.createPod({ gpu: gpu || RUNPOD_GPUS[0].id, perHour: perHour ?? null, volume: { id: volume.id, dataCenter: volume.dataCenter }, token: runpodToken(), idleSeconds: idleSeconds || 300, hf: hfToken() }).catch((e) => {
-        throw new Error(`${e.message} Your storage and any running pod are untouched.`)
+        // a stored volume pins the data center: a GPU elsewhere can't attach to it, so "pick another GPU" alone
+        // can be a dead end — say what the real choices are
+        const pinned = known ? ` Your storage is in ${volume.dataCenter}, and only a GPU there can use it: pick a card that's free in ${volume.dataCenter}, or delete the "iv-studio" volume on RunPod's Storage page and set up again to start fresh in another data center.` : ''
+        throw new Error(`${e.message}${pinned} Your storage and any running pod are untouched.`)
       })
       await runpod.stopAll(pod.id)
       saveRunpod({ url: pod.url, podId: pod.id, podGpu: pod.gpu, podStamp: cloudStamp() })

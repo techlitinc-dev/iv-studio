@@ -95,12 +95,14 @@ export class RunPod {
 
   // Every Secure Cloud pod GPU in RunPod's catalog with room for H3 (MIN_VRAM_GB or more), cheapest first:
   // the graphics-card dropdown. Curated cards keep their label and note; the rest go by RunPod's name. A card
-  // without a secure price can't be shown (its fallback cap couldn't be worked out either).
+  // without a secure price can't be shown (its fallback cap couldn't be worked out either). MIG slices are out:
+  // a slice is a partition of a card, not a card — H3 wants the whole thing, and a pod for one can't be started
+  // like a pod for a whole GPU (setup died on a "MIG 1g.24gb" pick with nothing to fall back to).
   async allGpus() {
     const body = await this.req('/catalog/gpus?include=AVAILABILITY&product=POD&cloud=SECURE&minCudaVersion=12.8')
     const curated = new Map(GPUS.map((g) => [g.id, g]))
     return RunPod.list(body, 'gpus')
-      .filter((g) => (g.memory ?? 0) >= MIN_VRAM_GB && (g.price?.secure ?? curated.get(g.id)?.perHour) != null)
+      .filter((g) => (g.memory ?? 0) >= MIN_VRAM_GB && (g.price?.secure ?? curated.get(g.id)?.perHour) != null && !/mig/i.test(`${g.id} ${g.name || ''}`))
       .map((g) => {
         const c = curated.get(g.id)
         return {

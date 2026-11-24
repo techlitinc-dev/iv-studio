@@ -327,16 +327,24 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
   const [gpus, setGpus] = useState(st.runpodGpus.map((g) => ({ ...g, inStock: null })))
   const [gpu, setGpu] = useState(rp.gpu || st.runpodGpus[0].id)
   const [idle, setIdle] = useState(rp.idleSeconds || 300)
-  const [freeOnly, setFreeOnly] = useState(false)
+  const [freeOnly, setFreeOnly] = useState(true) // only cards free right now, unless the person asks for the whole catalog
   const [sort, setSort] = useState('price') // 'price' | 'vram'
   const [pods, setPods] = useState(null)
+  const [fetching, setFetching] = useState(false)
   const loadPods = () => window.ivstudio.cloud.runpodPods().then(setPods).catch(() => {})
+  const loadGpus = () => window.ivstudio.cloud.runpodAllGpus().then((list) => list.length && setGpus(list)).catch(() => {})
   useEffect(() => {
     if (rp.hasKey) {
-      window.ivstudio.cloud.runpodAllGpus().then((list) => list.length && setGpus(list)).catch(() => {})
+      loadGpus()
       loadPods()
     }
   }, [rp.hasKey])
+  // stock changes by the minute: the button asks RunPod again
+  const fetchStock = async () => {
+    setFetching(true)
+    await Promise.all([loadGpus(), loadPods()])
+    setFetching(false)
+  }
   // the saved card stays selectable while the catalog loads, or if RunPod stops listing it
   const options = gpus.some((g) => g.id === gpu) ? gpus : [{ id: gpu, label: gpu, perHour: rp.gpu === gpu ? rp.gpuPerHour : null, inStock: null }, ...gpus]
   const chosen = options.find((g) => g.id === gpu)
@@ -409,8 +417,16 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
               <option value="price">Cheapest first</option>
               <option value="vram">Most memory first</option>
             </select>
+            <button className="btn btn-small" disabled={fetching || !!busy} onClick={fetchStock} title="Ask RunPod again which cards are free">
+              {fetching ? 'Checking…' : 'Check stock'}
+            </button>
           </div>
         </div>
+        {freeOnly && !visible.length && (
+          <p className="small dim">
+            No cards free{rp.dataCenter ? ` in ${rp.dataCenter} (where your storage is)` : ''} right now — Check stock again in a few minutes, or untick "Free now only" to see the whole catalog.
+          </p>
+        )}
         <div className="row">
           <span className="row-label">Graphics card</span>
           <select className="cloud-gpu-select" value={gpu} onChange={(e) => setGpu(e.target.value)} aria-label="Graphics card">
