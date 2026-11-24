@@ -44,12 +44,12 @@ ok('the accessibility settings are kept', () => {
   fs.rmSync(dir, { recursive: true, force: true })
 })
 
-ok('finished videos go to the chosen folder, else Videos\\IV Studio', () => {
+ok('finished videos go to the chosen folder, else Videos\\Techlit Studio', () => {
   const videos = path.join(os.tmpdir(), 'Videos')
   const chosen = path.join(os.tmpdir(), 'E-drive', 'Films')
-  assert.equal(videosFolderOf({}, { videos }), path.join(videos, 'IV Studio'))
+  assert.equal(videosFolderOf({}, { videos }), path.join(videos, 'Techlit Studio'))
   assert.equal(videosFolderOf({ videosFolder: chosen }, { videos }), chosen)
-  assert.equal(videosFolderOf({ videosFolder: 'relative' }, { videos }), path.join(videos, 'IV Studio'), 'a relative path is ignored')
+  assert.equal(videosFolderOf({ videosFolder: 'relative' }, { videos }), path.join(videos, 'Techlit Studio'), 'a relative path is ignored')
   assert.equal(videosFolderOf({ videosFolder: chosen }, { incognito: true, dataDir: 'D' }), path.join('D', 'videos'), 'Incognito keeps its own')
 })
 

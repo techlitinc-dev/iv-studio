@@ -20,7 +20,7 @@ function Thumb({ m }) {
 }
 
 // The project panel: this edit's media as thumbnails (click to load it in the source monitor, drag it onto
-// a track), sorted into kind bins and searchable, plus everything in the IV Studio Library one click away.
+// a track), sorted into kind bins and searchable, plus everything in the Techlit Studio Library one click away.
 export default function ProjectBin({ media, sourceId, onSource, onAdd, onTitle, notify }) {
   const [tab, setTab] = useState('project')
   const [bin, setBin] = useState('all')
@@ -93,7 +93,7 @@ export default function ProjectBin({ media, sourceId, onSource, onAdd, onTitle, 
             ))}
           </div>
           <div className="bin-grid">
-            {all.length === 0 && <p className="small dim">Add files, or open the Library tab for your IV Studio renders, songs and lines.</p>}
+            {all.length === 0 && <p className="small dim">Add files, or open the Library tab for your Techlit Studio renders, songs and lines.</p>}
             {all.length > 0 && list.length === 0 && <p className="small dim">Nothing matches.</p>}
             {list.map((m) => (
               <button

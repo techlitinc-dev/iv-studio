@@ -1,5 +1,5 @@
-// Starting ComfyUI from IV Studio (Settings → ComfyUI, the title bar's Start button, and on launch when
-// "Start ComfyUI when IV Studio opens" is on). It starts the person's own launcher, the same thing they'd
+// Starting ComfyUI from Techlit Studio (Settings → ComfyUI, the title bar's Start button, and on launch when
+// "Start ComfyUI when Techlit Studio opens" is on). It starts the person's own launcher, the same thing they'd
 // double-click, and waits until ComfyUI answers. (A PC with no ComfyUI can get the official portable build from
 // Setup: comfyinstall.js. That one is then started the same way, from its run_nvidia_gpu.bat.)
 // A launcher is a shortcut (.lnk), a portable install's .bat, or the ComfyUI Desktop app's .exe. On Linux it's a
@@ -104,8 +104,8 @@ export function launchersIn(dir, platform = process.platform) {
     .map((name) => ({ path: path.join(dir, name), kind: 'folder', label: name }))
 }
 
-// The launcher IV Studio uses: the one picked in Settings, else the best one in the ComfyUI folder picked there,
-// else the best one found on this PC. s: IV Studio's settings ({ comfyLauncher, comfyFolder }).
+// The launcher Techlit Studio uses: the one picked in Settings, else the best one in the ComfyUI folder picked there,
+// else the best one found on this PC. s: Techlit Studio's settings ({ comfyLauncher, comfyFolder }).
 export function launcherFor(s = {}) {
   if (s.comfyLauncher && fs.existsSync(s.comfyLauncher)) return s.comfyLauncher
   if (s.comfyFolder && fs.existsSync(s.comfyFolder)) return launchersIn(s.comfyFolder)[0]?.path || null
@@ -142,8 +142,8 @@ export const isDesktopLauncher = (file) => !!file && /^ComfyUI\.(exe|app)$/i.tes
 
 // ---------- a ComfyUI that is already starting ----------
 // ComfyUI answers only once it has loaded (often a minute or more), so "nothing answers" doesn't mean "not
-// running". Before starting one, IV Studio looks for a ComfyUI of the same install that is already running but
-// not answering yet (another IV Studio window, one closed and reopened while ComfyUI booted, or one started by
+// running". Before starting one, Techlit Studio looks for a ComfyUI of the same install that is already running but
+// not answering yet (another Techlit Studio window, one closed and reopened while ComfyUI booted, or one started by
 // hand), and waits for it instead of starting a second.
 
 // The processes that could be a ComfyUI: Python running main.py, or the Desktop app. [{ pid, exe, cmd }]
@@ -164,7 +164,7 @@ export async function comfyProcesses({ platform = process.platform, run = execFi
       .map(([, pid, cmd]) => ({ pid: Number(pid), exe: cmd.split(/\s+/)[0], cmd }))
       .filter((p) => /main\.py\b/.test(p.cmd) || /ComfyUI\.app\/Contents\/MacOS\//.test(p.cmd))
   } catch {
-    return [] // can't tell: IV Studio starts ComfyUI as before
+    return [] // can't tell: Techlit Studio starts ComfyUI as before
   }
 }
 
@@ -192,7 +192,7 @@ export function sameComfy(procs, { home = null, url = 'http://127.0.0.1:8188', l
   return procs.find(app) || procs.find((p) => onPort(p) && mine(p)) || procs.find((p) => onPort(p) && /comfy/.test(norm(p.exe) + ' ' + norm(p.cmd))) || null
 }
 
-// IV Studio notes when it last started ComfyUI (a launcher's Python takes a moment to appear), so a window
+// Techlit Studio notes when it last started ComfyUI (a launcher's Python takes a moment to appear), so a window
 // opened straight after doesn't start another in that gap.
 export const LAUNCH_GRACE_MS = 90 * 1000
 export function recentLaunch(file, now = Date.now()) {
@@ -209,16 +209,16 @@ export function noteLaunch(file, launcher, now = Date.now()) {
   } catch {}
 }
 
-// Starts a launcher as a double-click would, in its own window, so ComfyUI keeps running when IV Studio
-// closes. Through PowerShell's Start-Process (the Windows shell), not as IV Studio's child: a child process
-// inherits IV Studio's open sockets and keeps them after IV Studio quits. A .bat or .exe starts in its own
+// Starts a launcher as a double-click would, in its own window, so ComfyUI keeps running when Techlit Studio
+// closes. Through PowerShell's Start-Process (the Windows shell), not as Techlit Studio's child: a child process
+// inherits Techlit Studio's open sockets and keeps them after Techlit Studio quits. A .bat or .exe starts in its own
 // folder (portable installs use paths relative to it); a shortcut keeps its own "Start in" folder.
 // (explorer.exe <file> is not an option: it starts a .bat in C:\Windows\System32.)
-// On Linux it starts in its own session (setsid), so it outlives IV Studio, with its output in a log file.
+// On Linux it starts in its own session (setsid), so it outlives Techlit Studio, with its output in a log file.
 export function launch(file, { platform = process.platform, logFile = path.join(os.tmpdir(), 'iv-studio-comfyui.log') } = {}) {
   if (!file || !fs.existsSync(file)) throw new Error('That ComfyUI launcher no longer exists. Pick it again in Settings → ComfyUI.')
   if (platform === 'darwin' && /\.app$/i.test(file)) {
-    // an app bundle opens through Launch Services, as a double-click in Finder does, and outlives IV Studio
+    // an app bundle opens through Launch Services, as a double-click in Finder does, and outlives Techlit Studio
     spawn('open', ['-a', file], { detached: true, stdio: 'ignore' }).unref()
     return { command: 'open', args: ['-a', file] }
   }
@@ -234,7 +234,7 @@ export function launch(file, { platform = process.platform, logFile = path.join(
   const q = (s) => `'${s.replace(/'/g, "''")}'`
   const where = /\.lnk$/i.test(file) ? '' : ` -WorkingDirectory ${q(path.dirname(file))}`
   // not detached: a detached (console-less) PowerShell starts nothing. It exits as soon as Start-Process
-  // returns, and ComfyUI, started by the shell, outlives it and IV Studio.
+  // returns, and ComfyUI, started by the shell, outlives it and Techlit Studio.
   spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `Start-Process -FilePath ${q(file)}${where}`], { stdio: 'ignore', windowsHide: true }).unref()
 }
 

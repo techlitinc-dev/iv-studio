@@ -1,4 +1,4 @@
-// A ComfyUI that is already starting isn't started twice (closing IV Studio while it booted ComfyUI and
+// A ComfyUI that is already starting isn't started twice (closing Techlit Studio while it booted ComfyUI and
 // reopening it used to start another). comfylauncher.js: comfyProcesses (stood in), sameComfy and the launch note.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'

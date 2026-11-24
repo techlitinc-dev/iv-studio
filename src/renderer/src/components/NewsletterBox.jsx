@@ -1,6 +1,6 @@
-// The IV Newsletter signup box, shared by every IV app (source of truth: IVAI docs/newsletter/apps/NewsletterBox.jsx).
+// The Techlit Newsletter signup box, shared by every Techlit app.
 // variant "settings": the box in Settings/About. variant "card": the one-time first-run card with "Not now".
-// title={false} drops the box's own heading when the app's settings card already says "The IV Newsletter".
+// title={false} drops the box's own heading when the app's settings card already says "The Techlit Newsletter".
 // `api` is the preload's newsletter bridge ({status, join, closeCard, openPage}). Opt-in only: the field starts
 // empty and nothing is sent until Join is clicked. Colours come from the app (CSS variables in newsletter-box.css).
 import { useEffect, useId, useState } from 'react'
@@ -44,9 +44,9 @@ export default function NewsletterBox({ api, variant = 'settings', onClose, titl
 
   const showForm = phase !== 'done' && (!status.joinedAt || again)
   return (
-    <section className={`ivnl ivnl-${variant}`} aria-labelledby={title ? `${id}-h` : undefined} aria-label={title ? undefined : 'The IV Newsletter'}>
-      {title && <h3 id={`${id}-h`} className="ivnl-title">The IV Newsletter</h3>}
-      <p className="ivnl-lead">One email a week from Matt: what's new in the IV apps, how things are made, and free tools.</p>
+    <section className={`ivnl ivnl-${variant}`} aria-labelledby={title ? `${id}-h` : undefined} aria-label={title ? undefined : 'The Techlit Newsletter'}>
+      {title && <h3 id={`${id}-h`} className="ivnl-title">The Techlit Newsletter</h3>}
+      <p className="ivnl-lead">One email a week from Matt: what's new in the Techlit apps, how things are made, and free tools.</p>
 
       {phase === 'done' && (
         <p className="ivnl-done" role="status">Check your inbox. Click the link in Kit's email to confirm.</p>
@@ -85,7 +85,7 @@ export default function NewsletterBox({ api, variant = 'settings', onClose, titl
             <p id={`${id}-err`} className="ivnl-error" role="alert">
               {error.error}{' '}
               {error.offline && (
-                <button type="button" className="ivnl-link" onClick={() => api.openPage()}>Join on infinitevariance.ai instead</button>
+                <button type="button" className="ivnl-link" onClick={() => api.openPage()}>Join on the website instead</button>
               )}
             </p>
           )}

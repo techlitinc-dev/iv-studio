@@ -34,7 +34,7 @@ export default function WhatsNew({ news, onClose, go }) {
       <div className="modal whats-new" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
         <div className="modal-head">
           <h2 id="whats-new-title">What’s new</h2>
-          <span className="mono small pink">IV Studio {news.version}</span>
+          <span className="mono small pink">Techlit Studio {news.version}</span>
           <span className="spacer" />
           <button className="lora-chip-x" aria-label="Close what's new" onClick={onClose}>
             ×

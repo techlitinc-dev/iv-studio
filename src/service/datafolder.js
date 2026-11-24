@@ -1,9 +1,9 @@
-// Moving IV Studio's data folder to another drive (Settings → Data folder). The data folder holds everything
-// IV Studio makes and installs for itself: projects, edits, voices and lines, trainings, the voice engine's
+// Moving Techlit Studio's data folder to another drive (Settings → Data folder). The data folder holds everything
+// Techlit Studio makes and installs for itself: projects, edits, voices and lines, trainings, the voice engine's
 // Python, Shinobi and its models. ComfyUI's models, LoRAs and renders aren't in it; they live in ComfyUI.
 //
 // A move copies everything to the new folder (the original is left untouched), checks the copy, then writes
-// a small pointer in the default folder (data-folder.json, see paths.js) and IV Studio restarts on the new
+// a small pointer in the default folder (data-folder.json, see paths.js) and Techlit Studio restarts on the new
 // folder. The old copy stays until the person removes it from Settings.
 //
 // Electron keeps the window's own files (caches, local storage) in the default folder too; those stay put.
@@ -43,7 +43,7 @@ export function inside(p, dir) {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))
 }
 
-// The top-level names in `dir` that belong to IV Studio (everything but Chromium's files and the pointer).
+// The top-level names in `dir` that belong to Techlit Studio (everything but Chromium's files and the pointer).
 export function movableEntries(dir) {
   try {
     return fs.readdirSync(dir).filter((n) => !BROWSER.has(n.toLowerCase()))
@@ -79,20 +79,20 @@ const isEmptyDir = (p) => {
 }
 
 // The folder a move copies into, from the folder the person picked: the picked folder itself when it is empty
-// (or doesn't exist yet), else a new "IV Studio" folder inside it. The default folder qualifies when it holds
-// no IV Studio files (only Electron's), which is moving back. Throws with a plain reason when it can't be used.
+// (or doesn't exist yet), else a new "Techlit Studio" folder inside it. The default folder qualifies when it holds
+// no Techlit Studio files (only Electron's), which is moving back. Throws with a plain reason when it can't be used.
 export function chooseTarget(picked, { from, defaultDir }) {
   if (!picked || !path.isAbsolute(picked)) throw new Error('Pick a folder.')
   const resolved = path.resolve(picked)
-  if (same(resolved, from)) throw new Error('That is already IV Studio’s data folder.')
-  if (inside(resolved, from)) throw new Error('Pick a folder outside IV Studio’s current data folder.')
-  if (inside(from, resolved) && !same(resolved, defaultDir)) throw new Error('Pick a folder that isn’t around IV Studio’s current data folder.')
+  if (same(resolved, from)) throw new Error('That is already Techlit Studio’s data folder.')
+  if (inside(resolved, from)) throw new Error('Pick a folder outside Techlit Studio’s current data folder.')
+  if (inside(from, resolved) && !same(resolved, defaultDir)) throw new Error('Pick a folder that isn’t around Techlit Studio’s current data folder.')
   if (defaultDir && same(resolved, defaultDir)) {
-    if (movableEntries(resolved).length) throw new Error('The default folder still has an old copy of IV Studio’s data. Remove the old copy first.')
+    if (movableEntries(resolved).length) throw new Error('The default folder still has an old copy of Techlit Studio’s data. Remove the old copy first.')
     return resolved
   }
   if (!fs.existsSync(resolved) || isEmptyDir(resolved)) return resolved
-  const sub = path.join(resolved, 'IV Studio')
+  const sub = path.join(resolved, 'Techlit Studio')
   if (!fs.existsSync(sub) || isEmptyDir(sub)) return sub
   throw new Error(`${sub} already has files in it. Pick an empty folder.`)
 }
@@ -111,7 +111,7 @@ export function freeBytes(dir) {
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 // Paths to `from` in a file's text, made to point at `to`: as written, JSON-escaped (doubled backslashes) and
-// with forward slashes. Only whole folder names match (D:\IV Studio doesn't match D:\IV Studio Old).
+// with forward slashes. Only whole folder names match (D:\Techlit Studio doesn't match D:\Techlit Studio Old).
 export function rewritePaths(text, from, to) {
   const variants = new Map()
   const add = (a, b) => a && !variants.has(a) && variants.set(a, b)
@@ -154,14 +154,14 @@ async function copyFile(src, dst, size, onBytes) {
   await fsp.utimes(dst, st.atime, st.mtime).catch(() => {})
 }
 
-// Copies IV Studio's data from `from` into `to`. onProgress({ phase, done, total, file }) in bytes.
+// Copies Techlit Studio's data from `from` into `to`. onProgress({ phase, done, total, file }) in bytes.
 // Returns { entries, files: [{ rel, size, link, rewritten }], bytes }; the original is never changed.
 export async function copyData(from, to, { onProgress = () => {}, entries = movableEntries(from) } = {}) {
   onProgress({ phase: 'counting', done: 0, total: 0 })
   const items = await listData(from, entries)
   const total = items.reduce((n, i) => n + i.size, 0)
   const free = freeBytes(to)
-  if (free != null && free < total + 512 * 1024 * 1024) throw new Error(`Not enough space there: IV Studio’s data is ${gb(total)} and the drive has ${gb(free)} free.`)
+  if (free != null && free < total + 512 * 1024 * 1024) throw new Error(`Not enough space there: Techlit Studio’s data is ${gb(total)} and the drive has ${gb(free)} free.`)
   await fsp.mkdir(to, { recursive: true })
   let done = 0
   let last = 0
@@ -237,11 +237,11 @@ export async function verifyCopy(to, copied, { onProgress = () => {} } = {}) {
     if (bad.length >= 5) break
   }
   onProgress({ phase: 'checked', done: copied.files.length, total: copied.files.length })
-  if (bad.length) throw new Error(`The copy didn’t check out, so IV Studio keeps using the old folder: ${bad.join('; ')}`)
+  if (bad.length) throw new Error(`The copy didn’t check out, so Techlit Studio keeps using the old folder: ${bad.join('; ')}`)
   return true
 }
 
-// Points IV Studio at `to` from next start, remembering where the old copy is so it can be removed later.
+// Points Techlit Studio at `to` from next start, remembering where the old copy is so it can be removed later.
 export function writePointer(defaultDir, { to, from, entries }) {
   fs.mkdirSync(defaultDir, { recursive: true })
   const file = path.join(defaultDir, POINTER_FILE)
@@ -285,7 +285,7 @@ async function removeTree(p) {
 }
 
 // Removes the old copy a move left behind: only the names it copied, only from the old folder, and never while
-// it is the folder in use. Then forgets it (the pointer goes when IV Studio is back in the default folder).
+// it is the folder in use. Then forgets it (the pointer goes when Techlit Studio is back in the default folder).
 export async function removeOldCopy(defaultDir, current) {
   const old = oldCopy(defaultDir, current)
   if (!old) return { removed: 0 }

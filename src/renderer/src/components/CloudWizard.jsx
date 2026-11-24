@@ -142,7 +142,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
 
   const titles = {
     service: ['Set up the cloud', 'Render on a rented GPU, billed by use'],
-    account: [`Connect ${LABEL[p]}`, 'Your own account; IV Studio keeps the key here'],
+    account: [`Connect ${LABEL[p]}`, 'Your own account; Techlit Studio keeps the key here'],
     gpu: ['Pick a GPU', 'Bigger is faster; it shuts itself off'],
     setup: ['Set it up', 'Once, then every render just wakes it'],
     ready: [ready ? 'Ready' : 'Almost there', 'Switch between this PC and the cloud any time']
@@ -173,13 +173,13 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
           <div className="welcome-body" key={`b-${step}`}>
             {step === 'service' && (
               <section className="block create-step">
-                <StepHead n={1} title="Which cloud service?" sub="All three bill your own account; IV Studio adds nothing on top." />
+                <StepHead n={1} title="Which cloud service?" sub="All three bill your own account; Techlit Studio adds nothing on top." />
                 {onCloud && <p className="wel-note small">You’re rendering in the cloud now. Switch to This PC on the Cloud page to change the service.</p>}
                 <div className="wel-ways cw-services">
                   {[
                     ['runpod', 'Rent a GPU by the second. Your storage stays between sessions (about $7 a month for 100 GB).', `from $${(cheapest(st.runpodGpus) ?? 0).toFixed(2)} an hour`, 'Shots, sequences and your characters', 'RunPod'],
                     ['modal', 'By the second, and the GPU scales to zero. Storage is free up to 1 TiB. Needs a small install (about 100 MB).', `from $${(cheapest(st.gpus) ?? 0).toFixed(2)} an hour`, 'Shots, sequences and your characters', 'Modal'],
-                    ['comfycloud', 'Comfy’s own ComfyUI, on a paid Comfy Cloud plan. Billed per run. It has Comfy’s nodes and models only.', 'per run', 'Pictures and music; shots need IV Studio’s node packs, which it can’t take', 'Comfy Cloud']
+                    ['comfycloud', 'Comfy’s own ComfyUI, on a paid Comfy Cloud plan. Billed per run. It has Comfy’s nodes and models only.', 'per run', 'Pictures and music; shots need Techlit Studio’s node packs, which it can’t take', 'Comfy Cloud']
                   ].map(([id, desc, price, works, name]) => {
                     const done = id === 'comfycloud' ? !!st.comfycloud?.hasKey : id === 'runpod' ? !!st.runpod?.ready : !!(st.cloud?.url && st.cloud?.modelsAt)
                     return (
@@ -205,7 +205,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
                 <StepHead n={2} title={p === 'modal' ? 'Install and sign in' : `Your ${LABEL[p]} key`} sub={p === 'modal' ? 'Modal signs in through your browser.' : 'Saved encrypted on this PC; the window never sees it again.'} />
                 {p === 'modal' ? (
                   <div className="cw-tasks">
-                    <Task done={st.toolkit} title="Cloud tools" text="A private copy of Modal’s client in IV Studio’s own folder (about 100 MB). Nothing else on your PC changes.">
+                    <Task done={st.toolkit} title="Cloud tools" text="A private copy of Modal’s client in Techlit Studio’s own folder (about 100 MB). Nothing else on your PC changes.">
                       {!st.toolkit && (
                         <button className="btn btn-primary" disabled={!!busy} onClick={() => run('Installing the cloud tools', () => window.ivstudio.cloud.install())}>
                           Install
@@ -236,7 +236,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
                               Create a RunPod account
                             </button>{' '}
                             and add some credit ($10 covers hours of rendering).
-                            {info?.links?.runpodSignup && <span className="cloud-support"> New accounts made through this link get a one-time RunPod credit of $5 to $500 after adding their first $10, and it supports IV Studio at no extra cost to you.</span>}
+                            {info?.links?.runpodSignup && <span className="cloud-support"> New accounts made through this link get a one-time RunPod credit of $5 to $500 after adding their first $10, and it supports Techlit Studio at no extra cost to you.</span>}
                           </li>
                           <li>
                             Make a key on{' '}
@@ -245,7 +245,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
                             </button>{' '}
                             with read/write.
                           </li>
-                          <li>Paste it here. IV Studio uses it only to make your storage and start and stop your own pods.</li>
+                          <li>Paste it here. Techlit Studio uses it only to make your storage and start and stop your own pods.</li>
                         </>
                       ) : (
                         <>
@@ -260,7 +260,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
                             <button className="link-btn" onClick={() => window.ivstudio.links.open('https://platform.comfy.org/profile/api-keys')}>
                               Make an API key
                             </button>{' '}
-                            and paste it here. IV Studio then asks Comfy Cloud what it can run (free).
+                            and paste it here. Techlit Studio then asks Comfy Cloud what it can run (free).
                           </li>
                         </>
                       )}
@@ -281,8 +281,11 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
               <section className="block create-step">
                 <StepHead n={3} title="GPU and shut-off" sub="Every GPU here runs MiniMax H3. You can change it later." />
                 <div className="cw-gpus">
-                  {gpus.map((g) => (
-                    <button key={g.id} className={`wel-way cw-gpu ${pick === g.id ? 'on' : ''}`} onClick={() => setGpu(g.id)} aria-pressed={pick === g.id}>
+                  {gpus
+                    .map((g, i) => ({ g, i }))
+                    .sort((a, b) => (b.g.inStock === true) - (a.g.inStock === true) || a.i - b.i)
+                    .map(({ g }) => (
+                    <button key={g.id} className={`wel-way cw-gpu ${pick === g.id ? 'on' : ''}`} disabled={g.inStock === false} onClick={() => setGpu(g.id)} aria-pressed={pick === g.id} title={g.inStock === false ? 'Busy right now in this data center — pick one that is free' : undefined}>
                       <h3>{g.label}</h3>
                       <span className="cw-price mono small">${g.perHour.toFixed(2)} an hour</span>
                       <p className="dim small">
@@ -312,7 +315,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
 
             {step === 'setup' && (
               <section className="block create-step">
-                <StepHead n={4} title={ready ? 'Set up' : 'Set it up once'} sub={p === 'runpod' ? 'A storage volume, ComfyUI, the node packs, the H3 models and your characters.' : 'IV Studio’s cloud image, the H3 models and your characters.'} />
+                <StepHead n={4} title={ready ? 'Set up' : 'Set it up once'} sub={p === 'runpod' ? 'A storage volume, ComfyUI, the node packs, the H3 models and your characters.' : 'Techlit Studio’s cloud image, the H3 models and your characters.'} />
                 {changed && !busy && (
                   <p className="wel-note small">
                     <strong>Changed:</strong> it’s set up for the {cfgLabel}{cfg.idle ? ` with a ${Math.round(cfg.idle / 60)}-minute shut-off` : ''}. Set up again to use your new choice; otherwise it stays as it is.
@@ -327,7 +330,7 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
                   <p className="wel-lede">
                     {p === 'runpod'
                       ? 'Makes a 100 GB network volume in a data center that has your GPU, installs ComfyUI and every node pack matched to this version, downloads the H3 models onto it (about 60 GB, once) and uploads your characters. It takes 20–40 minutes, under about $1 of GPU time on an L40S. The volume costs about $7 a month while it exists.'
-                      : 'Builds IV Studio’s cloud image (ComfyUI and every node pack, matched to this version), downloads the H3 models into your Modal storage (about 60 GB, once) and uploads your characters. It takes 20–40 minutes and a few cents of CPU time.'}
+                      : 'Builds Techlit Studio’s cloud image (ComfyUI and every node pack, matched to this version), downloads the H3 models into your Modal storage (about 60 GB, once) and uploads your characters. It takes 20–40 minutes and a few cents of CPU time.'}
                   </p>
                 )}
                 <div className="cw-setup-row">

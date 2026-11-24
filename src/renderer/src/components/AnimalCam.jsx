@@ -503,7 +503,7 @@ function Action({ v, id, part, run, busy }) {
               </span>
             </div>
             {b.key === 'check' ? (
-              <p className="small dim">IV Studio repeats the outfit, the size anchor and which way it faces here. Add anything else that must stay the same.</p>
+              <p className="small dim">Techlit Studio repeats the outfit, the size anchor and which way it faces here. Add anything else that must stay the same.</p>
             ) : null}
             <textarea rows={3} key={`${b.key}:${v.beats[b.key] || ''}`} defaultValue={v.beats[b.key] || ''} placeholder={BEAT_HINT[b.key]} onBlur={(e) => e.target.value !== (v.beats[b.key] || '') && setBeat({ [b.key]: e.target.value })} />
           </div>
@@ -679,7 +679,7 @@ function Film({ v, id, save, run, busy, notify, live, go, openEdit }) {
 const FIXES = [
   { key: 'identity', label: 'It doesn’t look like my animal', step: 0, tip: 'Use a clearer reference sheet: the face close-up, the front with the outfit and the back, studio lit.' },
   { key: 'size', label: 'It grew or shrank', step: 3, tip: 'Make the size anchor more concrete: something next to it in every beat, like the foot plate or a person’s shin.' },
-  { key: 'outfit', label: 'The outfit changed or vanished', step: 0, tip: 'Put every item it wears on the sheet and in the outfit list; IV Studio repeats them in the check beat.' },
+  { key: 'outfit', label: 'The outfit changed or vanished', step: 0, tip: 'Put every item it wears on the sheet and in the outfit list; Techlit Studio repeats them in the check beat.' },
   { key: 'fingers', label: 'It has fingers or holds things like a hand', step: 4, tip: 'Rewrite the contact as pads pressing, hooking or pushing; heavy things take both paws.' },
   { key: 'slow', label: 'It went into slow motion', step: 4, tip: 'Take out anything slow or dramatic from the beats; the payoff happens at normal speed.' },
   { key: 'sound', label: 'Music or made-up sounds', step: 5, tip: 'Keep the sound list short and concrete; every sound you want is listed, and the room tone fills the rest.' },

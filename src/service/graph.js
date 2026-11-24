@@ -1,6 +1,6 @@
-// Builds the exact ComfyUI API graph for one IV Studio job from the tested template, with no browser.
+// Builds the exact ComfyUI API graph for one Techlit Studio job from the tested template, with no browser.
 //
-// The template (resources/workflows/iv_studio_api.json) holds every node of the IV Studio workflow. The
+// The template (resources/workflows/iv_studio_api.json) holds every node of the Techlit Studio workflow. The
 // group map says which nodes each switchable group owns. Turning a group off removes its nodes, the way the
 // workflow's mute switches do, and drops any link that pointed at them. Bypass groups (RefMods) instead
 // re-route their consumers to the node's pass-through input. This mirrors make_iv_v3_tests.py, which was

@@ -1,6 +1,6 @@
-// IV Studio's own voice engine, so no separate app is needed: VoxCPM2 (OpenBMB, Apache-2.0, code and weights)
+// Techlit Studio's own voice engine, so no separate app is needed: VoxCPM2 (OpenBMB, Apache-2.0, code and weights)
 // speaks, designs and clones voices, and Whisper large-v3 turbo (OpenAI, MIT) reads the words in a recording.
-// Both run in a Python environment IV Studio makes with uv in its data folder (voiceengine/), driven by
+// Both run in a Python environment Techlit Studio makes with uv in its data folder (voiceengine/), driven by
 // resources/python/voice_server.py one JSON line at a time. The models load on first use; stopping the
 // process is how the GPU gets its memory back.
 import { spawn } from 'node:child_process'

@@ -1,6 +1,6 @@
 // Dailies after an overnight batch (batches.js): one reel of every take, each after a title card with its shot,
 // take, seed and checks (ranking.js: the words heard, likeness, cuts, frames held, freezes), the best take of each
-// shot first; and notes.md saying what to look at first and why. Into Videos\IV Studio\Dailies\<batch> <date>\.
+// shot first; and notes.md saying what to look at first and why. Into Videos\Techlit Studio\Dailies\<batch> <date>\.
 // The plan and the notes are pure; the reel is ffmpeg, one segment per take, joined without re-encoding.
 // Idea from keys + Sam Wasserman's Imagination Studio; our own code.
 import { spawn } from 'node:child_process'

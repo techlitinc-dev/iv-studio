@@ -1,6 +1,6 @@
 // The person's own Claude Code, Codex or Hermes as the prompt writer, run headless on their existing login (after
 // IV Chat's Draft button). Hermes answers over its ACP server (hermesacp.js) with no tools and no MCP server. Each run gets an empty folder of its own, no tools but reading the reference pictures put in it,
-// no MCP servers and nothing saved, and answers in IV Studio's JSON shape (the CLI's own structured output).
+// no MCP servers and nothing saved, and answers in Techlit Studio's JSON shape (the CLI's own structured output).
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -59,7 +59,7 @@ export function findHarnesses(env = process.env, home = os.homedir(), platform =
 
 const codexHome = (env, home) => env.CODEX_HOME || path.join(home, '.codex')
 
-// The model in the person's Codex settings: their config is skipped when IV Studio runs Codex, so it's passed on.
+// The model in the person's Codex settings: their config is skipped when Techlit Studio runs Codex, so it's passed on.
 export function codexConfigured(env = process.env, home = os.homedir()) {
   try {
     return /^\s*model\s*=\s*["']([^"']+)["']/m.exec(fs.readFileSync(path.join(codexHome(env, home), 'config.toml'), 'utf8'))?.[1] || null

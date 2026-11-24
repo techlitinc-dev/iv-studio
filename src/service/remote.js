@@ -1,4 +1,4 @@
-// Adapts a graph to the ComfyUI it will run on. IV Studio's graphs are made on Windows, so on a Linux
+// Adapts a graph to the ComfyUI it will run on. Techlit Studio's graphs are made on Windows, so on a Linux
 // ComfyUI (the cloud) model names need forward slashes, and the DLSS 5 finishing pass, which is
 // Windows-only (Direct3D 12), is replaced with what Linux can do: an optional 2x AI upscale
 // (Real-ESRGAN) and optional frame interpolation (RIFE), then a normal save.

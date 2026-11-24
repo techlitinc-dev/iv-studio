@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-// IV Studio's own confirmation dialog, in place of the system box:
+// Techlit Studio's own confirmation dialog, in place of the system box:
 //   if (await ask({ title: 'Delete "Theo"?', message: 'Its videos stay on disk.', confirm: 'Delete', danger: true })) ...
 // With input ({ value, placeholder }), it asks for a few words and resolves with them (false when cancelled or empty).
 // <ConfirmHost /> is mounted once in App and shows whatever ask() requests.

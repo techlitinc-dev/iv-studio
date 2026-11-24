@@ -1,4 +1,4 @@
-// Local AI's chat loop (src/service/localchat.js) with a stand-in Ollama and stand-in IV Studio tools.
+// Local AI's chat loop (src/service/localchat.js) with a stand-in Ollama and stand-in Techlit Studio tools.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -58,7 +58,7 @@ await ok('a render moves the model off the graphics card first', async () => {
   assert.ok(sent[1].url.endsWith('/api/generate'), 'unloads before the render')
   assert.equal(sent.length, 2, 'no answer from the model while the render has the card')
 })
-await ok('once a render starts, the turn ends in IV Studio’s words', async () => {
+await ok('once a render starts, the turn ends in Techlit Studio’s words', async () => {
   const { r, events } = await run([{ message: { content: '', tool_calls: [{ function: { name: 'make_shot', arguments: { idea: 'a fox' } } }] } }], 'Make a fox')
   assert.equal(r.ok, true)
   assert.match(events.find((e) => e.type === 'end').text, /started the previews/)

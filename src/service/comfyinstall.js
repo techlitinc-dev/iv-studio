@@ -1,11 +1,11 @@
-// "Get ComfyUI for me": for someone with no ComfyUI yet, IV Studio downloads ComfyUI's official Windows portable
+// "Get ComfyUI for me": for someone with no ComfyUI yet, Techlit Studio downloads ComfyUI's official Windows portable
 // build (its own Python inside, nothing else installed on the PC) from ComfyUI's GitHub releases, checks it against
 // the SHA-256 GitHub publishes for it, unpacks it into a folder the person picks and points Settings → ComfyUI at it.
 // People who already have a ComfyUI keep using theirs; this only shows when none is found.
 //
 // Which build (ComfyUI's README): NVIDIA 20-series and newer (compute capability 7.5+) get the main build (PyTorch
 // CUDA 13, needs a recent driver); 10-series and older the CUDA 12.6 build. AMD and Intel cards have their own builds,
-// but IV Studio's video (MiniMax H3) needs NVIDIA, so they're pointed at the cloud instead.
+// but Techlit Studio's video (MiniMax H3) needs NVIDIA, so they're pointed at the cloud instead.
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
@@ -25,7 +25,7 @@ export function pickBuild(scan = {}) {
   const nv = gpus.filter((g) => g.vendor === 'nvidia').sort((a, b) => (b.vram || 0) - (a.vram || 0))[0]
   if (!nv) {
     const other = gpus.find((g) => g.vendor === 'amd' || g.vendor === 'intel')
-    return { ok: false, reason: other ? `IV Studio’s video model needs an NVIDIA graphics card; this PC has ${other.name || other.vendor}. Render in the cloud instead (Cloud page).` : 'No NVIDIA graphics card was found. IV Studio’s video model needs one: render in the cloud instead (Cloud page).' }
+    return { ok: false, reason: other ? `Techlit Studio’s video model needs an NVIDIA graphics card; this PC has ${other.name || other.vendor}. Render in the cloud instead (Cloud page).` : 'No NVIDIA graphics card was found. Techlit Studio’s video model needs one: render in the cloud instead (Cloud page).' }
   }
   const old = nv.computeCap != null && nv.computeCap < 7.5
   const driver = Number(String(nv.driver || '').split('.')[0]) || null
@@ -36,7 +36,7 @@ export function pickBuild(scan = {}) {
 
 // The newest release's asset: { version, url, size, sha256, page }
 export async function latestAsset(assetName, { fetchImpl = fetch } = {}) {
-  const res = await fetchImpl(RELEASES, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'IV-Studio' } })
+  const res = await fetchImpl(RELEASES, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Techlit-Studio' } })
   if (!res.ok) throw new Error(`Couldn’t reach ComfyUI’s releases on GitHub (${res.status}).`)
   const r = await res.json()
   const a = (r.assets || []).find((x) => x.name === assetName)
@@ -46,12 +46,12 @@ export async function latestAsset(assetName, { fetchImpl = fetch } = {}) {
 }
 
 // Where to put it: the drive with the most free space (models need about 60 GB more), as <drive>\ComfyUI.
-// A folder that's already there with something in it (another ComfyUI, say) is passed over for "IV Studio ComfyUI".
+// A folder that's already there with something in it (another ComfyUI, say) is passed over for "Techlit Studio ComfyUI".
 export function suggestFolder(drives = []) {
   const best = [...drives].filter((d) => d.free).sort((a, b) => b.free - a.free)[0]
   if (!best) return null
   const empty = (p) => !fs.existsSync(p) || fs.readdirSync(p).length === 0
-  return [path.join(best.path, 'ComfyUI'), path.join(best.path, 'IV Studio ComfyUI'), path.join(best.path, 'IV Studio ComfyUI 2')].find(empty) || null
+  return [path.join(best.path, 'ComfyUI'), path.join(best.path, 'Techlit Studio ComfyUI'), path.join(best.path, 'Techlit Studio ComfyUI 2')].find(empty) || null
 }
 
 // Checks a folder before anything is downloaded: empty or new, and enough room for the download and the unpacked copy.

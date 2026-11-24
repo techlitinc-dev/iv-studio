@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { SetCard, SetField, Pill } from './SettingsKit'
 import { NEWS } from '../news'
 
-// IV Studio's own updates: the main process checks GitHub on launch and every six hours and downloads a
+// Techlit Studio's own updates: the main process checks GitHub on launch and every six hours and downloads a
 // new version in the background. These show where it's at, and install it with one click.
 export function useUpdate() {
   const [state, setState] = useState(null)
@@ -20,14 +20,14 @@ const install = (notify) => window.ivstudio.update.install().catch((err) => noti
 export const openUpdate = () => window.dispatchEvent(new CustomEvent('iv:update-dialog'))
 
 // In the sidebar's foot, in place of the version number. It also hosts the update pop-up, and says what a ComfyUI
-// update done with IV Studio's own did, once IV Studio has restarted.
+// update done with Techlit Studio's own did, once Techlit Studio has restarted.
 export function UpdateButton({ notify }) {
   const u = useUpdate()
   const [open, setOpen] = useState(false)
   useEffect(() => {
     const show = () => setOpen(true)
     window.addEventListener('iv:update-dialog', show)
-    window.ivstudio.update.notice?.().then((n) => n && notify(`Updated with IV Studio ${n.version}: ${n.text}`, n.ok ? 'info' : undefined), () => {})
+    window.ivstudio.update.notice?.().then((n) => n && notify(`Updated with Techlit Studio ${n.version}: ${n.text}`, n.ok ? 'info' : undefined), () => {})
     return () => window.removeEventListener('iv:update-dialog', show)
   }, [])
   // drawn on the page itself, not inside the sidebar (whose foot is all small capitals)
@@ -35,7 +35,7 @@ export function UpdateButton({ notify }) {
   if (u?.status === 'ready')
     return (
       <>
-        <button className="nav-update ready" onClick={() => setOpen(true)} title={`IV Studio ${u.available} is downloaded. Choose to update just IV Studio, or ComfyUI and its node packs too.`}>
+        <button className="nav-update ready" onClick={() => setOpen(true)} title={`Techlit Studio ${u.available} is downloaded. Choose to update just Techlit Studio, or ComfyUI and its node packs too.`}>
           ↻ Update to {u.available}
         </button>
         {dialog}
@@ -43,7 +43,7 @@ export function UpdateButton({ notify }) {
     )
   if (u?.status === 'available')
     return (
-      <button className="nav-update ready" onClick={() => install(notify)} title={u.portable ? `IV Studio ${u.available} is out, but this copy can't install it itself.${u.why ? ` ${u.why}` : ''} Opens its download page: unzip the new portable zip over this folder; the data folder stays.` : `IV Studio ${u.available} is out. Opens its download page: install it over this copy.${u.why ? ` ${u.why}` : ''}`}>
+      <button className="nav-update ready" onClick={() => install(notify)} title={u.portable ? `Techlit Studio ${u.available} is out, but this copy can't install it itself.${u.why ? ` ${u.why}` : ''} Opens its download page: unzip the new portable zip over this folder; the data folder stays.` : `Techlit Studio ${u.available} is out. Opens its download page: install it over this copy.${u.why ? ` ${u.why}` : ''}`}>
         ↓ Get {u.available}
       </button>
     )
@@ -68,12 +68,12 @@ export function UpdateSettings({ notify, n }) {
     checking: 'Checking for a new version…',
     current: `You have the newest version.${u.checkedAt ? ` Checked ${when(u.checkedAt)}.` : ''}`,
     available: u.portable
-      ? `IV Studio ${u.available} is out, but this copy can't install it itself.${u.why ? ` ${u.why}` : ''} Download IV-Studio-Portable-win-x64.zip and unzip it over this folder; your data folder beside IV Studio.exe stays as it is.`
+      ? `Techlit Studio ${u.available} is out, but this copy can't install it itself.${u.why ? ` ${u.why}` : ''} Download Techlit-Studio-Portable-win-x64.zip and unzip it over this folder; your data folder beside Techlit Studio.exe stays as it is.`
       : u.why
-        ? `IV Studio ${u.available} is out, but this copy can't install it itself. ${u.why}`
-        : `IV Studio ${u.available} is out. Download it and install it over this copy.`,
-    downloading: `Downloading IV Studio ${u.available}… ${Math.round(u.percent || 0)}%`,
-    ready: `IV Studio ${u.available} is downloaded. Restart to install it, or it installs when you next quit.`,
+        ? `Techlit Studio ${u.available} is out, but this copy can't install it itself. ${u.why}`
+        : `Techlit Studio ${u.available} is out. Download it and install it over this copy.`,
+    downloading: `Downloading Techlit Studio ${u.available}… ${Math.round(u.percent || 0)}%`,
+    ready: `Techlit Studio ${u.available} is downloaded. Restart to install it, or it installs when you next quit.`,
     error: `Couldn't check for updates: ${u.error}`
   }[u.status]
   async function check() {
@@ -101,7 +101,7 @@ export function UpdateSettings({ notify, n }) {
       </button>
     )
   return (
-    <SetCard id="updates" n={n} title="Updates" sub={u.portable ? 'Portable copy: new versions download in the background and install with one click, keeping your data folder.' : u.manual ? 'IV Studio tells you when a new version is out.' : 'New versions download in the background and install with one click.'} aside={pill && <Pill tone={tone}>{pill}</Pill>}>
+    <SetCard id="updates" n={n} title="Updates" sub={u.portable ? 'Portable copy: new versions download in the background and install with one click, keeping your data folder.' : u.manual ? 'Techlit Studio tells you when a new version is out.' : 'New versions download in the background and install with one click.'} aside={pill && <Pill tone={tone}>{pill}</Pill>}>
       <SetField label="This version" hint={line}>
         <div className="set-inline">
           <span className="set-big mono">v{u.version}</span>
@@ -121,15 +121,15 @@ export function UpdateSettings({ notify, n }) {
   )
 }
 
-// The update pop-up: update just IV Studio, or ComfyUI and every node pack as well (appupdate.js). ComfyUI is
-// checked when IV Studio's update finishes downloading; the pop-up shows that check, or runs it if it hasn't.
+// The update pop-up: update just Techlit Studio, or ComfyUI and every node pack as well (appupdate.js). ComfyUI is
+// checked when Techlit Studio's update finishes downloading; the pop-up shows that check, or runs it if it hasn't.
 const PHASES = {
   starting: 'Getting ComfyUI ready…',
   snapshot: 'Saving a snapshot of ComfyUI, so Undo can put it back…',
   updating: 'Updating ComfyUI and your node packs…',
   restarting: 'Restarting ComfyUI…',
   done: 'ComfyUI is updated.',
-  installing: 'Restarting IV Studio into its new version…'
+  installing: 'Restarting Techlit Studio into its new version…'
 }
 export function UpdateDialog({ u, onClose }) {
   const [comfy, setComfy] = useState(null)
@@ -166,10 +166,10 @@ export function UpdateDialog({ u, onClose }) {
   const step = progress?.phase === 'updating' && progress.total ? ` ${progress.done || 0} of ${progress.total}` : ''
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !running && onClose()}>
-      <div className="modal update-dialog" role="dialog" aria-label="Update IV Studio">
+      <div className="modal update-dialog" role="dialog" aria-label="Update Techlit Studio">
         <div className="update-head">
           <span className="mono label">Update ready</span>
-          <h2>IV Studio {u.available}</h2>
+          <h2>Techlit Studio {u.available}</h2>
           <span className="small dim">You have {u.version}. Anything open is saved; renders keep going in ComfyUI.</span>
         </div>
         {u.notes && (
@@ -205,8 +205,8 @@ export function UpdateDialog({ u, onClose }) {
               )}
             </>
           )}
-          {hasComfy && sum.desktop && <p className="small dim">The ComfyUI desktop app updates ComfyUI itself; IV Studio updates its node packs.</p>}
-          {hasComfy && <p className="small dim">IV Studio saves a snapshot first; Undo in Settings → Setup → ComfyUI updates puts it all back. Nothing can render while it updates.</p>}
+          {hasComfy && sum.desktop && <p className="small dim">The ComfyUI desktop app updates ComfyUI itself; Techlit Studio updates its node packs.</p>}
+          {hasComfy && <p className="small dim">Techlit Studio saves a snapshot first; Undo in Settings → Setup → ComfyUI updates puts it all back. Nothing can render while it updates.</p>}
         </section>
         {running && (
           <p className="update-progress mono small" role="status">
@@ -224,11 +224,11 @@ export function UpdateDialog({ u, onClose }) {
           </button>
           <span className="update-spacer" />
           <button className={`btn btn-small ${hasComfy ? '' : 'btn-primary'}`} disabled={!!running} onClick={() => go(false)}>
-            {hasComfy || checking ? 'Update just IV Studio' : 'Update IV Studio'}
+            {hasComfy || checking ? 'Update just Techlit Studio' : 'Update Techlit Studio'}
           </button>
           {(hasComfy || checking) && (
             <button className="btn btn-primary update-all" disabled={!!running || checking} onClick={() => go(true)} title={checking ? 'Checking ComfyUI first…' : ''}>
-              {checking ? 'Checking ComfyUI…' : 'Update IV Studio, ComfyUI and nodes'}
+              {checking ? 'Checking ComfyUI…' : 'Update Techlit Studio, ComfyUI and nodes'}
             </button>
           )}
         </div>

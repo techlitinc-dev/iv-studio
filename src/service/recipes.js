@@ -1,4 +1,4 @@
-// Recipes: something that worked in IV Studio's chat, saved as a one-click button on the Dashboard ("save this as a
+// Recipes: something that worked in Techlit Studio's chat, saved as a one-click button on the Dashboard ("save this as a
 // recipe"). A recipe is the request, written once by the agent so it stands on its own ("a 15 second vertical teaser
 // from my latest finished shot", never ids from one day), and pressing the button sends it to the chat again.
 // recipes.json in the data folder.

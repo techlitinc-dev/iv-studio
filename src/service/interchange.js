@@ -39,7 +39,7 @@ export function timecode(frames, fps) {
 // ---------- CMX3600 EDL: V1 only (the format carries one picture track) ----------
 export function cmx3600(e, { mediaPath = (m) => m.path } = {}) {
   const fps = fpsOf(e)
-  const lines = [`TITLE: ${String(e.name || 'IV Studio edit').replace(/[^\x20-\x7e]/g, '').slice(0, 60)}`, 'FCM: NON-DROP FRAME', '']
+  const lines = [`TITLE: ${String(e.name || 'Techlit Studio edit').replace(/[^\x20-\x7e]/g, '').slice(0, 60)}`, 'FCM: NON-DROP FRAME', '']
   let n = 0
   for (const c of usable(e).filter((x) => x.track === 'V1')) {
     const m = e.media[c.media]
@@ -114,7 +114,7 @@ export function fcp7Xml(e, { mediaPath = (m) => m.path } = {}) {
   const markers = [...(e.markers || []).map((k) => marker(k.label || 'Marker', '', fr(k.t, fps))), ...clips.filter((c) => c.track === 'T1').map((c) => marker(`Title: ${titleText(c).slice(0, 60)}`, titleText(c), fr(c.start, fps)))]
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xmeml>
-<xmeml version="4"><sequence id="sequence-1"><name>${esc(e.name || 'IV Studio edit')}</name><duration>${total}</duration>${rate(fps)}<timecode>${rate(fps)}<string>00:00:00:00</string><frame>0</frame><displayformat>NDF</displayformat></timecode><media><video><format><samplecharacteristics>${rate(fps)}<width>${W}</width><height>${H}</height><pixelaspectratio>square</pixelaspectratio><fielddominance>none</fielddominance></samplecharacteristics></format>${vXml.join('')}</video><audio><numOutputChannels>2</numOutputChannels><format><samplecharacteristics><depth>16</depth><samplerate>48000</samplerate></samplecharacteristics></format>${aXml.join('')}</audio></media>${markers.join('')}</sequence></xmeml>
+<xmeml version="4"><sequence id="sequence-1"><name>${esc(e.name || 'Techlit Studio edit')}</name><duration>${total}</duration>${rate(fps)}<timecode>${rate(fps)}<string>00:00:00:00</string><frame>0</frame><displayformat>NDF</displayformat></timecode><media><video><format><samplecharacteristics>${rate(fps)}<width>${W}</width><height>${H}</height><pixelaspectratio>square</pixelaspectratio><fielddominance>none</fielddominance></samplecharacteristics></format>${vXml.join('')}</video><audio><numOutputChannels>2</numOutputChannels><format><samplecharacteristics><depth>16</depth><samplerate>48000</samplerate></samplecharacteristics></format>${aXml.join('')}</audio></media>${markers.join('')}</sequence></xmeml>
 `
 }
 
@@ -128,7 +128,7 @@ export function fcpxml(e, { mediaPath = (m) => m.path } = {}) {
   const tracks = tracksOf(e)
   const clips = usable(e)
   const total = editFrames(e)
-  const res = [`<format id="r1" name="IV Studio ${W}x${H} ${fps}p" frameDuration="1/${fps}s" width="${W}" height="${H}"/>`]
+  const res = [`<format id="r1" name="Techlit Studio ${W}x${H} ${fps}p" frameDuration="1/${fps}s" width="${W}" height="${H}"/>`]
   const assets = new Map()
   const assetOf = (m) => {
     if (assets.has(m.id)) return assets.get(m.id)
@@ -198,7 +198,7 @@ export function fcpxml(e, { mediaPath = (m) => m.path } = {}) {
     .join('')
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE fcpxml>
-<fcpxml version="1.10"><resources>${res.join('')}</resources><library><event name="IV Studio"><project name="${esc(e.name || 'IV Studio edit')}"><sequence format="r1" duration="${T(Math.max(1, total))}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k"><spine>${spineXml}</spine></sequence></project></event></library></fcpxml>
+<fcpxml version="1.10"><resources>${res.join('')}</resources><library><event name="Techlit Studio"><project name="${esc(e.name || 'Techlit Studio edit')}"><sequence format="r1" duration="${T(Math.max(1, total))}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k"><spine>${spineXml}</spine></sequence></project></event></library></fcpxml>
 `
 }
 
@@ -331,7 +331,7 @@ export async function exportInterchange(e, outDir, { zip = true, stamp = new Dat
   fs.writeFileSync(
     files.readme,
     [
-      `${e.name || 'IV Studio edit'}, from IV Studio`,
+      `${e.name || 'Techlit Studio edit'}, from Techlit Studio`,
       `${W}x${H}, ${fps} fps, ${(editFrames(e) / fps).toFixed(2)} s, ${clips.length} clips, ${used.length} files in Media.`,
       '',
       'Premiere Pro: File > Import, pick the .xml. DaVinci Resolve: File > Import > Timeline, pick the .xml or the .fcpxml.',

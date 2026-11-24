@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import logo from '../assets/hivemind-logo.png'
+import logo from '../assets/tl-mark.svg'
 import './HivemindMark.css'
 
 // The supplied logo is used unchanged. Motion belongs to its surrounding UI.
@@ -8,7 +8,7 @@ export function HivemindMark({ active = false, size = 'normal' }) {
 }
 
 export function HivemindLoading({ label }) {
-  return label ? createPortal(<div className="hm-loading" role="status" aria-live="polite" aria-atomic="true"><div className="hm-loading-card"><HivemindMark active size="large"/><strong>Hivemind</strong><p>{label}</p><span className="hm-loading-line" aria-hidden="true"/></div></div>, document.body) : null
+  return label ? createPortal(<div className="hm-loading" role="status" aria-live="polite" aria-atomic="true"><div className="hm-loading-card"><HivemindMark active size="large"/><strong>Techlit Link</strong><p>{label}</p><span className="hm-loading-line" aria-hidden="true"/></div></div>, document.body) : null
 }
 
 // One short visual beat for an app handoff, concurrent with the actual work.

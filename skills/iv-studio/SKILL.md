@@ -1,22 +1,22 @@
 ---
 name: iv-studio
-description: Make MiniMax H3 videos with IV Studio through its MCP server - render shots and continuous sequences with recurring characters, hunt and finish previews, retake stretches, and cut renders together on IV Studio's timeline (trims, titles, sound, export), and turn a website into a sizzle or promo film. Use whenever the person asks for IV Studio, an H3 shot or sequence, a character video, a sizzle or promo video for a website, or an edit of their IV Studio renders.
+description: Make MiniMax H3 videos with Techlit Studio through its MCP server - render shots and continuous sequences with recurring characters, hunt and finish previews, retake stretches, and cut renders together on Techlit Studio's timeline (trims, titles, sound, export), and turn a website into a sizzle or promo film. Use whenever the person asks for Techlit Studio, an H3 shot or sequence, a character video, a sizzle or promo video for a website, or an edit of their Techlit Studio renders.
 ---
 
-If the `iv-studio` MCP tools aren't available, IV Studio has to be installed and its server added: the exact command for an install is under Settings -> Agents (MCP) in the app. Download: https://github.com/hollisorg/iv-studio/releases
+If the `techlit-studio` MCP tools aren't available, Techlit Studio has to be installed and its server added: the exact command for an install is under Settings -> Agents (MCP) in the app. Download: https://github.com/hollisorg/iv-studio/releases
 
-IV Studio is a desktop app for MiniMax H3 video on a local ComfyUI: it renders shots and continuous
+Techlit Studio is a desktop app for MiniMax H3 video on a local ComfyUI: it renders shots and continuous
 sequences with recurring characters, and cuts them together on its own timeline. Its MCP server
-(`iv-studio`) uses the same projects, renders and edits as the app window, so what you make shows up
+(`techlit-studio`) uses the same projects, renders and edits as the app window, so what you make shows up
 there for the person, and the other way round.
 
 ## Start menu
 
-When a chat starts with IV Studio and the person hasn't said what they want, offer the start menu: call
+When a chat starts with Techlit Studio and the person hasn't said what they want, offer the start menu: call
 `get_menu` and give its choices as one multiple-choice question (your app's question or options tool if it
 has one, otherwise a short numbered list), plus "something else". Each choice comes with what to do next.
-Apps that show MCP prompts also list them as slash commands (in Claude Code, `/mcp__iv-studio__start` and
-`/mcp__iv-studio__make_a_shot` and so on).
+Apps that show MCP prompts also list them as slash commands (in Claude Code, `/mcp__techlit-studio__start` and
+`/mcp__techlit-studio__make_a_shot` and so on).
 
 ## First steps
 
@@ -24,12 +24,12 @@ Apps that show MCP prompts also list them as slash commands (in Claude Code, `/m
    missing, tell the person what the result says to do rather than working around it. Missing node
    packs: offer `install_node_packs` (it adds them to this PC's ComfyUI; ComfyUI then needs a restart).
 2. `list_characters`: the character presets (LoRA, trigger word). Prompts write `{char}` where the
-   character goes; IV Studio swaps in the trigger word. `list_ready_characters` shows IV Studio's
+   character goes; Techlit Studio swaps in the trigger word. `list_ready_characters` shows Techlit Studio's
    ready-made ones (Tess, Theo); `install_ready_character` downloads one.
 3. `list_projects`, `list_sequences`, `list_edits`, `list_renders`: what already exists.
 4. MiniMax H3 work (shots, sequences, characters, Replace, training) needs the person to have agreed to
-   IV Studio's terms for H3 once, in the app. If a tool answers that MiniMax H3 needs their OK, tell them to open
-   IV Studio and agree in Settings › About › Terms of use (or at their next render there). You can't agree for them.
+   Techlit Studio's terms for H3 once, in the app. If a tool answers that MiniMax H3 needs their OK, tell them to open
+   Techlit Studio and agree in Settings › About › Terms of use (or at their next render there). You can't agree for them.
 
 ## Render a shot
 
@@ -95,7 +95,7 @@ person's Comfy.org credits (their key is in Settings → Comfy account; the MCP 
 
 ## Directing a scene
 
-IV Studio directs the way Matthew Hollis's directing method says (`get_guide` with topic `directing` returns it
+Techlit Studio directs the way Matthew Hollis's directing method says (`get_guide` with topic `directing` returns it
 whole). Follow it whenever you write, stage or revise a scene yourself:
 
 - **Purpose first.** Start from the emotional change, the visible action that shows it, and the one or two
@@ -270,7 +270,7 @@ model or an OpenAI-compatible server), as do `write_film_script` and `break_down
 - A track the person has locked refuses your changes: work on another track, or ask them. Markers
   are a good way to leave notes ("cut here", "music swells") for the person.
 - Check the cut with `grab_frame` (edit + timeline time), then `export_edit` and poll
-  `get_edit_export`. Exports go to `Videos\IV Studio\Edits`.
+  `get_edit_export`. Exports go to `Videos\Techlit Studio\Edits`.
 - If the edit is open in the app, it reloads there and an activity strip tells the person what you
   changed, with a one-click Undo.
 
@@ -315,7 +315,7 @@ After an overnight batch, `make_dailies` makes (or remakes) its reel of every ta
 
 ## Voices and spoken lines (Audio)
 
-IV Studio keeps a voice per character and speaks lines in it with its own voice engine on this PC:
+Techlit Studio keeps a voice per character and speaks lines in it with its own voice engine on this PC:
 VoxCPM2 (OpenBMB, Apache-2.0) speaks, designs and clones, and Whisper large-v3 turbo (MIT) reads the words in
 a recording. A spoken line is the shot's voice line: H3 lip-syncs to it.
 1. `voice_status`; if installed is false, the engine needs a one-time setup (about 12 GB of free
@@ -335,10 +335,10 @@ a recording. A spoken line is the shot's voice line: H3 lip-syncs to it.
 LoRAs change how a model looks and moves: styles, motion, camera, speed. A LoRA only works with the model family
 it was trained for: `h3` (MiniMax H3: shots, sequences, films, H3 stills), the picture families `flux3`, `flux2`,
 `krea2`, `qwen21`, `zimage`, `sdxl` (with Pony and Illustrious) and `moss` (make_image), and `ltx` and `wan`
-(kept for the person's own ComfyUI workflows; IV Studio's effects bring their own LoRAs).
+(kept for the person's own ComfyUI workflows; Techlit Studio's effects bring their own LoRAs).
 1. `list_my_loras` (family, default h3; or all) shows the installed LoRAs with their family, Civitai names,
    trigger words and the person's favourites; `identify_lora` looks one up on Civitai by its file hash, and
-   `set_lora_family` says which model one is for when IV Studio couldn't tell.
+   `set_lora_family` says which model one is for when Techlit Studio couldn't tell.
 2. `search_loras` (family, query, tag, sort) finds more; `get_lora` shows a LoRA's versions, trigger words,
    preview clips and licence. Check the licence before commercial work. Civitai has no Moss category.
 3. `download_lora` installs one (ask the person first; needs `CIVITAI_API_KEY` in this server's
@@ -364,14 +364,14 @@ licence; `download_recommended_lora` installs one (ask first). The Turnaround Lo
 3. Poll `get_image` until `success`; its `files` are the pictures. Use one as a shot's first frame with
    `generate_previews` mode `frames` and a picture in `media`.
 4. ChatGPT Images (family `chatgpt`, model `chatgpt-images`): ChatGPT makes the pictures through the person's own
-   Codex, on their ChatGPT plan (no ComfyUI or GPU; IV Studio adds no charge), about half a minute a picture. It's
+   Codex, on their ChatGPT plan (no ComfyUI or GPU; Techlit Studio adds no charge), about half a minute a picture. It's
    ready when Codex is installed and signed in, even with ComfyUI off. It makes and edits (up to 4 `refs`: the
    picture to change first) and takes `aspect` and `count`; no LoRAs, seed, steps or size. Strong on lettering:
    put exact words in quotes. A refusal or a usage limit comes back as the set's `error`.
 
 ## Music (Audio)
 
-IV Studio makes songs and instrumentals on this PC's ComfyUI, free. Two engines:
+Techlit Studio makes songs and instrumentals on this PC's ComfyUI, free. Two engines:
 - `minimax`, MiniMax Music 3: full songs up to 5 minutes with the clearest sung words; a minute or two per
   song. Its length follows the lyrics (`seconds` is only a limit), so write full verses and choruses for
   a full song. Its licence allows commercial use; a product that uses it must show "MiniMax-Music3".
@@ -395,7 +395,7 @@ IV Studio makes songs and instrumentals on this PC's ComfyUI, free. Two engines:
 
 ## Shinobi: edits you cut as an agent
 
-Shinobi is IV Studio's agent-driven editor. Where Edit is a hand-made timeline,
+Shinobi is Techlit Studio's agent-driven editor. Where Edit is a hand-made timeline,
 Shinobi lets you author a whole edit in code: cuts on the beat, speed ramps, punch-ins and camera moves,
 typography, masks and effects, captions from speech, sound cues, even 3D scenes, rendered on this PC.
 
@@ -403,7 +403,7 @@ typography, masks and effects, captions from speech, sound cues, even 3D scenes,
 2. `shinobi_tools` lists every tool. Call one with `shinobi` {tool, arguments}. Read the engine's guides
    first: `shinobi` read_guide with topic agent, timeline and effects. Don't guess timeline fields.
 3. `create_project` (or use one from the Shinobi page: `shinobi_project` shows its media, saved edit,
-   renders and the person's brief), then `import_media` with IV Studio render paths (`list_renders`) or files.
+   renders and the person's brief), then `import_media` with Techlit Studio render paths (`list_renders`) or files.
 4. Look before cutting: `preview_source` and `source_contact_sheet` return pictures. For music,
    `analyze_audio` and `plan_music_edit`; `build_recipe` gives a starting point in one of 12 styles.
 5. `save_timeline` with the revision from `get_project`, then `preview_timeline` (pictures) at the opening,
@@ -431,7 +431,7 @@ When the person gives you a website and wants a sizzle, promo or launch video fo
 4. `make_sizzle_assets` makes everything on this PC: about 3-5 minutes per H3 shot, seconds per picture,
    a few minutes for MiniMax music. Poll `get_sizzle` (it also moves each H3 shot from preview to its 1 MP
    finish) until status is `ready`. Look at the pieces before cutting.
-5. `sizzle_first_cut` {sizzleId} has IV Studio cut the film itself: it imports every piece into a Shinobi
+5. `sizzle_first_cut` {sizzleId} has Techlit Studio cut the film itself: it imports every piece into a Shinobi
    project (with a brief, `iv-brief.md`), cuts on the music's beat, gives screens slow push-ins and
    whip/push transitions, sets two-tone titles in the site's colours (Barlow Condensed, sized to fit), ends
    on the logo, the main button's words and the web address, and ends where the music does. It returns a
@@ -524,18 +524,18 @@ The Characters page (and these tools) turn an invented person into a character p
 
 ## Incognito
 
-The person can switch IV Studio into Incognito (title bar), a separate private set of everything made; the
+The person can switch Techlit Studio into Incognito (title bar), a separate private set of everything made; the
 app restarts to switch. This server works in whichever set was on when it started, and refuses tools after
-a switch until it's restarted (reconnect the iv-studio MCP). Don't mention or move work between the two.
+a switch until it's restarted (reconnect the techlit-studio MCP). Don't mention or move work between the two.
 
 ## House rules
 
-- Everything made with MiniMax H3 follows IV Studio's terms (TERMS.md in the repo): real people only with consent,
+- Everything made with MiniMax H3 follows Techlit Studio's terms (TERMS.md in the repo): real people only with consent,
   nothing involving minors, say it's AI when it's posted, no deception, harassment or impersonation. Don't help
   with a request that breaks them, and don't work around a refusal. Misuse can be reported to
   abuse@infinitevariance.ai.
 - Renders take real GPU minutes, and the person may be using ComfyUI for other work too. Only
-  cancel IV Studio jobs you started (`cancel_job`); never touch anything else in the queue.
+  cancel Techlit Studio jobs you started (`cancel_job`); never touch anything else in the queue.
 - Ask the person before deleting anything (`delete_edit`, `delete_sequence`, `delete_character`) and
   before anything that costs money (the Context IR writer, any Seedance render or paid finish). Say the price
   from `price_shot` and wait for a yes; never pass a `confirm_cost` they didn't agree to.
@@ -551,8 +551,8 @@ a switch until it's restarted (reconnect the iv-studio MCP). Don't mention or mo
 
 ## What agents did (the activity log)
 
-Every step an agent takes that changes something, spends or fails is written to IV Studio's activity log, with who
-took it: the chat inside IV Studio, a Dashboard idea, or an outside agent (Claude Desktop, Codex, Claude Code,
+Every step an agent takes that changes something, spends or fails is written to Techlit Studio's activity log, with who
+took it: the chat inside Techlit Studio, a Dashboard idea, or an outside agent (Claude Desktop, Codex, Claude Code,
 Hermes), by its MCP client name. Looking things up isn't logged. `list_activity` reads it (days, who, problems only)
 so you can answer "what did you do yesterday" or "what changed". The person sees the same log in the chat's Activity
 tab, with Undo for any agent's change to an edit.

@@ -37,14 +37,14 @@ const c1 = claudeArgs({ mcpConfigFile: 'm.json', promptFile: 'p.txt', persist: t
 check('claude chat: keeps its session', !c1.includes('--no-session-persistence') && !c1.includes('--resume'))
 const c2 = claudeArgs({ mcpConfigFile: 'm.json', promptFile: 'p.txt', persist: true, resume: 'sess-1' })
 check('claude chat: continues with --resume', c2[c2.indexOf('--resume') + 1] === 'sess-1')
-check('claude chat: still only IV Studio’s tools', c2.includes('--strict-mcp-config') && c2[c2.indexOf('--tools') + 1] === '' && c2[c2.indexOf('--allowedTools') + 1] === 'mcp__iv-studio')
+check('claude chat: still only Techlit Studio’s tools', c2.includes('--strict-mcp-config') && c2[c2.indexOf('--tools') + 1] === '' && c2[c2.indexOf('--allowedTools') + 1] === 'mcp__iv-studio')
 check('dashboard run: unchanged, keeps nothing', claudeArgs({ mcpConfigFile: 'm', promptFile: 'p' }).includes('--no-session-persistence'))
-const mcp = { command: '/Applications/IV Studio.app/Contents/MacOS/IV Studio', args: ['/Applications/IV Studio.app/Contents/Resources/app.asar/out/main/mcp.js'], env: { ELECTRON_RUN_AS_NODE: '1' } }
+const mcp = { command: '/Applications/Techlit Studio.app/Contents/MacOS/Techlit Studio', args: ['/Applications/Techlit Studio.app/Contents/Resources/app.asar/out/main/mcp.js'], env: { ELECTRON_RUN_AS_NODE: '1' } }
 const x1 = codexChatArgs({ mcp })
 check('codex chat: first message is exec, kept (not ephemeral)', x1[0] === 'exec' && x1[1] === '--json' && !x1.includes('--ephemeral'))
 check('codex chat: read-only sandbox as config, not --sandbox', x1.includes('sandbox_mode="read-only"') && !x1.includes('--sandbox') && !x1.includes('-C'))
 check('codex chat: room to answer a card', x1.some((a) => a === 'mcp_servers.iv-studio.tool_timeout_sec=900'))
-check('codex chat: a Mac path with spaces stays one value', x1.includes(`mcp_servers.iv-studio.command="/Applications/IV Studio.app/Contents/MacOS/IV Studio"`))
+check('codex chat: a Mac path with spaces stays one value', x1.includes(`mcp_servers.iv-studio.command="/Applications/Techlit Studio.app/Contents/MacOS/Techlit Studio"`))
 const x2 = codexChatArgs({ mcp, resume: 'thread-9' })
 check('codex chat: continues with exec resume <thread> -', x2[0] === 'exec' && x2[1] === 'resume' && x2.at(-2) === 'thread-9' && x2.at(-1) === '-', x2.join(' '))
 
@@ -52,8 +52,8 @@ check('codex chat: continues with exec resume <thread> -', x2[0] === 'exec' && x
 check('session: Claude Code’s init line', parseLine('claude', JSON.stringify({ type: 'system', subtype: 'init', session_id: 's-1' }))[0]?.id === 's-1')
 check('session: Codex’s thread.started', parseLine('codex', JSON.stringify({ type: 'thread.started', thread_id: 't-1' }))[0]?.id === 't-1')
 
-// what IV Studio is showing
-check('context: page and ids', contextLine({ page: 'shot', section: 'video', projectId: 'abc' }) === '[IV Studio is showing a shot (visual side); shot id abc]', contextLine({ page: 'shot', section: 'video', projectId: 'abc' }))
+// what Techlit Studio is showing
+check('context: page and ids', contextLine({ page: 'shot', section: 'video', projectId: 'abc' }) === '[Techlit Studio is showing a shot (visual side); shot id abc]', contextLine({ page: 'shot', section: 'video', projectId: 'abc' }))
 check('context: the editor', /the editor.*edit id e1/.test(contextLine({ page: 'edit', editId: 'e1' })))
 
 // files attached to a message
@@ -94,7 +94,7 @@ const turn = async (message, { answerWith, stopAfterMs, context } = {}) => {
 let { r } = await turn('hello there', { context: { page: 'shot', projectId: 'abc' } })
 const firstSession = r.session
 check('turn: replies', r.ok && /You said: hello there/.test(chat.entries.findLast((e) => e.kind === 'agent')?.text || ''), JSON.stringify(chat.entries))
-check('turn: the agent saw what IV Studio shows', /shot id abc/.test(chat.entries.findLast((e) => e.kind === 'agent').text))
+check('turn: the agent saw what Techlit Studio shows', /shot id abc/.test(chat.entries.findLast((e) => e.kind === 'agent').text))
 check('turn: a new session to continue', /^stub-session-/.test(firstSession || '') && chat.session === firstSession)
 check('turn: the reply isn’t shown twice', chat.entries.filter((e) => e.kind === 'agent').length === 1)
 ;({ r } = await turn('and again'))

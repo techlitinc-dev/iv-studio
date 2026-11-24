@@ -1,4 +1,4 @@
-// Turns a render request (from the studio or an agent) into the groups and node values of the IV Studio
+// Turns a render request (from the studio or an agent) into the groups and node values of the Techlit Studio
 // graph, and resolves the real pixel size, frame count and duration before anything runs.
 
 export const MODES = {

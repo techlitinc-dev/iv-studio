@@ -9,20 +9,20 @@ const tokens = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M` : n 
 const timeOf = (at) => (at ? new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '')
 
 // The chat with the person's own Claude Code, Codex or Hermes (src/service/agentchat.js): a panel down the right side, over
-// whatever page is open. Every IV Studio tool; anything that deletes, costs money, installs or changes Settings shows
+// whatever page is open. Every Techlit Studio tool; anything that deletes, costs money, installs or changes Settings shows
 // an Allow card first.
 const NAMES = { claude: 'Claude', codex: 'ChatGPT', hermes: 'Hermes', local: 'Local AI' }
 // whose plan or models a chat runs on
 const PLAN = { claude: 'Claude', codex: 'ChatGPT', hermes: 'Hermes', local: 'Ollama' }
 const RENDER = { queued: 'waiting', running: 'rendering', success: 'done', error: 'failed', cancelled: 'cancelled', unknown: '' }
 const KIND = { previews: 'Previews', finish: 'Finish', enhance: 'Enhance' }
-const IDEAS = ['What can you do in IV Studio?', 'Make a 5 second shot of a fox crossing a frozen lake at dawn', 'Which of my shots aren’t finished yet?']
+const IDEAS = ['What can you do in Techlit Studio?', 'Make a 5 second shot of a fox crossing a frozen lake at dawn', 'Which of my shots aren’t finished yet?']
 // what to suggest on a page that's about one thing
 const PAGE_IDEAS = {
   edit: ['Tighten the middle', 'Add a calm song under it', 'Put captions on'],
-  projects: ['Let’s make a short film together, one step at a time', 'Which of my films aren’t finished?', 'What can you do in IV Studio?'],
+  projects: ['Let’s make a short film together, one step at a time', 'Which of my films aren’t finished?', 'What can you do in Techlit Studio?'],
   project: ['Take this film to a rough cut, one step at a time', 'Write the script for this film', 'What’s left to do on this film?'],
-  home: ['Make 10 variations of my last idea overnight, three takes each', 'What can you do in IV Studio?', 'Which of my shots aren’t finished yet?']
+  home: ['Make 10 variations of my last idea overnight, three takes each', 'What can you do in Techlit Studio?', 'Which of my shots aren’t finished yet?']
 }
 export const ideasFor = (page) => PAGE_IDEAS[page] || IDEAS
 
@@ -337,7 +337,7 @@ const readSpeak = () => {
   }
 }
 
-// The mic: press to talk, press send when done (or Esc to drop it). IV Studio's own Whisper writes it down
+// The mic: press to talk, press send when done (or Esc to drop it). Techlit Studio's own Whisper writes it down
 // (chat:hear); talking while the agent works stops its turn and sends the new words.
 function useTalk({ onWords, notify, onStart }) {
   const [state, setState] = useState('idle') // idle | listening | hearing
@@ -404,7 +404,7 @@ function useTalk({ onWords, notify, onStart }) {
     } catch (err) {
       release()
       const m = String(err?.message || err)
-      notify?.(/denied|NotAllowed|Permission/i.test(m) ? 'IV Studio isn’t allowed to use the microphone. Allow it in Windows Settings → Privacy → Microphone, then try again.' : /NotFound|device/i.test(m) ? 'No microphone was found.' : m)
+      notify?.(/denied|NotAllowed|Permission/i.test(m) ? 'Techlit Studio isn’t allowed to use the microphone. Allow it in Windows Settings → Privacy → Microphone, then try again.' : /NotFound|device/i.test(m) ? 'No microphone was found.' : m)
       setState('idle')
     }
   }
@@ -627,7 +627,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
           <button role="tab" aria-selected={tab === 'chats'} className={`chat-tab-chats ${tab === 'chats' ? 'on' : ''}`} onClick={() => setTab('chats')} title="Your earlier conversations">
             History
           </button>
-          <button role="tab" aria-selected={tab === 'activity'} className={`chat-tab-activity ${tab === 'activity' ? 'on' : ''}`} onClick={() => setTab('activity')} title="Everything agents did in IV Studio">
+          <button role="tab" aria-selected={tab === 'activity'} className={`chat-tab-activity ${tab === 'activity' ? 'on' : ''}`} onClick={() => setTab('activity')} title="Everything agents did in Techlit Studio">
             Activity
           </button>
         </div>
@@ -744,7 +744,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
 
           {!pick ? (
             <div className="chat-body chat-setup">
-              <p className="small">The chat uses your own Claude, ChatGPT or Hermes, on your own plan, or Local AI on your own Ollama, free on this PC. Install one here, or sign in if you already have it. For Hermes, install it from hermes-agent.nousresearch.com; for Local AI, Ollama from ollama.com. IV Studio finds them.</p>
+              <p className="small">The chat uses your own Claude, ChatGPT or Hermes, on your own plan, or Local AI on your own Ollama, free on this PC. Install one here, or sign in if you already have it. For Hermes, install it from hermes-agent.nousresearch.com; for Local AI, Ollama from ollama.com. Techlit Studio finds them.</p>
               <AgentRows setup={setup} notify={notify} />
             </div>
           ) : (
@@ -752,7 +752,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
               <div className="chat-body" ref={bodyRef} aria-live="polite">
                 {!chat?.entries?.length ? (
                   <div className="chat-empty">
-                    <p className="small">Ask {call(pick)} about IV Studio or your projects, or tell it what to make. Type, or press the mic and talk. It can use everything IV Studio does, and it knows what you’re looking at.</p>
+                    <p className="small">Ask {call(pick)} about Techlit Studio or your projects, or tell it what to make. Type, or press the mic and talk. It can use everything Techlit Studio does, and it knows what you’re looking at.</p>
                     <div className="chat-ideas">
                       {ideasFor(context?.page).map((i) => (
                         <button key={i} className="chat-idea small" onClick={() => (setText(i), inputRef.current?.focus())}>
@@ -870,7 +870,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
                   )}
                 </div>
                 <p className="chat-foot small dim">
-                  {pick === 'local' ? `Local AI, on ${status?.localModel || 'your Ollama model'} in Ollama on this PC: free and private. It has IV Studio’s everyday tools; Claude, ChatGPT or Hermes can do more. It asks before it deletes, spends money or changes a setting.` : pick === 'hermes' ? 'Your own Hermes, on the model you picked in Hermes. Here it uses IV Studio’s tools only, and asks before it deletes, spends money or changes a setting.' : `Your own ${NAMES[pick]}, on your ${PLAN[pick]} plan. It asks before it deletes, spends money or changes a setting.`}
+                  {pick === 'local' ? `Local AI, on ${status?.localModel || 'your Ollama model'} in Ollama on this PC: free and private. It has Techlit Studio’s everyday tools; Claude, ChatGPT or Hermes can do more. It asks before it deletes, spends money or changes a setting.` : pick === 'hermes' ? 'Your own Hermes, on the model you picked in Hermes. Here it uses Techlit Studio’s tools only, and asks before it deletes, spends money or changes a setting.' : `Your own ${NAMES[pick]}, on your ${PLAN[pick]} plan. It asks before it deletes, spends money or changes a setting.`}
                 </p>
               </div>
             </>

@@ -1,4 +1,4 @@
-// Updating the person's own ComfyUI from IV Studio: every custom node pack (ComfyUI-Manager included) to its newest
+// Updating the person's own ComfyUI from Techlit Studio: every custom node pack (ComfyUI-Manager included) to its newest
 // version and ComfyUI to its newest stable release, then a restart, with a snapshot first so Undo can put it back.
 // It drives ComfyUI-Manager's own HTTP API (the same calls as Manager's buttons) rather than running git or pip
 // itself: Manager already knows git packs from registry packs, pip, and what a Desktop install can't do.
@@ -129,7 +129,7 @@ export function listenQueueDone(comfy, { clientId = 'iv-studio-updates' } = {}) 
 
 // What Manager said about one pack: 'skip' (already current), 'success' or 'success-stable-v0.44.1' (updated, or
 // ComfyUI at that release), 'Path not found: …' (a plain folder with no git or registry source, which Manager can't
-// update, such as IV Studio's own pack), or an error.
+// update, such as Techlit Studio's own pack), or an error.
 export function resultOf(pack, msg) {
   const m = String(msg ?? 'unknown')
   if (m === 'skip') return { pack, ok: true, status: 'current', message: null }
@@ -203,7 +203,7 @@ export function writeRecord(dataDir, record) {
 }
 const managerDir = (comfyRoot) => path.join(comfyRoot, 'user', '__manager')
 
-// IV Studio's own copy of the snapshot, so Undo still works when ComfyUI won't start.
+// Techlit Studio's own copy of the snapshot, so Undo still works when ComfyUI won't start.
 export function copySnapshot(dataDir, comfyRoot, name) {
   const from = path.join(managerDir(comfyRoot), 'snapshots', `${name}.json`)
   if (!fs.existsSync(from)) return null
@@ -223,7 +223,7 @@ export function packFolders(customNodes) {
 }
 
 // Manager's snapshot restore switches off every pack its snapshot doesn't track, and a snapshot tracks only git and
-// Comfy Registry packs, so a plain folder (IV Studio's own pack among them) lands in .disabled. Undo puts back the
+// Comfy Registry packs, so a plain folder (Techlit Studio's own pack among them) lands in .disabled. Undo puts back the
 // ones that were on when the snapshot was saved: a folder of that name, or name@version, in .disabled moves back
 // unless one of that name is in custom_nodes already. Returns the names moved; ComfyUI loads them when it restarts.
 export function reenable(customNodes, names = []) {

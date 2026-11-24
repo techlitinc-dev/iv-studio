@@ -19,7 +19,7 @@ import { GPUS as RENDER_GPUS, RunPod } from './runpod.js'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
-// Modal list prices (modal.com/pricing, 2026-10-28), billed by the second. secPerStep is for an IV Studio
+// Modal list prices (modal.com/pricing, 2026-10-28), billed by the second. secPerStep is for an Techlit Studio
 // dataset (stills plus talking clips): measured 1.09 s on an H200 (Theo, 2026-10-28); the B200 and H100
 // figures are scaled from it. Tess's B200 run (0.47 s) had many cheap voice-only items.
 export const TRAIN_GPUS = [
@@ -206,7 +206,7 @@ const sh = (a) => (a.startsWith('/') || /=\//.test(a) || !/^[\w.,:=@/+-]+$/.test
 const line = (args) => `python3 ${args.map(sh).join(' ')}`
 
 // Fizgig's commands as a bash script (Modal: /vol, RunPod: /workspace), with the chosen recipe. maxSeconds: a
-// budget cap the script keeps itself, so it holds even if IV Studio is closed: training stops there, and what was
+// budget cap the script keeps itself, so it holds even if Techlit Studio is closed: training stops there, and what was
 // saved so far stays.
 export function trainScript({ name, epochs, saveEvery, options, resume = null, maxSeconds = null, base = '/vol' }) {
   const root = `${base}/train/${name}`
@@ -393,7 +393,7 @@ export class Trainings {
     return g
   }
   async renderStill(t, models, { prompt, seed, tag }) {
-    const graph = this.stillGraph(models, { prompt, seed, prefix: `IV Studio/characters/${slug(t.name)}_${t.id}/${tag}_${seed}` })
+    const graph = this.stillGraph(models, { prompt, seed, prefix: `Techlit Studio/characters/${slug(t.name)}_${t.id}/${tag}_${seed}` })
     const job = await this.studio.submitGraph({ kind: 'still', graph, projectId: t.projectId, plan: { images: true, request: { prompt, seed } }, name: `${slug(t.name)}_${tag}` })
     return job.id
   }
@@ -679,7 +679,7 @@ export class Trainings {
     return this.write(t)
   }
   // Runs every step from the dataset to the end of training; resolves when the run is over. The run keeps
-  // going on Modal if IV Studio closes (--detach); checkTraining() picks it up again from the volume's log.
+  // going on Modal if Techlit Studio closes (--detach); checkTraining() picks it up again from the volume's log.
   // more: Train more, that many extra epochs on the last run, from its last saved state (same recipe and set).
   async startTraining(id, { gpu, epochs, options, more } = {}) {
     if (this.runs.size || this.localRunning()) throw new Error('A character is already training. One at a time.')
@@ -754,7 +754,7 @@ export class Trainings {
   }
   // ---------- 3 train on this PC (Fizgig, free) ----------
   // Fizgig's own Python runs the same three commands as the cloud, from a small runner started on its own, so it
-  // keeps going if IV Studio closes; IV Studio follows its log (train.log) and finds it again after a restart.
+  // keeps going if Techlit Studio closes; Techlit Studio follows its log (train.log) and finds it again after a restart.
   fizgig() {
     return findFizgig(readSettings().fizgigFolder || '')
   }
@@ -764,7 +764,7 @@ export class Trainings {
     try {
       folders = await fetch(`${this.studio.comfy.url}/experiment/models`, { headers: this.studio.comfy.headers() }).then((r) => r.json())
     } catch {
-      throw new Error('Start ComfyUI first: IV Studio finds the H3 training files through its model folders.')
+      throw new Error('Start ComfyUI first: Techlit Studio finds the H3 training files through its model folders.')
     }
     const dirs = [...new Set(folders.filter((x) => ['diffusion_models', 'unet', 'text_encoders', 'clip', 'vae', 'loras'].includes(x.name)).flatMap((x) => x.folders || []))].filter((d) => fs.existsSync(d))
     const want = new Map(Object.entries(MODEL_FILES).map(([k, n]) => [n, k]))
@@ -822,7 +822,7 @@ export class Trainings {
     fs.writeFileSync(path.join(root, 'runner.py'), LOCAL_RUNNER)
     const log = path.join(root, 'train.log')
     fs.appendFileSync(log, `\n[local] ${now()} ${more ? `train more: ${est.epochs} epochs from ${resume.epoch}` : 'start'}\n`)
-    // room on the graphics card: ComfyUI's models and IV Studio's voice engine out first
+    // room on the graphics card: ComfyUI's models and Techlit Studio's voice engine out first
     await this.studio.comfy.freeMemory?.().catch(() => {})
     await this.voices?.release?.().catch?.(() => {})
     const p = spawn(fiz.python, [path.join(root, 'runner.py'), path.join(root, 'commands.json'), log, fiz.dir], { cwd: fiz.dir, detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, PYTHONPATH: path.join(fiz.dir, 'src'), PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' } })
@@ -894,7 +894,7 @@ export class Trainings {
   }
 
   // ---------- 3 train on RunPod (the user's own account) ----------
-  // A pod from Fizgig's image with the iv-studio-train volume runs resources/cloud/runpod_train.py: IV Studio
+  // A pod from Fizgig's image with the iv-studio-train volume runs resources/cloud/runpod_train.py: Techlit Studio
   // uploads the set and train.sh through it, starts the run and follows its log. The pod deletes itself half an
   // hour after the run ends; the checkpoints stay on the volume, and a later download starts a small pod to serve them.
   rp() {
@@ -920,7 +920,7 @@ export class Trainings {
     let last
     for (const g of order) {
       try {
-        // from Fizgig's template (its image and CUDA 13 hosts), with IV Studio's own start command, volume and port
+        // from Fizgig's template (its image and CUDA 13 hosts), with Techlit Studio's own start command, volume and port
         const pod = await rp.req('/pods', {
           method: 'POST',
           v1: true,
@@ -1290,7 +1290,7 @@ export class Trainings {
   }
 }
 
-// Runs Fizgig's commands one after another into the log; writes the end marker IV Studio looks for.
+// Runs Fizgig's commands one after another into the log; writes the end marker Techlit Studio looks for.
 const LOCAL_RUNNER = `import json, os, subprocess, sys
 cmds = json.load(open(sys.argv[1], encoding="utf-8"))
 log = open(sys.argv[2], "a", encoding="utf-8", buffering=1)

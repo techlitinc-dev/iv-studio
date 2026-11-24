@@ -1,5 +1,5 @@
 // The update pop-up's logic (src/service/appupdate.js) with stand-ins for Studio, ComfyUI and the installer: what it
-// says about ComfyUI, when it can't check, updating just IV Studio or ComfyUI and nodes first, a failure stopping the
+// says about ComfyUI, when it can't check, updating just Techlit Studio or ComfyUI and nodes first, a failure stopping the
 // restart, and the note after the restart.
 //   node test/app-update.mjs
 import assert from 'node:assert/strict'
@@ -104,14 +104,14 @@ await ok('check: a cloud ComfyUI, one that is down, and a failing check never th
   assert.equal(err.status, 'error')
   assert.equal(err.error, 'Manager timed out')
 })
-await ok('run: just IV Studio installs at once and leaves ComfyUI alone', async () => {
+await ok('run: just Techlit Studio installs at once and leaves ComfyUI alone', async () => {
   const { u, calls } = make()
   const steps = []
   await u.run({ withComfy: false, version: '1.1.19', onProgress: (p) => steps.push(p.phase) })
   assert.deepEqual(calls, ['install'])
   assert.deepEqual(steps, ['installing'])
 })
-await ok('run: ComfyUI and nodes first, then IV Studio; the record remembers it for the note', async () => {
+await ok('run: ComfyUI and nodes first, then Techlit Studio; the record remembers it for the note', async () => {
   const { u, calls, dataDir } = make()
   const steps = []
   await u.run({ withComfy: true, version: '1.1.19', onProgress: (p) => steps.push(p.phase) })
@@ -126,7 +126,7 @@ await ok('run: ComfyUI and nodes first, then IV Studio; the record remembers it 
   assert.match(note.text, /ComfyUI v0\.45\.0 → v0\.46\.0, 1 node pack updated/)
   assert.equal(u.notice(), null)
 })
-await ok('run: a ComfyUI that is rendering, or a failed update, stops before IV Studio restarts', async () => {
+await ok('run: a ComfyUI that is rendering, or a failed update, stops before Techlit Studio restarts', async () => {
   const rendering = make({ updateComfy: async () => { throw Object.assign(new Error('ComfyUI is rendering or has jobs queued. Update when it’s done.'), { code: 'rendering' }) } })
   await assert.rejects(rendering.u.run({ withComfy: true, version: '1.1.19' }), /rendering/)
   assert.deepEqual(rendering.calls, [])
@@ -145,7 +145,7 @@ await ok("release notes: GitHub's HTML or Markdown as a few plain lines", () => 
   assert.equal(notesOf(null), null)
   assert.equal(notesOf(Array.from({ length: 12 }, (_, i) => `- ${i}`).join('\n')).split('\n').length, 8)
 })
-await ok('notice: an update made from Settings (not with IV Studio) says nothing', async () => {
+await ok('notice: an update made from Settings (not with Techlit Studio) says nothing', async () => {
   const dataDir = tmp()
   writeRecord(dataDir, { snapshot: 's0', results: [] })
   assert.equal(make({ dataDir }).u.notice(), null)

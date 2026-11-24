@@ -1,5 +1,5 @@
 import { isHarness } from './harness.js'
-// IV Studio service: the one place both the studio window and the MCP server go through.
+// Techlit Studio service: the one place both the studio window and the MCP server go through.
 // Projects, jobs and characters live as JSON in the data folder, so either process can pick up the
 // other's work. ComfyUI does the rendering; this records what was asked, what ran and what came out.
 import { randomUUID } from 'node:crypto'
@@ -64,7 +64,7 @@ const PREVIEW_SAVES = { 1: '42', 2: '118', 3: '128' }
 const FAMILIES = { music: 'music', sound: 'sound', still: 'image', enhance: 'seedvr2', cutout: 'sam', 'clipfx:reshoot': 'h3', turnaround: 'turnaround', ltx: 'ltx' }
 // Clip effects (freefield.js) are their own families too: LTX-2.5 or Wan next to H3 would overflow the card.
 const familyOf = (kind) => FAMILIES[kind] || (/^(picture|clipfx):/.test(String(kind)) ? String(kind) : 'h3')
-// The UNETLoader each mode of the IV Studio workflow uses (Settings can swap its model).
+// The UNETLoader each mode of the Techlit Studio workflow uses (Settings can swap its model).
 // How hard the free finish's H3 pass works on a take it didn't make (h3refine.js). Likeness to Tess's face on a
 // Seedance draft (2026-11-08): the draft 0.51-0.68; SeedVR2 1080p 0.52-0.64; H3 at 0.1 0.44-0.48, 0.2 0.38-0.44,
 // 0.4 (H3's own finish strength) 0.12-0.27; DLSS 5 to 1080p (2.25x) 0.48-0.63 in 15 s, with a speckled skin
@@ -196,7 +196,7 @@ export class Studio {
   // ---------- characters ----------
   // Character bibles (bible.js). Reading never writes: an old characters.json (presets) is read as bibles, and
   // moved over the first time something saves, its original kept beside it (characters.v1-<time>.json); every old
-  // field stays where the rest of IV Studio reads it.
+  // field stays where the rest of Techlit Studio reads it.
   characters() {
     const list = readJson(path.join(this.dataDir, 'characters.json'), null)
     return (Array.isArray(list) ? list : DEFAULT_CHARACTERS).map(normalize)
@@ -231,7 +231,7 @@ export class Studio {
     const pictures = [...c.pictures]
     for (const f of files || []) {
       if (!f || !fs.existsSync(f)) throw new Error(`That picture isn't there: ${f}`)
-      if (!/\.(png|jpe?g|webp|bmp)$/i.test(f)) throw new Error(`${path.basename(f)} isn't a picture IV Studio can use (PNG, JPEG, WebP).`)
+      if (!/\.(png|jpe?g|webp|bmp)$/i.test(f)) throw new Error(`${path.basename(f)} isn't a picture Techlit Studio can use (PNG, JPEG, WebP).`)
       const pid = pictureId()
       const copy = path.join(dir, `${pid}${path.extname(f).toLowerCase()}`)
       fs.copyFileSync(f, copy)
@@ -327,10 +327,10 @@ export class Studio {
     return { ...result, remote: this.comfy.remote, hosted: this.comfy.hosted }
   }
 
-  // Adds the node packs this ComfyUI is missing (nodepacks.js), at the versions IV Studio is tested with. folder: the
+  // Adds the node packs this ComfyUI is missing (nodepacks.js), at the versions Techlit Studio is tested with. folder: the
   // ComfyUI folder picked in Settings, used when ComfyUI doesn't say where custom_nodes is. Restart ComfyUI afterwards.
   async installNodePacks({ folder, onProgress } = {}) {
-    if (this.comfy.remote) throw new Error('Node packs for the cloud are installed by IV Studio’s cloud setup, not here.')
+    if (this.comfy.remote) throw new Error('Node packs for the cloud are installed by Techlit Studio’s cloud setup, not here.')
     // object_info says which nodes it has. Only a ComfyUI that isn't there is "start it": a busy one is told to wait,
     // and one on another port is named.
     let info
@@ -340,7 +340,7 @@ export class Studio {
       const why = await whyUnreached(this.comfy, err)
       if (why.busy) throw new Error(err.message)
       if (why.address) throw new Error(`${why.detail} Set that address in Settings → ComfyUI, then press Install again.`)
-      if (why.down) throw new Error(`Start ComfyUI first (${err.message}): IV Studio asks it which nodes it already has and where its custom_nodes folder is.`)
+      if (why.down) throw new Error(`Start ComfyUI first (${err.message}): Techlit Studio asks it which nodes it already has and where its custom_nodes folder is.`)
       throw new Error(`ComfyUI couldn’t list its nodes: ${err.message}`)
     }
     // only for which packs suit Linux; this ComfyUI is on this PC, so this PC's system stands in if it's slow to say
@@ -351,7 +351,7 @@ export class Studio {
     // a pack whose nodes load but whose runtime was never downloaded (DLSS 5's VE_CLI.exe, GitHub #36)
     const place = await comfyPlace(this.comfy, folder).catch((err) => (packs.length ? Promise.reject(err) : null))
     if (place) for (const p of packsNeedingRuntime(this.manifest, place.customNodes, { linux })) if (!packs.includes(p)) packs.push(p)
-    // and IV Studio's own pack when this ComfyUI has an older copy of it
+    // and Techlit Studio's own pack when this ComfyUI has an older copy of it
     if (place) for (const p of packsOutdated(this.manifest, place.customNodes)) if (!packs.includes(p)) packs.push(p)
     if (!packs.length) return { results: [], restart: false }
     const results = await installPacks(packs, { ...place, resourcesDir: this.resourcesDir, onProgress })
@@ -359,7 +359,7 @@ export class Studio {
   }
 
   // ---------- updating ComfyUI, its node packs and ComfyUI-Manager (comfyupdate.js) ----------
-  // Only a ComfyUI on this PC. launcher: the one IV Studio starts ComfyUI with (comfylauncher.js launcherFor), to tell
+  // Only a ComfyUI on this PC. launcher: the one Techlit Studio starts ComfyUI with (comfylauncher.js launcherFor), to tell
   // the ComfyUI Desktop app (which updates ComfyUI and Manager itself) from the rest.
   localOnly() {
     if (this.comfy.remote || !isLocalUrl(this.comfy.url)) throw new Error('Updates run on this PC’s ComfyUI only.')
@@ -402,7 +402,7 @@ export class Studio {
   }
 
   // Puts the last update's snapshot back and restarts ComfyUI, then switches back on the packs Manager's restore
-  // switched off (plain folders a snapshot can't track, IV Studio's own pack among them) and restarts once more.
+  // switched off (plain folders a snapshot can't track, Techlit Studio's own pack among them) and restarts once more.
   // start: starts ComfyUI with the person's launcher (the app passes its own); without it, a ComfyUI that was down
   // reports startNeeded, and calling this again once ComfyUI is up finishes the job.
   async undoComfyUpdate({ folder = null, start = null, onProgress = () => {} } = {}) {
@@ -676,7 +676,7 @@ export class Studio {
     const key = this.partnerKey?.()
     if (!key) throw new Error('Seedance runs on your Comfy.org credits: add your Comfy.org API key in Settings → Comfy account.')
     const character = this.characters().find((c) => c.id === plan.request.character)
-    // named from the prompt as written (the role lines IV Studio adds in front would name every shot "@image1 defines…")
+    // named from the prompt as written (the role lines Techlit Studio adds in front would name every shot "@image1 defines…")
     const project = projectId ? this.getProject(projectId) : this.createProject(projectName || shotName(String(asked.prompt || '').replace(/@(image|video|audio)\d+/gi, ''), character))
     const run = project.jobs.length + 1
     const name = `${slug(project.name)}_${project.id}_r${run}`
@@ -829,15 +829,15 @@ export class Studio {
     return this.submitGraph({ kind, graph: prompt, projectId: project.id, plan, name, parent, previewPlan })
   }
 
-  // Before a render on this PC: IV Studio's own GPU users stop (beforeRender, set by the app and the MCP
-  // server: the voice engine), and ComfyUI unloads if the job before this one, IV Studio's or anyone's, was
+  // Before a render on this PC: Techlit Studio's own GPU users stop (beforeRender, set by the app and the MCP
+  // server: the voice engine), and ComfyUI unloads if the job before this one, Techlit Studio's or anyone's, was
   // another model family. ComfyUI applies the unload between prompts, never inside one.
   async makeRoom(kind) {
     if (this.comfy.remote) return
     await this.beforeRender?.()
     if ((await this.lastFamily().catch(() => null)) !== familyOf(kind)) await this.comfy.freeMemory().catch(() => {})
   }
-  // The family of the last job queued on ComfyUI, or of the last one it ran; 'other' for work that isn't IV Studio's.
+  // The family of the last job queued on ComfyUI, or of the last one it ran; 'other' for work that isn't Techlit Studio's.
   async lastFamily() {
     const q = await this.comfy.queue()
     const queued = [...q.queue_running, ...q.queue_pending].sort((a, b) => a[0] - b[0]).at(-1)
@@ -959,7 +959,7 @@ export class Studio {
     const name = `${path.basename(out.path).replace(/\.[^.]+$/, '').replace(/-audio$/, '')}_dlss_${scale}x`
     const t = this.template['50'].inputs
     // DLSS 5 only reads videos inside ComfyUI's input or output folders, and ComfyUI doesn't say where those are. A
-    // video in IV Studio's own data folder (a Seedance take) is first saved into ComfyUI's output by VHS (which reports
+    // video in Techlit Studio's own data folder (a Seedance take) is first saved into ComfyUI's output by VHS (which reports
     // the path), near-lossless, and DLSS reads that copy.
     const outside = path.resolve(out.path).toLowerCase().startsWith(path.resolve(this.dataDir).toLowerCase())
     const fps = source.plan?.resolved?.fps || 24
@@ -1012,7 +1012,7 @@ export class Studio {
     return dest
   }
 
-  // Every IV Studio render, newest first: shot finals and previews, sequence versions and finals.
+  // Every Techlit Studio render, newest first: shot finals and previews, sequence versions and finals.
   library() {
     const items = []
     const chars = this.characters()
@@ -1680,9 +1680,9 @@ export class Studio {
     return ids.map((id) => readJson(this.jobFile(id), null)).filter(Boolean).map((j) => this.publicJob(j))
   }
 
-  // The render queue in the sidebar: everything running or waiting on ComfyUI, IV Studio's own work named from
+  // The render queue in the sidebar: everything running or waiting on ComfyUI, Techlit Studio's own work named from
   // its job records (with live step progress from the websocket), anyone else's as "other". A cloud ComfyUI is
-  // only asked while IV Studio has a job in flight, so the queue never keeps a cloud GPU awake.
+  // only asked while Techlit Studio has a job in flight, so the queue never keeps a cloud GPU awake.
   async renderQueue() {
     const known = this.queueIndex()
     if (this.comfy.remote && ![...known.values()].some((j) => j.open)) return { items: [] }
@@ -1744,7 +1744,7 @@ export class Studio {
     return this.jobIndex
   }
 
-  // Cancels a queue item IV Studio started: through its job when there is one, else by prompt id.
+  // Cancels a queue item Techlit Studio started: through its job when there is one, else by prompt id.
   async cancelQueued(promptId) {
     const job = this.queueIndex().get(promptId)
     if (job?.id) return this.cancelJob(job.id)

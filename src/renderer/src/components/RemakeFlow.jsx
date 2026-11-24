@@ -3,7 +3,7 @@ import { fileUrl } from './edit/model'
 import { Step } from './FlowKit'
 import VoiceLines from './VoiceLines'
 
-// Replace's Remake engine (remake.js): swap people or change the scene. IV Studio paints a frame of each shot, the
+// Replace's Remake engine (remake.js): swap people or change the scene. Techlit Studio paints a frame of each shot, the
 // person approves them, the writer writes the prompt, and Remake renders with the source's motion and soundtrack.
 // The voice swap (remakevoice.js): who goes in says the source's words in their character's saved voice.
 export default function RemakeFlow({ kind, video, notify, onStarted }) {
@@ -195,7 +195,7 @@ export default function RemakeFlow({ kind, video, notify, onStarted }) {
               ))}
             </div>
           )}
-          {voiced && !voiceReady && <p className="small pink">Swapping the voice needs IV Studio’s voice engine: set it up once on Audio › Voices. Until then the original voice stays.</p>}
+          {voiced && !voiceReady && <p className="small pink">Swapping the voice needs Techlit Studio’s voice engine: set it up once on Audio › Voices. Until then the original voice stays.</p>}
           {kind === 'swap' && people.some((p) => !p.voiceId && p.voiceNote) && (
             <p className="small dim">
               {people.find((p) => !p.voiceId && p.voiceNote).name} has no saved voice yet. Make one from “{people.find((p) => !p.voiceId && p.voiceNote).voiceNote}” on Audio › Voices and pick it on their character page; it’s then used everywhere.
@@ -213,7 +213,7 @@ export default function RemakeFlow({ kind, video, notify, onStarted }) {
         </Step>
       )}
 
-      <Step n={3} title="The painted frames" sub="IV Studio paints a frame of each shot the way the result should look. They decide how it turns out, so check them: paint one again, use your own picture, or leave one out.">
+      <Step n={3} title="The painted frames" sub="Techlit Studio paints a frame of each shot the way the result should look. They decide how it turns out, so check them: paint one again, use your own picture, or leave one out.">
         <button className="btn" disabled={!ready || !!busy} onClick={paint}>
           {busy === 'Painting the frames' ? `Painting… ${Object.values(progress).filter((x) => x === 'painted').length}/${session?.keyframes?.length || '?'}` : session?.keyframes?.some((k) => k.painted) ? 'Paint them all again' : 'Paint the frames'}
         </button>

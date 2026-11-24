@@ -1,5 +1,5 @@
 // Parity test: the JS graph builder must produce exactly what the Python test builder made for all 32
-// switch states that were checked against the IV Studio GUI's own export.
+// switch states that were checked against the Techlit Studio GUI's own export.
 //   node test/graph-parity.mjs   (IV_STUDIO_WORKFLOWS = the folder holding struct_states.json and test_v3_struct_*.json)
 import fs from 'node:fs'
 import { buildPrompt, checkPrompt } from '../src/service/graph.js'

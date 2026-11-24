@@ -1,5 +1,5 @@
-// What agents did in IV Studio: every step that changes something, spends or fails, from any agent (the chat inside
-// IV Studio, a Dashboard idea, or Claude Desktop, Codex, Claude Code or Hermes using IV Studio's MCP server from
+// What agents did in Techlit Studio: every step that changes something, spends or fails, from any agent (the chat inside
+// Techlit Studio, a Dashboard idea, or Claude Desktop, Codex, Claude Code or Hermes using Techlit Studio's MCP server from
 // outside), written by the MCP server as it runs (src/mcp/server.js) and shown in the chat panel's Activity tab.
 // One JSON line per step, a file per day, in the data folder's activity\. Looking things up (get_, list_, check_ and
 // the like) isn't written down: an agent waiting on a render would fill the log with get_job. Steps that change an

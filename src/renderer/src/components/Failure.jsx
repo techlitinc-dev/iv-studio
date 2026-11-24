@@ -48,7 +48,7 @@ export default function Failure({ job, error, explain, go, notify, onRetry }) {
     askAgent({
       send: true,
       about: `the failed render (job ${job.id})`,
-      text: `This render failed. IV Studio says: ${x.title} ${x.why}\nFind out what went wrong (check_setup, get_job) and fix what you can. Tell me in plain words what it was and what you did.`
+      text: `This render failed. Techlit Studio says: ${x.title} ${x.why}\nFind out what went wrong (check_setup, get_job) and fix what you can. Tell me in plain words what it was and what you did.`
     })
 
   return (

@@ -7,7 +7,7 @@ import { NEEDS } from '../workflows'
 // cards, a drop zone and, where a tool has one main action, a pinned summary card (a bar at the bottom of narrow
 // windows). The page wraps itself in .create-v2 so Create's layout and pieces apply.
 
-// What a tool needs beyond IV Studio (workflows.js), under its banner's note, the same words as on its card.
+// What a tool needs beyond Techlit Studio (workflows.js), under its banner's note, the same words as on its card.
 export function WorkflowNeeds({ page }) {
   const needs = NEEDS[page]
   if (!needs?.length) return null

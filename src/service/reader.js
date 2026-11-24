@@ -1,11 +1,11 @@
-// The reader: any video taken apart into shots with IV Studio's own tools. ffmpeg's scene score finds the cuts;
+// The reader: any video taken apart into shots with Techlit Studio's own tools. ffmpeg's scene score finds the cuts;
 // each shot gets its first, middle and last frame and a contact sheet of the three; a grey strip across the top
 // and the bottom fifth of the picture, sampled four times a second, shows when captions come and go; Reel's beat
 // finder gives the music's tempo, ffmpeg's ebur128 and silencedetect the loudness and the pauses; and when the
 // voice engine is set up, Whisper hears each shot's words. Nothing here guesses what a shot *is*: that's the
 // writer's job (rebuild.js), looking at the sheets.
 //   <outDir>/shots/shot_NNN_{first,middle,last}.jpg, shot_NNN.jpg (the sheet), <outDir>/reading.json
-// Written for IV Studio's Rebuild workflow; Same format reuses it.
+// Written for Techlit Studio's Rebuild workflow; Same format reuses it.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'

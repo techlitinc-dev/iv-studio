@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
-// "Get ComfyUI for me" (comfyinstall.js): on Setup, only when this PC has no ComfyUI IV Studio can start. It gets
+// "Get ComfyUI for me" (comfyinstall.js): on Setup, only when this PC has no ComfyUI Techlit Studio can start. It gets
 // ComfyUI's official Windows portable build for this graphics card, checks it, unpacks it into a folder the person
-// picks and starts it. Or they point IV Studio at a ComfyUI they already have.
+// picks and starts it. Or they point Techlit Studio at a ComfyUI they already have.
 const GB = 1024 ** 3
 const gb = (b) => `${(b / GB).toFixed(b / GB >= 10 ? 0 : 1)} GB`
 const mins = (s) => (s == null ? '' : s < 60 ? `${Math.max(1, Math.round(s))} s left` : `about ${Math.round(s / 60)} min left`)
@@ -45,7 +45,7 @@ export default function GetComfy({ notify, recheck }) {
   }
   async function haveOne() {
     try {
-      if (await window.ivstudio.comfy.chooseFolder()) (notify?.('IV Studio will start that ComfyUI.', 'ok'), recheck?.())
+      if (await window.ivstudio.comfy.chooseFolder()) (notify?.('Techlit Studio will start that ComfyUI.', 'ok'), recheck?.())
     } catch (err) {
       notify?.(err.message)
     }
@@ -60,7 +60,7 @@ export default function GetComfy({ notify, recheck }) {
       ) : (
         <>
           <p className="small dim">
-            IV Studio renders with ComfyUI. It can get ComfyUI’s official portable build for you{asset?.version ? ` (${asset.version})` : ''}: it comes with its own Python, so nothing else is installed on your PC, and it lives in one folder you choose.
+            Techlit Studio renders with ComfyUI. It can get ComfyUI’s official portable build for you{asset?.version ? ` (${asset.version})` : ''}: it comes with its own Python, so nothing else is installed on your PC, and it lives in one folder you choose.
             {asset?.size ? ` ${gb(asset.size)} to download, about ${gb(asset.size + 5 * GB)} free while it unpacks;` : ''} the H3 models it needs come next, about 60 GB, so pick a roomy drive.
           </p>
           {build.note && <p className="small dim">{build.note}</p>}

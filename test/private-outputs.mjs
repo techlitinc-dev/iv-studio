@@ -1,4 +1,4 @@
-// Render folders (Settings -> Folders): outputsUnder points every saved file of IV Studio's graphs into a
+// Render folders (Settings -> Folders): outputsUnder points every saved file of Techlit Studio's graphs into a
 // folder inside ComfyUI's output, once, and leaves everything else alone. Also cleanFolder's rules.   node test/private-outputs.mjs
 import fs from 'node:fs'
 import assert from 'node:assert/strict'
@@ -34,6 +34,6 @@ for (const [name, g] of [['H3 shot graph', load('iv_studio_api.json')], ['music 
 const plain = load('iv_studio_api.json')
 assert.equal(JSON.stringify(outputsUnder(structuredClone(plain), '')), JSON.stringify(plain), 'no folder changes nothing')
 // folder names stay inside ComfyUI's folders
-for (const [given, want] of [['IV Private', 'IV Private'], ['Studio\\Private', 'Studio/Private'], ['../../Windows', 'Windows'], ['C:\\Users\\x', 'C/Users/x'], ['  /a//b/ ', 'a/b'], ['..', ''], ['bad<>|?*name', 'badname']])
+for (const [given, want] of [['Techlit Private', 'Techlit Private'], ['Studio\\Private', 'Studio/Private'], ['../../Windows', 'Windows'], ['C:\\Users\\x', 'C/Users/x'], ['  /a//b/ ', 'a/b'], ['..', ''], ['bad<>|?*name', 'badname']])
   assert.equal(cleanFolder(given), want, `cleanFolder(${given})`)
 console.log(`${checked} saves checked; folder names cleaned`)

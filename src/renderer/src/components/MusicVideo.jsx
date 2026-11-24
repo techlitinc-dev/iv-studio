@@ -74,7 +74,7 @@ function List({ openOne, notify, go }) {
             {making ? 'Reading the song…' : 'New music video'}
           </button>
         </div>
-        <p className="stage-note small">IV Studio finds the song’s beat, bars and parts and cuts it into scenes of up to 15 s. Each scene is an H3 shot that sings or plays along to its own stretch of the song.</p>
+        <p className="stage-note small">Techlit Studio finds the song’s beat, bars and parts and cuts it into scenes of up to 15 s. Each scene is an H3 shot that sings or plays along to its own stretch of the song.</p>
         <WorkflowNeeds page="musicvideo" />
       </Stage>
       <ToolShelf label="Your music videos" count={shown.length} q={q} setQ={setQ} empty="No music videos yet. Pick a song above.">

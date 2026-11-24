@@ -1,4 +1,4 @@
-// Ranks a previews job's takes (agentY's output checks, done IV Studio's way): each take is scored on what can be
+// Ranks a previews job's takes (agentY's output checks, done Techlit Studio's way): each take is scored on what can be
 // measured and the best is marked, with the reasons in words.
 //   words     every spoken line heard back (the voice engine's Whisper), when the prompt has lines; squared,
 //             because a take that drops part of its line is rarely usable however good it looks

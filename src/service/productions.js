@@ -5,7 +5,7 @@ import { isHarness } from './harness.js'
 //   assets   cast (character presets, each with its voice), locations and props (descriptions, pictures)
 //   script   screenplay text (plain or Fountain), parsed into scenes by screenplay.js
 //   scenes   each with shots: what we see, the camera, who's in it, a spoken line, seconds and an H3 prompt.
-//            Each shot renders as an ordinary IV Studio shot (shot.projectId), so it also shows in Shots.
+//            Each shot renders as an ordinary Techlit Studio shot (shot.projectId), so it also shows in Shots.
 //   sketches a still per shot for the storyboard (shot.sketch), made by Images and kept out of its gallery
 //   cut      an Edit with every shot in script order (editId)
 // step is where the person is in the Projects wizard (idea, story, cast, board, film, watch).
@@ -567,7 +567,7 @@ export class Productions {
     if (!ASPECTS[p.aspect]) throw new Error(`aspect must be ${Object.keys(ASPECTS).join(', ')}.`)
     if (!STEPS.includes(p.step || 'idea')) throw new Error(`step must be ${STEPS.join(', ')}.`)
     // a place keeps its drawn angles when the new list doesn't give them
-    p.locations = (p.locations || []).map((l) => ({ id: l.id || id6(), name: l.name || 'Location', description: l.description || '', pictures: l.pictures || [], angles: l.angles || oldAngles.get(l.id) || [] }))
+    p.locations = (p.locations || []).map((l) => ({ id: l.id || id6(), name: l.name || 'Location', description: l.description || '', prompt: l.prompt || '', pictures: l.pictures || [], angles: l.angles || oldAngles.get(l.id) || [] }))
     // outfit: what they wear in this film, in every sketch and shot of them (GitHub #37)
     p.cast = (p.cast || []).map((c) => ({ ...(c.characterId ? { characterId: c.characterId, as: c.as } : { as: c.as, characterId: null, description: c.description || '', face: c.face || null }), ...(String(c.outfit || '').trim() ? { outfit: String(c.outfit).trim() } : {}) }))
     p.props = (p.props || []).map((l) => ({ id: l.id || id6(), name: l.name || 'Prop', description: l.description || '', pictures: l.pictures || [] }))
@@ -642,6 +642,91 @@ export class Productions {
     return { written: written.length, outfits: written }
   }
 
+
+  // ---------- the written details beyond shots ----------
+  // Hermes writes a visual description for every cast member who doesn't have one (the made-up people no preset
+  // plays), in one call — the "character prompt" shown in Cast and fed into every shot of them.
+  async writeCastPrompts(id, { redo = false, cpu } = {}) {
+    let p = this.get(id)
+    const want = p.cast.filter((c) => (redo || !String(c.description || '').trim()) && !c.characterId).map((c) => c.as)
+    if (!want.length) return { written: 0 }
+    const script = (p.scenes || []).map((s) => `${s.heading || s.location || ''}\n${sceneText(s)}`).join('\n\n').slice(0, 12000)
+    const system = `You are a film's casting director writing a visual character sheet for an AI video model. For each person listed, describe how they LOOK in one or two concrete sentences: apparent age, build, face, hair, and the overall impression of their clothes (the exact outfit is handled separately). Stay consistent with the script: who they are, where they are, the weather and the time. No backstory, no other people's names.`
+    const user = [`Film: ${p.name}${p.logline ? `. ${p.logline}` : ''}`, `People (describe: ${want.join(', ')}):`, '', `Script:\n${script}`].filter(Boolean).join('\n')
+    const schema = { type: 'object', properties: { people: { type: 'array', items: { type: 'object', properties: { name: { type: 'string', maxLength: 60 }, description: { type: 'string', maxLength: 300 } }, required: ['name', 'description'] } } }, required: ['people'] }
+    const out = await askWriter(this.writer(), { system, user, schema, cpu: cpu ?? (await this.studio().gpuBusy().catch(() => false)), temperature: 0.5 })
+    const got = new Map((out?.people || []).filter((x) => String(x?.description || '').trim()).map((x) => [first(x.name), String(x.description).trim().replace(/\s+/g, ' ')]))
+    p = this.get(id)
+    const cast = p.cast.map((c) => {
+      const d = got.get(first(c.as))
+      return d && !c.characterId ? { ...c, description: d } : c
+    })
+    const written = [...got.keys()].length
+    if (written) this.update(id, { cast })
+    return { written }
+  }
+
+  // Hermes writes an establishing-shot prompt for every place that doesn't have one, in one call: the wide
+  // "where we are" shot a film opens a location on. Stored on the location; addEstablishingShots() uses it.
+  async writeEnvironmentPrompts(id, { redo = false, cpu } = {}) {
+    let p = this.get(id)
+    const want = (p.locations || []).filter((l) => redo || !String(l.prompt || '').trim())
+    if (!want.length) return { written: 0 }
+    const script = (p.scenes || []).map((s) => `${s.heading || s.location || ''}\n${sceneText(s)}`).join('\n\n').slice(0, 12000)
+    const system = `You write establishing shots for an AI video model: one 5-second wide shot that shows a place and its mood, in the exact prompt format below. integrated_multimodal_description: starts with [Shot 1] Live-action, cinematic, then the wide framing, the place and what's in it, the light, the weather and time of day, and one slow camera move. Then a blank line and overall_soundscape: with the place's own sounds. No people unless the script insists. Keep it under 120 words.\nExample:\nintegrated_multimodal_description:\n[Shot 1] Live-action, cinematic. Wide shot of a small stone lighthouse keeper's room at night: round rain-streaked windows, a brass lamp on a wooden desk, charts pinned to the curved wall, the beam sweeping past outside. Warm amber lamplight against cool blue darkness. The camera pushes in very slowly.\n\noverall_soundscape:\nSteady rain on glass, distant waves, the lamp's soft mechanical turn.`
+    const user = [`Film: ${p.name}${p.logline ? `. ${p.logline}` : ''}`, lookWords(p.look) ? `Look: ${lookWords(p.look)}` : '', `Places (write one establishing shot for: ${want.map((l) => l.name).join(', ')}):`, ...want.map((l) => `- ${l.name}${l.description ? `: ${l.description}` : ''}`), '', `Script:\n${script}`].filter(Boolean).join('\n')
+    const schema = { type: 'object', properties: { places: { type: 'array', items: { type: 'object', properties: { name: { type: 'string', maxLength: 80 }, prompt: { type: 'string', maxLength: 1200 } }, required: ['name', 'prompt'] } } }, required: ['places'] }
+    const out = await askWriter(this.writer(), { system, user, schema, cpu: cpu ?? (await this.studio().gpuBusy().catch(() => false)), temperature: 0.5 })
+    const got = new Map((out?.places || []).filter((x) => String(x?.prompt || '').trim()).map((x) => [String(x.name).trim().toLowerCase(), String(x.prompt).trim()]))
+    // the writer's name for a place can differ a little ("The Kitchen Table"); match loosely
+    const pick = (name) => {
+      const n = String(name || '').trim().toLowerCase()
+      return got.get(n) || [...got.entries()].find(([k]) => (k.length > 3 && n.includes(k)) || (n.length > 3 && k.includes(n)))?.[1]
+    }
+    p = this.get(id)
+    let written = 0
+    const locations = (p.locations || []).map((l) => {
+      const pr = pick(l.name)
+      if (!pr) return l
+      written++
+      return { ...l, prompt: pr }
+    })
+    if (written) this.update(id, { locations })
+    return { written }
+  }
+
+  // Puts each place's written establishing shot at the head of the scenes set there that lack one. Run
+  // writeEnvironmentPrompts first; idempotent (a scene with an established shot is left alone).
+  addEstablishingShots(id) {
+    const p = this.get(id)
+    const locs = new Map((p.locations || []).filter((l) => String(l.prompt || '').trim()).map((l) => [String(l.name || '').trim().toLowerCase(), l]))
+    let added = 0
+    const scenes = (p.scenes || []).map((sc) => {
+      if ((sc.shots || []).some((s) => s.established)) return sc
+      const loc = locs.get(String(sc.location || '').trim().toLowerCase())
+      if (!loc) return sc
+      const shot = {
+        id: id6(),
+        action: `Wide establishing shot of ${loc.name}${loc.description ? `: ${String(loc.description).replace(/[.\s]+$/, '')}` : ''}.`,
+        staging: '',
+        camera: 'Wide, slow push in',
+        ends: '',
+        characters: [],
+        speaker: '',
+        line: '',
+        seconds: 5,
+        prompt: loc.prompt,
+        promptFor: 'h3',
+        established: true,
+        projectId: null,
+        voiceLine: null
+      }
+      added++
+      return { ...sc, shots: [shot, ...(sc.shots || [])] }
+    })
+    if (added) this.write({ ...p, scenes })
+    return { added }
+  }
 
   // ---------- script ----------
   // New script text: scenes are re-read from it. Scenes that already have shots keep them when their heading
@@ -745,6 +830,10 @@ export class Productions {
     const cpu = await this.studio().gpuBusy().catch(() => false)
     // everyone gets an outfit before the first prompt is written (one the person typed is kept)
     await this.writeOutfits(id, { cpu }).catch(() => null)
+    // then the written details: a visual description for every cast member without one, and an
+    // establishing-shot prompt for every place without one (failures don't stop the breakdown)
+    await this.writeCastPrompts(id, { cpu }).catch(() => null)
+    await this.writeEnvironmentPrompts(id, { cpu }).catch(() => null)
     for (const sid of sceneIds) {
       const p = this.get(id)
       const sc = p.scenes.find((s) => s.id === sid)
@@ -1084,7 +1173,7 @@ export class Productions {
     const voiceId = this.character(sh.character)?.voiceId
     if (!voiceId) throw new Error('Give this character a voice on the Characters page first.')
     const v = this.voices()
-    if (!v) throw new Error('Voices need IV Studio on this PC.')
+    if (!v) throw new Error('Voices need Techlit Studio on this PC.')
     // the voice can drop a word from a short line, so each take is read back and said again (up to 3 seeds)
     // until every word is there; the most complete take is kept
     let best = null
@@ -1106,7 +1195,7 @@ export class Productions {
   async useRecording(id, shotId, file) {
     if (!file || !fs.existsSync(file)) throw new Error('Pick a sound file.')
     const ffmpeg = this.edits?.ffmpeg
-    if (!ffmpeg) throw new Error('Recordings need IV Studio on this PC.')
+    if (!ffmpeg) throw new Error('Recordings need Techlit Studio on this PC.')
     const dir = path.join(this.dir, 'lines')
     fs.mkdirSync(dir, { recursive: true })
     const out = path.join(dir, `${id}_${shotId}_${Date.now()}.wav`)
@@ -1177,14 +1266,14 @@ export class Productions {
   // a face or a place; a model that only draws from words draws them from words (faces are then not kept).
   async pictureModels(what, p = null) {
     const images = this.images()
-    if (!images) throw new Error(`${what} need IV Studio on this PC.`)
+    if (!images) throw new Error(`${what} need Techlit Studio on this PC.`)
     const st = await images.status()
     if (st.error) throw new Error(st.error)
     const ready = (ids, edit) => ids.map((f) => st.families.find((x) => x.id === f && x.ready && x.models.length && (!edit || x.edit))).find(Boolean)
     const pick = p?.settings?.picture && p.settings.picture !== 'auto' ? p.settings.picture : null
     if (pick) {
       const fam = st.families.find((x) => x.id === pick)
-      if (!fam) throw new Error(`The film's picture model "${pick}" isn't one IV Studio knows. Pick another in the film's settings.`)
+      if (!fam) throw new Error(`The film's picture model "${pick}" isn't one Techlit Studio knows. Pick another in the film's settings.`)
       if (!fam.ready || !fam.models.length) throw new Error(`${fam.label || pick} isn't set up on this PC, and this film draws with it. Set it up in Settings → Setup, or pick another picture model in the film's settings.`)
       return { images, editor: fam.edit ? fam : null, drawer: fam, st, picked: fam }
     }
@@ -1291,7 +1380,7 @@ export class Productions {
     return p
   }
 
-  // Hunts previews for a shot (an ordinary IV Studio shot: it shows in Shots too).
+  // Hunts previews for a shot (an ordinary Techlit Studio shot: it shows in Shots too).
   // With voice (the default), a line its character has a voice for is said first, so the shot lip-syncs to it;
   // if the voice engine can't, the shot renders with H3's own voice. With fromSketch (the default) a shot that
   // has a sketch opens exactly on it (Frames mode), so the film keeps the storyboard's framing and faces.
@@ -1596,7 +1685,7 @@ export class Productions {
   // and the words on screen. A shot with no sketch shows its action on a dark card. Saved in the app data's
   // productions\animatics and kept on the production as animatic { file, seconds, shots, at }.
   async animatic(id, { voice = false } = {}) {
-    if (!this.edits?.ffmpeg) throw new Error('The animatic needs IV Studio on this PC.')
+    if (!this.edits?.ffmpeg) throw new Error('The animatic needs Techlit Studio on this PC.')
     if (voice) for (const sc of this.get(id).scenes) for (const sh of sc.shots) if (this.needsLine(sh)) await this.speak(id, sh.id).catch(() => {})
     const p = this.get(id)
     const plan = animaticPlan(p.scenes)

@@ -21,7 +21,7 @@ export default function SystemMeter({ notify }) {
       document.removeEventListener('visibilitychange', read)
     }
   }, [])
-  // Free memory: what IV Studio and ComfyUI hold, let go of now (ComfyUI waits for a running render to finish)
+  // Free memory: what Techlit Studio and ComfyUI hold, let go of now (ComfyUI waits for a running render to finish)
   async function free() {
     setFreeing(true)
     try {
@@ -61,7 +61,7 @@ export default function SystemMeter({ notify }) {
         disabled={freeing}
         onClick={free}
         aria-label="Free GPU and RAM memory"
-        title={`Free up GPU and RAM memory now${full ? ' (it’s nearly full)' : ''}: ComfyUI unloads its models (after a running render finishes), IV Studio’s voice engine stops, and the prompt writer lets go. Nothing is deleted; the next render loads what it needs again.`}
+        title={`Free up GPU and RAM memory now${full ? ' (it’s nearly full)' : ''}: ComfyUI unloads its models (after a running render finishes), Techlit Studio’s voice engine stops, and the prompt writer lets go. Nothing is deleted; the next render loads what it needs again.`}
       >
         <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
           <rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />

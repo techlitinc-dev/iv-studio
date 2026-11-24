@@ -1,4 +1,4 @@
-// Readiness check: is ComfyUI up, is there a capable GPU, are the node packs and models IV Studio needs there?
+// Readiness check: is ComfyUI up, is there a capable GPU, are the node packs and models Techlit Studio needs there?
 // Everything is read from ComfyUI itself (/system_stats and /object_info), so it works with any install.
 
 import fs from 'node:fs'
@@ -12,7 +12,7 @@ import { packVersion, runtimeReady } from './nodepacks.js'
 // - down: nothing listens there. When a ComfyUI answers on another usual port of this PC (the ComfyUI Desktop app's
 //   8000, say), address is that one, for "Use this address".
 export async function whyUnreached(comfy, err, { ports } = {}) {
-  if (err?.busy && !comfy.remote) return { status: 'warn', busy: true, detail: err.message, fix: 'IV Studio checks again by itself in a few seconds.' }
+  if (err?.busy && !comfy.remote) return { status: 'warn', busy: true, detail: err.message, fix: 'Techlit Studio checks again by itself in a few seconds.' }
   const elsewhere = err?.down && !comfy.remote ? await findComfyElsewhere(comfy.url, ports ? { ports } : {}).catch(() => null) : null
   if (elsewhere) return { status: 'missing', down: true, address: elsewhere, detail: `Nothing answers at ${comfy.url}, but a ComfyUI answers at ${elsewhere}.`, fix: `Use ${elsewhere} as ComfyUI’s address (Settings → ComfyUI).` }
   return { status: 'missing', down: !!err?.down, detail: err?.message || String(err), fix: 'Start ComfyUI, or set its address in Settings.' }
@@ -30,7 +30,7 @@ const base = (o) => o.replace(/\\/g, '/').split('/').pop()
 // Which workflows each model's pick in Settings → Models covers (plan.js: text, frames and continue run fl2va).
 const PICKS = { fl2va: ['text', 'frames', 'continue', 'takePlain'], ref2va: ['reference', 'take', 'retake'] }
 
-// The file this ComfyUI has for a model: IV Studio's own build (match, alt), else another version of the same
+// The file this ComfyUI has for a model: Techlit Studio's own build (match, alt), else another version of the same
 // model (accept: patterns, like the fp8 or NVFP4 build ComfyUI's templates download), else the one picked in
 // Settings → Models. { file, how: 'exact' | 'version' | 'picked' } or null. Files in subfolders keep their path.
 export function resolveModel(m, opts, chosen = {}) {
@@ -55,7 +55,7 @@ export function modelOptions(info, m) {
 }
 
 // For every model, the name this ComfyUI lists it under (Comfy.submit swaps it into every graph, matched by file
-// name: IV Studio's graphs may name a file in a subfolder, such as "Minimax H3\", that this ComfyUI keeps at the top
+// name: Techlit Studio's graphs may name a file in a subfolder, such as "Minimax H3\", that this ComfyUI keeps at the top
 // of its models folder, or the other way round; GitHub #29). Required models may be another version of the file;
 // optional ones only the same file, in whatever folder (an optional picture model is never swapped for a fine-tune).
 // info needs only the models' loader nodes.
@@ -110,22 +110,22 @@ export async function checkSetup({ comfy, template, manifest, characters, chosen
   // Shots need the packs in the workflow; the others are for one feature each (Sequences, Replace, SeedVR2...).
   for (const pack of manifest.node_packs) {
     if ((linux && pack.windowsOnly) || (!linux && pack.linuxOnly)) {
-      // DLSS is Windows-only; on Linux (the cloud) IV Studio finishes with its own upscale + RIFE instead.
+      // DLSS is Windows-only; on Linux (the cloud) Techlit Studio finishes with its own upscale + RIFE instead.
       if (pack.windowsOnly && pack.classes.some((c) => missingClasses.includes(c))) items.push({ id: `pack:${pack.label}`, label: pack.label, status: 'warn', detail: 'Windows only. Finals here use a 2× AI upscale and RIFE frame interpolation instead.', kind: 'node_pack', for: pack.for })
       continue
     }
     const miss = pack.classes.filter((c) => (needed.includes(c) ? missingClasses.includes(c) : !info[c]))
-    // a pack this ComfyUI now has built in (the H3 latent upscaler, ComfyUI 0.44+): IV Studio uses ComfyUI's own nodes
+    // a pack this ComfyUI now has built in (the H3 latent upscaler, ComfyUI 0.44+): Techlit Studio uses ComfyUI's own nodes
     if (miss.length && pack.builtIn?.every((c) => info[c])) {
       items.push({ id: `pack:${pack.label}`, label: pack.label, status: 'ok', detail: `Built into this ComfyUI${stats.system?.comfyui_version ? ` (${stats.system.comfyui_version})` : ''}, so the node pack isn't needed`, kind: 'node_pack', for: pack.for, dir: pack.dir })
       continue
     }
     const core = pack.classes.some((c) => needed.includes(c))
     const outdated = pack.bundled && pack.version && customNodes?.some((d) => fs.existsSync(path.join(d, pack.dir)) && packVersion(path.join(d, pack.dir)) < pack.version)
-    // an older copy of IV Studio's own pack: flagged even when its nodes all load (version 3 changed how the take
+    // an older copy of Techlit Studio's own pack: flagged even when its nodes all load (version 3 changed how the take
     // cache reads the live preview, with no new nodes), so Install missing node packs updates it
     if (outdated) {
-      items.push({ id: `pack:${pack.label}`, label: pack.label, status: 'warn', detail: miss.length ? `A newer version comes with IV Studio (missing nodes: ${miss.join(', ')})` : 'A newer version comes with IV Studio.', fix: 'Install the missing node packs to update it, then restart ComfyUI.', kind: 'node_pack', for: pack.for, dir: pack.dir })
+      items.push({ id: `pack:${pack.label}`, label: pack.label, status: 'warn', detail: miss.length ? `A newer version comes with Techlit Studio (missing nodes: ${miss.join(', ')})` : 'A newer version comes with Techlit Studio.', fix: 'Install the missing node packs to update it, then restart ComfyUI.', kind: 'node_pack', for: pack.for, dir: pack.dir })
       continue
     }
     if (miss.length && onDisk(pack.dir)) {

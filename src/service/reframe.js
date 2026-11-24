@@ -64,7 +64,7 @@ export function reframeGraph({ padded, mask, prompt, seed = 42, steps = 6, prefi
   }
 }
 
-// The words H3 gets: the shot's own prompt when IV Studio made it, and always what to do with the bars.
+// The words H3 gets: the shot's own prompt when Techlit Studio made it, and always what to do with the bars.
 export function reframePrompt({ shape, about }) {
   return [
     `The same shot, reframed to a ${shape === '9:16' ? 'vertical 9:16' : shape === '1:1' ? 'square' : shape} frame. The middle of the picture is the original shot: keep it exactly, with its people, motion, camera move and sound.`,
@@ -91,7 +91,7 @@ export class Reframes {
   // settings: 25 steps, CFG 1), then the exact original pasted back over a soft edge. About 30 s.
   async makePicture({ file, shape = '9:16', about = '', zoom = 1, megapixels = 1 }) {
     const images = this.images()
-    if (!images) throw new Error('Pictures need IV Studio on this PC.')
+    if (!images) throw new Error('Pictures need Techlit Studio on this PC.')
     const st = await images.status()
     const qwen = st.families.find((f) => f.id === 'qwen21' && f.ready && f.edit && f.models.length)
     const info = await this.studio().comfy.objectInfo('LoraLoaderModelOnly').catch(() => null)

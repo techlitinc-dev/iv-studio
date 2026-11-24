@@ -1,4 +1,4 @@
-// LoRAs for every model family (src/service/civitai.js LORA_FAMILIES): each family IV Studio runs is listed with
+// LoRAs for every model family (src/service/civitai.js LORA_FAMILIES): each family Techlit Studio runs is listed with
 // Civitai's base-model names, LoRAs on this PC are sorted by what Civitai says or by their folder or file name, and
 // the families line up with Create -> Image's (images.js).
 import assert from 'node:assert/strict'

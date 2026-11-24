@@ -1,5 +1,5 @@
-// Hermes in IV Studio's chat (src/service/hermesacp.js, agentchat.js): a stand-in Hermes ACP server streams words,
-// an IV Studio tool call, a usage update and an approval request; the chat must show them as its own events, decline
+// Hermes in Techlit Studio's chat (src/service/hermesacp.js, agentchat.js): a stand-in Hermes ACP server streams words,
+// an Techlit Studio tool call, a usage update and an approval request; the chat must show them as its own events, decline
 // the approval, keep the session and resume it on the next message without replaying history.
 //   node test/hermes-acp.mjs
 import assert from 'node:assert/strict'
@@ -72,9 +72,9 @@ if (process.platform === 'win32') fs.writeFileSync(exe, `@"${process.execPath}" 
 else fs.writeFileSync(exe, `#!/bin/sh\nexec "${process.execPath}" "${fake}"\n`, { mode: 0o755 })
 const reqs = () => fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l))
 
-await ok('tool titles become IV Studio tool names', () => {
+await ok('tool titles become Techlit Studio tool names', () => {
   assert.equal(hermesTool('mcp__editor_iv_studio_036afaa6__list_characters'), 'list_characters')
-  assert.equal(hermesTool('mcp__iv-studio__generate_previews'), 'generate_previews')
+  assert.equal(hermesTool('mcp__techlit-studio__generate_previews'), 'generate_previews')
   assert.equal(hermesTool('skill_view: iv-studio'), 'skill_view')
   assert.equal(hermesTool('mcp__editor_iv_studio_81db0e8f__speak_line: Tess, Same time tomorrow?'), 'speak_line')
   assert.equal(hermesTool('mcp__editor_iv_studio_81db0e8f__speak_line (2)'), 'speak_line')
@@ -102,7 +102,7 @@ const runShell = (session, model = '') => {
 }
 
 let first
-await ok('a turn streams words, an IV Studio step, usage and the end', async () => {
+await ok('a turn streams words, an Techlit Studio step, usage and the end', async () => {
   first = await runShell(null, 'b:two')
   assert.equal(first.r.ok, true, first.r.error)
   assert.equal(first.r.session, 's-1')
@@ -115,7 +115,7 @@ await ok('a turn streams words, an IV Studio step, usage and the end', async () 
   assert.ok(first.events.some((e) => e.type === 'end' && e.ok))
 })
 
-await ok('IV Studio passes its own MCP server and picks the model', () => {
+await ok('Techlit Studio passes its own MCP server and picks the model', () => {
   const r = reqs()
   const nw = r.find((m) => m.method === 'session/new')
   assert.deepEqual(nw.params.mcpServers, [{ name: 'iv-studio', command: 'iv', args: ['mcp.js'], env: [{ name: 'ELECTRON_RUN_AS_NODE', value: '1' }] }])

@@ -44,7 +44,7 @@ const DLSS_STYLES = ['Default', 'Natural', 'Cinematic']
 function DlssLook({ strength, style, onChange, label = 'DLSS strength' }) {
   return (
     <>
-      <Strength label={label} value={strength} min={0} max={2} step={0.1} def={0.8} onChange={(v) => onChange({ dlssStrength: v })} format={(v) => v.toFixed(1)} hint={strength < 0.5 ? 'Gentle: closest to the take, little added texture.' : strength > 1.2 ? 'Strong: more contrast and skin texture; it can look gritty.' : 'Balanced: IV Studio’s tested setting is 0.8.'} />
+      <Strength label={label} value={strength} min={0} max={2} step={0.1} def={0.8} onChange={(v) => onChange({ dlssStrength: v })} format={(v) => v.toFixed(1)} hint={strength < 0.5 ? 'Gentle: closest to the take, little added texture.' : strength > 1.2 ? 'Strong: more contrast and skin texture; it can look gritty.' : 'Balanced: Techlit Studio’s tested setting is 0.8.'} />
       <div className="row">
         <span className="row-label">DLSS style</span>
         <div className="segmented">
@@ -1091,7 +1091,7 @@ export default function Shot({ projectId, jobs: live, setJobs, notify, go, caps,
                         <span className="mono small">{r.best ? '★ Best take' : `Score ${Math.round((r.score ?? 0) * 100)}`}</span>
                         {r.reasons?.length > 0 && <span className="small dim">{r.reasons.join(' · ')}</span>}
                         {r.raw?.cuts?.length > 0 && r.raw.clean && (
-                          <span className="take-clean" title="IV Studio looks for hard cuts in a take whose prompt asks for one shot. It doesn't catch slow dissolves.">
+                          <span className="take-clean" title="Techlit Studio looks for hard cuts in a take whose prompt asks for one shot. It doesn't catch slow dissolves.">
                             <button className="link-btn mono small" disabled={!!cleaning[`${run.id}:${o.candidate}`]} onClick={() => useClean(run, o.candidate, false)}>
                               {cleaning[`${run.id}:${o.candidate}`] ? 'Cutting…' : `Use ${r.raw.clean.from.toFixed(1)} to ${r.raw.clean.to.toFixed(1)} s (${r.raw.clean.start === 0 ? 'before' : 'after'} the cut)`}
                             </button>

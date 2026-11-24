@@ -1,16 +1,16 @@
-// IV Studio's update pop-up (Update.jsx UpdateDialog): when IV Studio's own update is downloaded, this checks this
+// Techlit Studio's update pop-up (Update.jsx UpdateDialog): when Techlit Studio's own update is downloaded, this checks this
 // PC's ComfyUI and its node packs too (comfyupdate.js through Studio.comfyUpdates), so the person can update just
-// IV Studio, or ComfyUI and every node pack as well before IV Studio restarts into its new version.
+// Techlit Studio, or ComfyUI and every node pack as well before Techlit Studio restarts into its new version.
 // Every dependency comes in as an argument, so test/app-update.mjs runs it with stand-ins.
 import { readRecord, writeRecord } from './comfyupdate.js'
 
 // What the pop-up says about ComfyUI, from a Studio.comfyUpdates answer.
 //   kind: 'updates' (something to update), 'current' (nothing new) or 'unavailable' (can't update from here: reason)
 export function summarize(info) {
-  if (!info?.manager?.present) return { kind: 'unavailable', reason: 'manager', text: 'ComfyUI-Manager isn’t in this ComfyUI, so IV Studio can’t update it. Add it in Settings → Setup → ComfyUI updates.' }
+  if (!info?.manager?.present) return { kind: 'unavailable', reason: 'manager', text: 'ComfyUI-Manager isn’t in this ComfyUI, so Techlit Studio can’t update it. Add it in Settings → Setup → ComfyUI updates.' }
   const packs = (info.packs?.withUpdates || []).map((p) => p.title)
   const core = info.comfyui || {}
-  // the ComfyUI desktop app updates ComfyUI itself; IV Studio does its node packs only
+  // the ComfyUI desktop app updates ComfyUI itself; Techlit Studio does its node packs only
   const coreNew = !info.desktop && !!core.behind
   const parts = []
   if (coreNew) parts.push(`ComfyUI ${core.current} → ${core.latest}`)
@@ -45,7 +45,7 @@ export function notesOf(notes) {
   return lines.slice(0, 8).join(NL) || null
 }
 
-// What happened, for the note after IV Studio restarts: from comfy-updates.json's record.
+// What happened, for the note after Techlit Studio restarts: from comfy-updates.json's record.
 export function outcome(record) {
   const results = record?.results || []
   const count = (s) => results.filter((r) => r.status === s && r.pack !== 'comfyui').length
@@ -80,7 +80,7 @@ export class AppUpdate {
     return this.state
   }
 
-  // Checks ComfyUI for the pop-up (once per IV Studio version; again when asked, or when the last check is over an
+  // Checks ComfyUI for the pop-up (once per Techlit Studio version; again when asked, or when the last check is over an
   // hour old). Never throws: a ComfyUI that can't be checked is 'unavailable' with the reason.
   check({ version = null, force = false } = {}) {
     const fresh = this.state.at && Date.now() - Date.parse(this.state.at) < 60 * 60 * 1000
@@ -90,7 +90,7 @@ export class AppUpdate {
       this.set({ status: 'checking', forVersion: version, error: null })
       const at = new Date().toISOString()
       const comfy = this.studio.comfy
-      if (comfy.remote || !this.isLocal(comfy.url)) return this.set({ status: 'unavailable', summary: { kind: 'unavailable', reason: 'cloud', text: 'Your renders run on a cloud ComfyUI, which IV Studio doesn’t update from here.' }, at })
+      if (comfy.remote || !this.isLocal(comfy.url)) return this.set({ status: 'unavailable', summary: { kind: 'unavailable', reason: 'cloud', text: 'Your renders run on a cloud ComfyUI, which Techlit Studio doesn’t update from here.' }, at })
       if (!(await this.comfyUp(comfy.url, 3000).catch(() => false))) return this.set({ status: 'unavailable', summary: { kind: 'unavailable', reason: 'down', text: 'ComfyUI isn’t running, so it can’t be checked. Start it to update it too.' }, at })
       try {
         const info = await this.studio.comfyUpdates({ launcher: this.launcher() })
@@ -104,7 +104,7 @@ export class AppUpdate {
   }
 
   // The pop-up's choice. withComfy: update ComfyUI and every node pack first (a snapshot, then Manager, then a
-  // ComfyUI restart; Studio.updateComfy), and restart into IV Studio's new version only when that worked. A ComfyUI
+  // ComfyUI restart; Studio.updateComfy), and restart into Techlit Studio's new version only when that worked. A ComfyUI
   // that's rendering, or a Manager that's busy, stops it before anything changes.
   async run({ withComfy = false, version = null, onProgress = () => {} } = {}) {
     const waits = this.busy()
@@ -112,7 +112,7 @@ export class AppUpdate {
     if (withComfy) {
       onProgress({ phase: 'starting' })
       const record = await this.studio.updateComfy({ folder: this.folder(), launcher: this.launcher(), onProgress })
-      // remembered, so IV Studio says what happened once it has restarted
+      // remembered, so Techlit Studio says what happened once it has restarted
       writeRecord(this.dataDir, { ...readRecord(this.dataDir), fromAppUpdate: version, announced: false })
       onProgress({ phase: 'installing', outcome: outcome(record) })
     } else onProgress({ phase: 'installing' })

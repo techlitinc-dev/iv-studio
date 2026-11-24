@@ -97,7 +97,7 @@ const fitFades = (c) => {
 }
 
 // The editor, laid out like Premiere: project bin, source and program monitors and effect controls on top,
-// the timeline below, every border draggable. A full-screen workspace hides IV Studio's own sidebar.
+// the timeline below, every border draggable. A full-screen workspace hides Techlit Studio's own sidebar.
 // An agent edits the same file through the MCP server: its changes appear here with a one-click undo.
 export default function EditEditor({ editId, notify, go, focus, setFocus, characters = [], remakeClip }) {
   // For Premiere / Resolve (interchange.js): busy, then what was written
@@ -556,7 +556,7 @@ export default function EditEditor({ editId, notify, go, focus, setFocus, charac
               Ask {chatAgent}
             </button>
           )}
-          <button className="btn btn-small" onClick={() => toggleFocus()} title={focus ? 'Back to IV Studio (Esc)' : 'Full-screen workspace (F11)'}>
+          <button className="btn btn-small" onClick={() => toggleFocus()} title={focus ? 'Back to Techlit Studio (Esc)' : 'Full-screen workspace (F11)'}>
             {focus ? 'Exit full screen' : '⤢ Full screen'}
           </button>
           {exp?.progress != null && (

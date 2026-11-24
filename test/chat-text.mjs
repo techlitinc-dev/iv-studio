@@ -14,7 +14,7 @@ ok('bold, italic and code', () => {
 })
 
 ok('plain text is left alone', () => {
-  for (const s of ['5 * 3 = 15', 'the_seed_farmer_s_field_4.mp4', 'C:\\Users\\you\\IV Studio', '2 MP → 1952×1088', 'Tess’s line: “Of course.”', ''])
+  for (const s of ['5 * 3 = 15', 'the_seed_farmer_s_field_4.mp4', 'C:\\Users\\you\\Techlit Studio', '2 MP → 1952×1088', 'Tess’s line: “Of course.”', ''])
     assert.deepEqual(inlineParts(s), s ? [{ t: s }] : [])
 })
 

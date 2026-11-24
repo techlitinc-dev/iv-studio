@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto'
 // the ComfyUI-MiniMaxH3Mod pack (MIT, Luisa) and saved under ComfyUI's models/refmods. A RefMod character goes into
 // a shot as RefMod 1 (plan.js) instead of loading a character LoRA, and {char} becomes its name.
 //
-// Making one is the "RefMod Creator" workflow as IV Studio's own graph: up to six pictures (and a voice clip of
+// Making one is the "RefMod Creator" workflow as Techlit Studio's own graph: up to six pictures (and a voice clip of
 // up to 15 seconds) through "Create H3 RefMod Master" with the settings its notes give for a character (Full
 // Reference, 768 px, pool 8×8, one latent frame for pictures, 100 refinement steps, 2048 tokens), saved as one
 // bundle: models/refmods/characters/<name>.safetensors. On a 4090 a one-picture RefMod takes about 13 seconds.
@@ -29,7 +29,7 @@ export const subjectHint = (who) =>
   `subject_definitions:\n<Subject 1> is ${String(who || 'a person').trim()}, defined by <RefMod 1>\n<RefMod 1> provides the complete visual identity, appearance, face, body, clothing${'{voice}'} for <Subject 1>.`
 
 // The graph: LoadImage per picture, the H3 video VAE, an optional voice through the audio VAE, and the master
-// node, which saves the bundle itself. Node ids are plain numbers, as in every IV Studio graph.
+// node, which saves the bundle itself. Node ids are plain numbers, as in every Techlit Studio graph.
 export function refmodGraph({ name, subfolder = REFMOD_FOLDER, pictures, audio = null, description = '', vae, audioVae = null }) {
   if (!pictures?.length) throw new Error('A RefMod needs at least one picture.')
   const g = {}
@@ -80,7 +80,7 @@ const comboOf = (info, cls, input) => {
 }
 
 export class RefMods {
-  // studio: the Studio (its ComfyUI, jobs and characters). dataDir: IV Studio's data folder (faces are kept there).
+  // studio: the Studio (its ComfyUI, jobs and characters). dataDir: Techlit Studio's data folder (faces are kept there).
   constructor({ studio, dataDir }) {
     this.studio = studio
     this.dir = path.join(dataDir, 'faces')
@@ -144,7 +144,7 @@ export class RefMods {
     const names = await this.list().catch(() => [])
     if (names.length && !names.includes(refmod)) throw new Error(`ComfyUI made the RefMod but its loader doesn't list ${refmod} yet. Restart ComfyUI, then add it on Characters with "Add from a LoRA or RefMod".`)
 
-    // the character: its face is the first picture, kept in IV Studio's data
+    // the character: its face is the first picture, kept in Techlit Studio's data
     fs.mkdirSync(this.dir, { recursive: true })
     const face = path.join(this.dir, `${file}${path.extname(pics[0]) || '.png'}`)
     fs.copyFileSync(pics[0], face)

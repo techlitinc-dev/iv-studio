@@ -1,5 +1,5 @@
 // The audio side's tools: one card each on the Audio page (AudioHome.jsx), in this order, each its own page. needs:
-// what a tool requires beyond IV Studio itself; credit: the models it runs on (credits.js has the full list).
+// what a tool requires beyond Techlit Studio itself; credit: the models it runs on (credits.js has the full list).
 export const AUDIO_TOOLS = [
   {
     page: 'voices',

@@ -1,6 +1,6 @@
 // A Mac copy's updates (see src/service/macupdate.js for why it isn't electron-updater): the same states and the same
 // { check, install } as updater.js, so Settings -> Updates and the sidebar work as on Windows. It checks on launch and
-// every six hours, downloads the new zip in the background, and installs on "Restart to update" or when IV Studio
+// every six hours, downloads the new zip in the background, and installs on "Restart to update" or when Techlit Studio
 // quits. A copy that can't replace itself (run from the .dmg, from Downloads, or without write access) says why and
 // offers the download page instead.
 // IV_STUDIO_UPDATE_FEED points a test copy at a local feed; IV_STUDIO_UPDATE_SELFTEST=1 then installs as soon as
@@ -59,7 +59,7 @@ export function initMacUpdater({ set, get, testFeed }) {
     log(`downloading ${file.url} (${feed.version})`)
     await download(urls.file(file.url, feed.version), zip, { onProgress: (p) => p !== get().percent && set({ percent: p }) })
     await checkFile(zip, file)
-    const appPath = await stage(zip, path.join(work, `IV Studio ${feed.version}`), { version: feed.version, run })
+    const appPath = await stage(zip, path.join(work, `Techlit Studio ${feed.version}`), { version: feed.version, run })
     fs.rmSync(zip, { force: true })
     staged = { version: feed.version, app: appPath }
     log(`ready: ${appPath}`)
@@ -104,7 +104,7 @@ export function initMacUpdater({ set, get, testFeed }) {
     return true
   }
 
-  // a downloaded update also installs when IV Studio quits, as on Windows (never from a test feed, except the selftest)
+  // a downloaded update also installs when Techlit Studio quits, as on Windows (never from a test feed, except the selftest)
   app.on('will-quit', () => {
     if (!staged || get().status !== 'ready' || (testFeed && !selftest)) return
     try {

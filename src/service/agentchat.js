@@ -1,5 +1,5 @@
-// A chat with the person's own Claude Code, Codex or Hermes inside IV Studio:
-// like adding IV Studio to Claude Desktop or Codex as an MCP server, but in the app. Every IV Studio tool, nothing
+// A chat with the person's own Claude Code, Codex or Hermes inside Techlit Studio:
+// like adding Techlit Studio to Claude Desktop or Codex as an MCP server, but in the app. Every Techlit Studio tool, nothing
 // else; anything that deletes, costs money, installs or changes Settings waits for the person's Allow (server.js
 // askPerson, chatAsk). One headless turn per message, continuing the agent's own session.
 import { ivMemoryNote } from './iv-memory-note.js'
@@ -18,18 +18,18 @@ export function namesNote({ agentName = '', userName = '', engine = '' } = {}) {
   const a = String(agentName || '').trim().slice(0, 40)
   const u = String(userName || '').trim().slice(0, 40)
   if (!a && !u) return ''
-  return `\n\n${a ? `In IV Studio the person calls you ${a}: that's your name here (you run on ${AGENT_NAMES[engine] || 'their agent app'}). Answer to it and use it when you mention yourself.` : ''}${a && u ? ' ' : ''}${u ? `The person's name is ${u}; use it naturally now and then, not in every message.` : ''}`
+  return `\n\n${a ? `In Techlit Studio the person calls you ${a}: that's your name here (you run on ${AGENT_NAMES[engine] || 'their agent app'}). Answer to it and use it when you mention yourself.` : ''}${a && u ? ' ' : ''}${u ? `The person's name is ${u}; use it naturally now and then, not in every message.` : ''}`
 }
 
-export const chatPrompt = () => `You are the assistant inside IV Studio, the person's video app, talking with them in a chat panel at the side of the app.
+export const chatPrompt = () => `You are the assistant inside Techlit Studio, the person's video app, talking with them in a chat panel at the side of the app.
 
-You have IV Studio's tools (the iv-studio MCP server) and nothing else: no files, no shell. Use them the way you would if the person had added IV Studio to their own agent app: look things up, write H3 prompts, render on this PC, sequence shots, edit, make music and voices, and answer questions about their projects and about IV Studio. Call get_guide before the first thing you make in a chat, and check_setup when something might be missing.
+You have Techlit Studio's tools (the iv-studio MCP server) and nothing else: no files, no shell. Use them the way you would if the person had added Techlit Studio to their own agent app: look things up, write H3 prompts, render on this PC, sequence shots, edit, make music and voices, and answer questions about their projects and about Techlit Studio. Call get_guide before the first thing you make in a chat, and check_setup when something might be missing.
 
-Each message starts with a line in [brackets] saying what IV Studio is showing them right now (the page, and the ids of the open shot, film, sequence or edit). "This" and "it" usually mean that. Use the ids with the tools; never show raw ids to the person.
+Each message starts with a line in [brackets] saying what Techlit Studio is showing them right now (the page, and the ids of the open shot, film, sequence or edit). "This" and "it" usually mean that. Use the ids with the tools; never show raw ids to the person.
 
 When the person attaches files, the message lists their paths (and a script's or note's words). Look at a picture, or a moment of a video, with grab_frame (file, at); use the paths with the tools: a picture as a shot's first frame or an image edit's reference, a script for a film, a sound or song in a shot or edit.
 
-When the person asks where something is or how to get somewhere in IV Studio, find it with list_places and show it with show_in_app: the app goes there and lights it up, with your words beside it.
+When the person asks where something is or how to get somewhere in Techlit Studio, find it with list_places and show it with show_in_app: the app goes there and lights it up, with your words beside it.
 
 Anything that deletes, costs money, installs or downloads, trains, or changes a setting shows the person an Allow card and waits. If they choose Don't allow, accept it, don't try again unless they ask, and say what you could do instead.
 
@@ -46,7 +46,7 @@ To wait for a render, call get_job: it waits up to 25 seconds each time, so just
 Keep replies short and plain, for someone who isn't technical: a few sentences, no tables, no code unless they ask.`
 
 // Files the person drops into the chat (or picks with its paperclip): what each is, and the message with them. The
-// agent has no file tools, so it gets the paths (for IV Studio's tools, and grab_frame to look at a picture or a
+// agent has no file tools, so it gets the paths (for Techlit Studio's tools, and grab_frame to look at a picture or a
 // moment of a video) and a script's or note's own text, inline.
 export const MAX_ATTACH = 10
 export const MAX_TEXT = 30000
@@ -84,7 +84,7 @@ export function withAttachments(message, files = [], readText = (f) => fs.readFi
   return `${lines.join('\n')}\n\n${message}`
 }
 
-// The bracketed line at the top of each message: what IV Studio is showing. ctx from the app (App.jsx).
+// The bracketed line at the top of each message: what Techlit Studio is showing. ctx from the app (App.jsx).
 const PAGE_NAMES = {
   home: 'the Dashboard',
   create: 'Create',
@@ -124,7 +124,7 @@ const CONTEXT_IDS = [
   ['trainingId', 'character training id']
 ]
 export function contextLine(ctx = {}) {
-  const parts = [`IV Studio is showing ${PAGE_NAMES[ctx.page] || ctx.page || 'a page'}`]
+  const parts = [`Techlit Studio is showing ${PAGE_NAMES[ctx.page] || ctx.page || 'a page'}`]
   if (ctx.section) parts[0] += ` (${ctx.section === 'audio' ? 'audio' : 'visual'} side)`
   for (const [key, label] of CONTEXT_IDS) if (ctx[key]) parts.push(`${label} ${ctx[key]}`)
   const lines = [`[${parts.join('; ')}]`]
@@ -139,7 +139,7 @@ export function contextLine(ctx = {}) {
   }
   // what's rendering on ComfyUI now and what's waiting (not only this chat's)
   if (Array.isArray(ctx.renders)) {
-    const r = ctx.renders.map((x) => `${x.name || x.kind || 'a render'}${x.ours === false ? ' (not IV Studio’s)' : ''} ${x.state === 'running' ? `rendering${x.percent != null ? ` ${x.percent}%` : ''}` : 'waiting'}`)
+    const r = ctx.renders.map((x) => `${x.name || x.kind || 'a render'}${x.ours === false ? ' (not Techlit Studio’s)' : ''} ${x.state === 'running' ? `rendering${x.percent != null ? ` ${x.percent}%` : ''}` : 'waiting'}`)
     lines.push(r.length ? `[Renders: ${r.join('; ')}]` : '[Renders: nothing rendering or waiting]')
   }
   // the newest failed render in the last half hour, so "why did that fail" has an answer
@@ -161,7 +161,7 @@ export function startChatTurn({ engine, exe, dir, session = null, message, conte
   fs.writeFileSync(jobsFile, '')
   const env = { ...mcp.env, ...extraEnv, IV_STUDIO_AGENT_RUN: 'chat', IV_STUDIO_AGENT_JOBS: jobsFile, IV_STUDIO_AGENT_ASK: askDir }
   const server = { command: mcp.command, args: mcp.args, env }
-  // What the person's IV apps know about them (and this business), kept in IV Hivemind.
+  // What the person's Techlit apps know about them (and this business), kept in Techlit Link.
   const remembered = ivMemoryNote({ app: 'studio', useActive: true })
   const text = `${context ? `${contextLine(context)}\n` : ''}${remembered ? `${remembered}\n` : ''}${message}`
   let args
@@ -178,10 +178,10 @@ export function startChatTurn({ engine, exe, dir, session = null, message, conte
     // Codex has no system prompt of its own here: the first message carries it, and the session keeps it
     input = session ? text : `${chatPrompt()}${namesNote({ ...names, engine })}\n\n---\n\n${text}`
   } else if (engine === 'local') {
-    // Local AI (localchat.js): IV Studio runs the loop itself, with its own short instructions
+    // Local AI (localchat.js): Techlit Studio runs the loop itself, with its own short instructions
     input = text
   } else {
-    // Hermes (hermesacp.js): its ACP server takes IV Studio's MCP server for the session; the first message carries
+    // Hermes (hermesacp.js): its ACP server takes Techlit Studio's MCP server for the session; the first message carries
     // the chat's instructions, as with Codex
     input = session ? text : `${chatPrompt()}${namesNote({ ...names, engine })}${HERMES_NOTE}\n\n---\n\n${text}`
   }

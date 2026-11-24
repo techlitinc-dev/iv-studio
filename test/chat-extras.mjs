@@ -1,4 +1,4 @@
-// IV Studio 1.1.3's chat extras without an agent or a window: the activity log (activity.js), who took a step, the
+// Techlit Studio 1.1.3's chat extras without an agent or a window: the activity log (activity.js), who took a step, the
 // context meter's numbers (agentchat.js applyUsage), the fuller context line, and replies read aloud (spokenText).
 //   node test/chat-extras.mjs
 import assert from 'node:assert/strict'
@@ -94,9 +94,9 @@ ok('the context line says what’s selected, rendering and the last failure', ()
   const line = contextLine({ page: 'edit', editId: 'e1', selection: { playhead: '12.5 s', clip: 'fox.mp4 on V1, 3.0 to 8.0 s' }, renders: [{ state: 'running', name: 'Fox lake', percent: 40, ours: true }, { state: 'queued', kind: 'finish', ours: false }], problem: { jobId: 'j7', name: 'Night car', minutesAgo: 3, reason: 'Out of graphics memory' } })
   const lines = line.split('\n')
   assert.equal(lines.length, 4)
-  assert.match(lines[0], /^\[IV Studio is showing .*edit id e1\]$/)
+  assert.match(lines[0], /^\[Techlit Studio is showing .*edit id e1\]$/)
   assert.match(lines[1], /\[Selected: playhead: 12.5 s; clip: fox.mp4 on V1/)
-  assert.match(lines[2], /Fox lake rendering 40%; finish \(not IV Studio’s\) waiting/)
+  assert.match(lines[2], /Fox lake rendering 40%; finish \(not Techlit Studio’s\) waiting/)
   assert.match(lines[3], /Night car \(job j7\), 3 min ago: Out of graphics memory/)
   assert.equal(contextLine({ page: 'home', renders: [] }).split('\n')[1], '[Renders: nothing rendering or waiting]')
   assert.equal(contextLine({ page: 'home' }).split('\n').length, 1)

@@ -35,7 +35,7 @@ await ok('a roomy, empty folder, and the space check', () => {
   assert.equal(suggestFolder(drives), path.join(dir, 'ComfyUI'))
   fs.mkdirSync(path.join(dir, 'ComfyUI'))
   fs.writeFileSync(path.join(dir, 'ComfyUI', 'main.py'), '')
-  assert.equal(suggestFolder(drives), path.join(dir, 'IV Studio ComfyUI'), 'a folder already in use is passed over')
+  assert.equal(suggestFolder(drives), path.join(dir, 'Techlit Studio ComfyUI'), 'a folder already in use is passed over')
   assert.match(checkFolder(path.join(dir, 'ComfyUI'), {}), /isn’t empty/)
   assert.equal(checkFolder(path.join(dir, 'new'), { size: 2e9, freeOf: () => 100e9 }), null)
   assert.match(checkFolder(path.join(dir, 'new'), { size: 2e9, freeOf: () => 3e9 }), /needs about/)

@@ -1,6 +1,6 @@
-// Cloud mode on the user's own Modal account. IV Studio installs a private copy of Modal's command-line
+// Cloud mode on the user's own Modal account. Techlit Studio installs a private copy of Modal's command-line
 // client (uv-managed Python in the app data folder), lets the user sign in through Modal's own web page
-// (the token stays in Modal's ~/.modal.toml, never in IV Studio), then deploys resources/cloud to their
+// (the token stays in Modal's ~/.modal.toml, never in Techlit Studio), then deploys resources/cloud to their
 // workspace: ComfyUI + the node packs in an image, the models in a volume, behind gate.py and a token.
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
@@ -24,7 +24,7 @@ export const UV = { version: '0.13.0', ...(UV_BUILDS[process.platform === 'darwi
 // A venv keeps its programs in Scripts\ (Windows) or bin/.
 export const venvBin = (venv, name) => path.join(venv, WIN ? 'Scripts' : 'bin', WIN ? `${name}.exe` : name)
 export const MODAL_VERSION = '1.6.2'
-// The image builder IV Studio's cloud image is made and tested with. Modal gives new workspaces its newest builder
+// The image builder Techlit Studio's cloud image is made and tested with. Modal gives new workspaces its newest builder
 // (2026.10 in November 2026), which this client can't use ("This version of the modal client supports the following
 // image builder versions..."), so every Modal command asks for this one (MODAL_IMAGE_BUILDER_VERSION wins over
 // the workspace's setting).
@@ -67,11 +67,11 @@ export class Cloud {
     const py = fs.existsSync(lib) ? fs.readdirSync(lib).find((d) => /^python3/.test(d)) : null
     return py ? path.join(lib, py, 'site-packages') : path.join(lib, 'python3.12', 'site-packages')
   }
-  // the installed client is the one this IV Studio is built for (MODAL_VERSION)
+  // the installed client is the one this Techlit Studio is built for (MODAL_VERSION)
   toolkitCurrent = () => this.toolkitReady() && this.toolkitVersion() === MODAL_VERSION
 
   // uv (checked against its published SHA-256), then a Python with Modal's client, all inside app data. An install
-  // from an older IV Studio is brought to MODAL_VERSION in place (the sign-in is kept: it lives in Modal's config).
+  // from an older Techlit Studio is brought to MODAL_VERSION in place (the sign-in is kept: it lives in Modal's config).
   async installToolkit() {
     if (this.toolkitCurrent()) return true
     if (this.toolkitReady()) {
@@ -242,7 +242,7 @@ export class Cloud {
     return this.modal(['volume', 'put', 'iv-studio-models', localFile, remotePath, '--force'])
   }
 
-  // The containers running IV Studio's cloud app right now (each holds a GPU while it's up).
+  // The containers running Techlit Studio's cloud app right now (each holds a GPU while it's up).
   async containers() {
     const out = await this.modal(['container', 'list', '--json'], { quiet: true, quick: true })
     const list = JSON.parse(out.slice(out.indexOf('[')) || '[]')

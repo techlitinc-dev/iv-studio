@@ -22,8 +22,8 @@ export async function modelTarget(comfy, model) {
 
 // The person's own Hugging Face login, for gated models (LTX-2.5 and its LoRAs need their licence accepted on
 // Hugging Face, then a logged-in download): HF_TOKEN, else the token `hf auth login` saved (HF_HOME, else
-// ~/.cache/huggingface). Sent only to huggingface.co; never logged or kept by IV Studio.
-// The token saved in IV Studio (Settings → Setup, or the Cloud page) comes first; the window sets it at start and
+// ~/.cache/huggingface). Sent only to huggingface.co; never logged or kept by Techlit Studio.
+// The token saved in Techlit Studio (Settings → Setup, or the Cloud page) comes first; the window sets it at start and
 // whenever it changes.
 let savedToken = null
 export const setSavedHfToken = (t) => (savedToken = t || null)

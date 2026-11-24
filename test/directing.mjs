@@ -1,4 +1,4 @@
-// Matthew Hollis's directing method in IV Studio: the writers' direction rules and JSON shape (prompter.js), the
+// Matthew Hollis's directing method in Techlit Studio: the writers' direction rules and JSON shape (prompter.js), the
 // storyboard's staging (productions.js) and the take reviewer (review.js).
 //   node test/directing.mjs [a video to take frames from]
 import assert from 'node:assert/strict'

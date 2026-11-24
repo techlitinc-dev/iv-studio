@@ -20,9 +20,9 @@ contextBridge.exposeInMainWorld('ivstudio', {
   // opt-in usage counting and the cloud beta signup (src/service/usage.js); time estimates (src/service/timing.js)
   usage: { status: call('usage:status'), set: call('usage:set'), preview: call('usage:preview'), joinBeta: call('usage:joinBeta') },
   timing: { estimate: call('timing:estimate') },
-  // The IV Newsletter signup (src/service/newsletter.js)
+  // The Techlit Newsletter signup (src/service/newsletter.js)
   newsletter: { status: call('newsletter:status'), join: call('newsletter:join'), closeCard: call('newsletter:closeCard'), openPage: call('newsletter:openPage') },
-  data: { info: call('data:info'), size: call('data:size'), choose: call('data:choose'), move: call('data:move'), restart: call('data:restart'), removeOld: call('data:removeOld'), open: call('data:open'), onProgress: on('data:progress') },
+  data: { info: call('data:info'), size: call('data:size'), breakdown: call('data:breakdown'), choose: call('data:choose'), move: call('data:move'), restart: call('data:restart'), removeOld: call('data:removeOld'), open: call('data:open'), onProgress: on('data:progress') },
   learn: { openGuide: call('learn:openGuide') },
   update: { state: call('update:state'), check: call('update:check'), install: call('update:install'), onChange: on('update:changed'), comfyState: call('update:comfyState'), comfyCheck: call('update:comfyCheck'), run: call('update:run'), notice: call('update:notice'), onComfy: on('update:comfy'), onProgress: on('update:progress') },
   incognito: { set: call('incognito:set') },
@@ -50,6 +50,9 @@ contextBridge.exposeInMainWorld('ivstudio', {
     sketch: call('productions:sketch'),
     breakDown: call('productions:breakDown'),
     writePrompt: call('productions:writePrompt'),
+    writeCastPrompts: call('productions:writeCastPrompts'),
+    writeEnvironmentPrompts: call('productions:writeEnvironmentPrompts'),
+    addEstablishingShots: call('productions:addEstablishingShots'),
     editShot: call('productions:editShot'),
     speak: call('productions:speak'),
     render: call('productions:render'),
@@ -63,6 +66,25 @@ contextBridge.exposeInMainWorld('ivstudio', {
     drawAngles: call('productions:drawAngles'),
     onChanged: on('productions:changed')
   },
+  // Feature films: acts and sequences over productions, with a trailer (Sizzle) and songs (Music) (src/service/feature.js)
+  features: {
+    list: call('features:list'),
+    get: call('features:get'),
+    create: call('features:create'),
+    update: call('features:update'),
+    delete: call('features:delete'),
+    setActs: call('features:setActs'),
+    attach: call('features:attach'),
+    detach: call('features:detach'),
+    stats: call('features:stats'),
+    explore: call('features:explore'),
+    masterCut: call('features:masterCut'),
+    auto: call('features:auto'),
+    planAll: call('features:planAll'),
+    onChanged: on('features:changed')
+  },
+  // The mindmap for anything: a feature, a short film (Project) or a song (src/service/storymap.js)
+  storymap: { explore: call('storymap:explore') },
   settings: { get: call('settings:get'), set: call('settings:set'), setComfyKey: call('settings:setComfyKey'), setCivitaiKey: call('settings:setCivitaiKey'), setOpenaiSecrets: call('settings:setOpenaiSecrets') },
   // where finished videos go: { path, custom, incognito, free }
   folders: { videos: call('folders:videos'), chooseVideos: call('folders:chooseVideos'), resetVideos: call('folders:resetVideos') },
@@ -257,6 +279,15 @@ contextBridge.exposeInMainWorld('ivstudio', {
     provider: call('cloud:provider'),
     runpodKey: call('cloud:runpodKey'),
     runpodCatalog: call('cloud:runpodCatalog'),
+    runpodAllGpus: call('cloud:runpodAllGpus'),
+    runpodPods: call('cloud:runpodPods'),
+    dash: call('cloud:dash'),
+    setBudget: call('cloud:setBudget'),
+    setRate: call('cloud:setRate'),
+    spendDays: call('cloud:spendDays'),
+    runpodFiles: call('cloud:runpodFiles'),
+    runpodDeleteFile: call('cloud:runpodDeleteFile'),
+    onBudgetStop: on('cloud:budgetStop'),
     runpodSetUp: call('cloud:runpodSetUp'),
     comfyCloudKey: call('cloud:comfyCloudKey'),
     comfyCloudCheck: call('cloud:comfyCloudCheck'),
@@ -276,6 +307,8 @@ contextBridge.exposeInMainWorld('ivstudio', {
     check: call('setup:check'),
     installNodes: call('setup:installNodes'),
     onNodes: on('setup:nodes'),
+    // the first-run setup wizard: all keys in one place (src/renderer/src/components/SetupWizard.jsx)
+    wizardKeys: call('setup:wizardKeys'),
     updates: { check: call('setup:updates:check'), run: call('setup:updates:run'), undo: call('setup:updates:undo'), installManager: call('setup:updates:installManager'), onProgress: on('setup:updates') }
   },
   comfy: { launcher: call('comfy:launcher'), chooseLauncher: call('comfy:chooseLauncher'), chooseFolder: call('comfy:chooseFolder'), start: call('comfy:start'), stopWaiting: call('comfy:stopWaiting'), restart: call('comfy:restart'), onState: on('comfy:state'), installPlan: call('comfy:installPlan'), chooseInstallFolder: call('comfy:chooseInstallFolder'), installCheck: call('comfy:installCheck'), install: call('comfy:install'), installCancel: call('comfy:installCancel'), onInstall: on('comfy:install') },

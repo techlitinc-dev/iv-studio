@@ -10,8 +10,8 @@ import ChatPanel, { ChatButton, useChat } from './components/ChatPanel'
 import { spotTour } from './tours'
 import { CharacterList, CharacterTrainer } from './components/Characters'
 import Create from './components/Create'
-import ivMark from './assets/iv-mark.png'
-import ivMarkClosed from './assets/iv-mark-closed.png'
+import tlMark from './assets/tl-mark.svg'
+import tlMarkClosed from './assets/tl-mark-closed.svg'
 import { ConfirmHost, ask } from './components/Confirm'
 import CloudModels from './components/CloudModels'
 import { H3TermsHost } from './components/H3Terms'
@@ -40,7 +40,10 @@ import Dashboard from './components/Dashboard'
 import TourHost from './components/Tour'
 import { unseenNews } from './news'
 import { ProjectPage, ProjectsList } from './components/Projects'
-import RenderQueue from './components/RenderQueue'
+import Features from './components/Features'
+import StoryMap from './components/StoryMap'
+import SetupWizard from './components/SetupWizard'
+import TopMenu from './components/TopMenu'
 import { LorasPage } from './components/Loras'
 import Setup from './components/Setup'
 import Images from './components/Images'
@@ -48,7 +51,6 @@ import { CreateKind } from './components/CreateKit'
 import Shot from './components/Shot'
 import Welcome from './components/Welcome'
 import CloudWizard from './components/CloudWizard'
-import { UpdateButton } from './components/Update'
 import { SizzleList, SizzleProject } from './components/Sizzle'
 import { RebuildList, RebuildProject } from './components/Rebuild'
 import { NavIcon } from './components/NavIcons'
@@ -61,6 +63,7 @@ const SECTIONS = {
     ['home', 'Dashboard'],
     ['create', 'Create'],
     ['projects', 'Projects'],
+    ['features', 'Features'],
     ['library', 'Shots'],
     ['edits', 'Edit'],
     ['workflows', 'Workflows'],
@@ -79,7 +82,7 @@ const SECTIONS = {
     ['settings', 'Settings']
   ]
 }
-const SUBPAGES = { settings: ['setup'], library: ['shot'], projects: ['project'], edits: ['edit'], characters: ['character'], workflows: ['sequences', 'sequence', 'shinobi', 'shinobi-film', 'replace', 'reel', 'musicvideo', 'keyframes', 'animalcam', 'effects', 'sizzle', 'sizzle-project', 'rebuild', 'rebuild-project'] }
+const SUBPAGES = { settings: ['setup'], library: ['shot'], projects: ['project'], edits: ['edit'], features: ['storymap'], characters: ['character'], workflows: ['sequences', 'sequence', 'shinobi', 'shinobi-film', 'replace', 'reel', 'musicvideo', 'keyframes', 'animalcam', 'effects', 'sizzle', 'sizzle-project', 'rebuild', 'rebuild-project'] }
 const savedSection = () => {
   try {
     return localStorage.getItem('iv.section') === 'audio' ? 'audio' : 'video'
@@ -104,8 +107,7 @@ export default function App() {
       localStorage.setItem('iv.createKind', kind)
     } catch {}
   }
-  const [page, setPage] = useState(() => (savedSection() === 'audio' ? 'audio' : 'home'))
-  // the Dashboard's agent run, for the title bar's pill while it works (AgentRun.jsx)
+  const [page, setPage] = useState(() => (savedSection() === 'audio' ? 'audio' : 'home'))  // the Dashboard's agent run, for the title bar's pill while it works (AgentRun.jsx)
   const agentStatus = useAgentRun()
   // The page's own width without its scrollbar (--page-w), for the tall banners that run edge to edge: 100vw can't
   // know whether the page has a scrollbar, and was 15 px too wide when it did.
@@ -157,6 +159,8 @@ export default function App() {
   // a question from a button elsewhere ("Ask Claude Code to fix it", ChatPanel askAgent): open the chat and hand it over
   const [chatAsk, setChatAsk] = useState(null)
   useEffect(() => {
+    const openChat = () => toggleChat(true)
+    window.addEventListener('iv:chat', openChat)
     const onAsk = (e) => {
       // with the chat in its own window, the question goes there
       if (poppedRef.current) return void window.ivstudio.chat.forwardAsk(e.detail).catch(() => {})
@@ -167,9 +171,11 @@ export default function App() {
     // "show me where" from the chat (show_in_app): a one-step tour that goes to the page and lights the part up
     const offShow = window.ivstudio.chat.onShow((show) => {
       const tour = spotTour(show || {})
+      // a step that lights a menu item (the Library step) needs the top menu open to find its target
+      if (tour && JSON.stringify(tour).includes('.nav')) setMenuOpen(true)
       if (tour) window.dispatchEvent(new CustomEvent('iv:tour', { detail: tour }))
     })
-    return () => (window.removeEventListener('iv:ask', onAsk), offShow())
+    return () => (window.removeEventListener('iv:ask', onAsk), window.removeEventListener('iv:chat', openChat), offShow())
   }, [])
   // a spoken line or a song on its way to Create's voice line (Lines or Music > Use in a shot)
   const [lineForCreate, setLineForCreate] = useState(null)
@@ -187,6 +193,7 @@ export default function App() {
   const [sequenceId, setSequenceId] = useState(null)
   const [sequenceFocus, setSequenceFocus] = useState(null)
   const [productionId, setProductionId] = useState(null) // the open Project
+  const [storyMapOf, setStoryMapOf] = useState(null) // the open mindmap: { kind: feature|production|song, id }
   const [editId, setEditId] = useState(null)
   const [trainingId, setTrainingId] = useState(null)
   const [shinobiId, setShinobiId] = useState(null)
@@ -270,7 +277,7 @@ export default function App() {
 
   // Back and forward through the pages seen (the title bar's arrows, Alt+Left / Alt+Right, a mouse's side
   // buttons). Each step keeps the page, its sidebar half and what it had open (a shot, a film, an edit...).
-  const here = { page, section, projectId, sequenceId, productionId, editId, trainingId, shinobiId, sizzleId, rebuildId }
+  const here = { page, section, projectId, sequenceId, productionId, editId, trainingId, shinobiId, sizzleId, rebuildId, storyMapOf }
   const nav = useRef({ stack: [], at: -1, moving: false })
   const [navAt, setNavAt] = useState({ back: false, forward: false })
   const sameStep = (a, b) => !!a && !!b && Object.keys(here).every((k) => a[k] === b[k])
@@ -282,7 +289,7 @@ export default function App() {
       h.at = h.stack.length - 1
     }
     setNavAt({ back: h.at > 0, forward: h.at < h.stack.length - 1 })
-  }, [page, section, projectId, sequenceId, productionId, editId, trainingId, shinobiId, sizzleId, rebuildId])
+  }, [page, section, projectId, sequenceId, productionId, editId, trainingId, shinobiId, sizzleId, rebuildId, storyMapOf])
   const step = (by) => {
     const h = nav.current
     const to = h.stack[h.at + by]
@@ -303,6 +310,7 @@ export default function App() {
     setShinobiId(to.shinobiId)
     setSizzleId(to.sizzleId)
     setRebuildId(to.rebuildId)
+    setStoryMapOf(to.storyMapOf || null)
     setPage(to.page)
     if (sameStep(to, here)) h.moving = false
   }
@@ -324,21 +332,39 @@ export default function App() {
     return () => (window.removeEventListener('keydown', key), window.removeEventListener('mouseup', mouse))
   }, [])
 
-  // The sidebar folds to a strip of page icons (the title bar's sidebar button); remembered.
-  const [navSmall, setNavSmall] = useState(() => {
-    try {
-      return localStorage.getItem('iv.navCollapsed') === '1'
-    } catch {
-      return false
+  // The sidebar became the titlebar's top menu (components/TopMenu.jsx): one dropdown with both halves' pages.
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuBtnRef = useRef(null)
+  // First run: the setup wizard collects the Kimi/RunPod/(OpenAI) keys once (components/SetupWizard.jsx)
+  const [setupWizard, setSetupWizard] = useState(false)
+  useEffect(() => {
+    if (!info) return
+    let off = false
+    const ask = () =>
+      window.ivstudio.settings
+        .get()
+        .then((s) => {
+          if (off) return
+          try {
+            if (localStorage.getItem('iv.setupWizard') === 'done') return
+            // only a studio with no render engine at all — the OpenAI key is optional, so it never re-opens for
+            // a missing one, and "Set up later" (which marks done) dismisses it for good
+            if (!s.hasRunpodKey) setSetupWizard(true)
+          } catch {}
+        })
+        .catch(() => {})
+    ask()
+    const again = setTimeout(ask, 4000) // the bridge can be a beat slow on a cold start
+    return () => {
+      off = true
+      clearTimeout(again)
     }
-  })
-  const foldNav = () =>
-    setNavSmall((v) => {
-      try {
-        localStorage.setItem('iv.navCollapsed', v ? '0' : '1')
-      } catch {}
-      return !v
-    })
+  }, [info])
+  const goMenu = (sec, pg) => {
+    if (sec !== section) switchSection(sec)
+    setPage(pg)
+    setMenuOpen(false)
+  }
 
   const switchSection = (next) => {
     if (next === section) return
@@ -359,6 +385,12 @@ export default function App() {
     switchSection('video')
     setPage('project')
   }
+  // the story explorer (StoryMap.jsx): anything as a mindmap — a feature, a short film, a song
+  const openStoryMap = (kind, id) => {
+    setStoryMapOf({ kind, id })
+    switchSection('video')
+    setPage('storymap')
+  }
   // focus: { runId, prompt } — open on the shot a run belongs to, optionally with a revised prompt to edit
   const openSequence = (id, focus = null) => {
     setSequenceFocus(focus)
@@ -370,10 +402,12 @@ export default function App() {
   const startTool = (id) => {
     const to = (sect, pg) => (switchSection(sect), setPage(pg))
     if (id === 'shot' || id === 'picture') return (pickCreateKind(id === 'shot' ? 'video' : 'image'), to('video', 'create'))
+    if (id === 'hermes') return (window.ivstudio.settings.set({ chatEngine: 'hermes' }).catch(() => {}), void window.dispatchEvent(new CustomEvent('iv:chat')))
     if (id === 'music') return to('audio', 'music')
     if (id === 'line') return to('audio', 'lines')
     if (id === 'sequence') return to('video', 'sequences')
     if (id === 'film') return to('video', 'projects')
+    if (id === 'feature') return to('video', 'features')
     if (id === 'edit') return to('video', 'edits')
     if (id === 'sizzle') return to('video', 'sizzle')
     if (id === 'character') return to('video', 'characters')
@@ -512,7 +546,7 @@ export default function App() {
     window.addEventListener('iv:cloud-wizard', cloud)
     return () => (window.removeEventListener('iv:welcome', open), window.removeEventListener('iv:cloud-wizard', cloud), window.removeEventListener('iv:settings', words))
   }, [])
-  const ctx = { setup, caps: setup?.caps, remote: !!setup?.remote, ownCloud: !!setup?.remote && !setup?.hosted, recheck, checking, characters, setCharacters, notify, openShot, editRun, filmShotToCreate, openSequence, openProject, openEdit, openCharacter, openShinobi, jobs, setJobs, info, go: setPage, sendToCreate, addLoraToCreate, pictureToShot, shotFromVersion, pictureToEdit, focus, setFocus, openSizzle, openRebuild,remakeClip, replaceSeed }
+  const ctx = { setup, caps: setup?.caps, remote: !!setup?.remote, ownCloud: !!setup?.remote && !setup?.hosted, recheck, checking, characters, setCharacters, notify, openShot, editRun, filmShotToCreate, openSequence, openProject, openStoryMap, openEdit, openCharacter, openShinobi, jobs, setJobs, info, go: setPage, sendToCreate, addLoraToCreate, pictureToShot, shotFromVersion, pictureToEdit, focus, setFocus, openSizzle, openRebuild, openSetupWizard: () => setSetupWizard(true), remakeClip, replaceSeed }
   const missing = setup?.items?.filter((i) => i.status === 'missing').length || 0
   // ComfyUI on this PC isn't there: the title bar offers to start it (not when it's running but busy)
   const comfyDown = !setup?.remote && setup?.items?.some((i) => i.id === 'comfyui' && i.status !== 'ok' && !i.busy)
@@ -523,8 +557,8 @@ export default function App() {
   async function switchIncognito() {
     const ok = await ask(
       incognito
-        ? { title: 'Leave Incognito?', message: 'IV Studio restarts into your normal shots, edits, songs and voices. Everything made in Incognito stays where it is, hidden, until you switch back. Its renders are also cleared from ComfyUI’s history.', confirm: 'Leave Incognito' }
-        : { title: 'Go Incognito?', message: 'IV Studio restarts into a separate, private space. Shots, sequences, edits, songs, voices, characters and exports made there never show in the normal app, and nothing normal shows there. Your characters and voices come along; settings and models are shared. Renders save into the Incognito folder in Settings → Folders (output\\IV Private unless you change it).', confirm: 'Go Incognito' }
+        ? { title: 'Leave Incognito?', message: 'Techlit Studio restarts into your normal shots, edits, songs and voices. Everything made in Incognito stays where it is, hidden, until you switch back. Its renders are also cleared from ComfyUI’s history.', confirm: 'Leave Incognito' }
+        : { title: 'Go Incognito?', message: 'Techlit Studio restarts into a separate, private space. Shots, sequences, edits, songs, voices, characters and exports made there never show in the normal app, and nothing normal shows there. Your characters and voices come along; settings and models are shared. Renders save into the Incognito folder in Settings → Folders (output\\Techlit Private unless you change it).', confirm: 'Go Incognito' }
     )
     if (!ok) return
     try {
@@ -559,14 +593,34 @@ export default function App() {
   openRefNow.current = openRef
   useEffect(() => window.ivstudio.chat.onOpenInApp((w) => w?.kind && openRefNow.current(w.kind, w.id)), [])
   return (
-    <div className={`app ${incognito ? 'incognito' : ''} ${focus && page === 'edit' ? 'app-focus' : ''} ${info?.platform === 'darwin' ? 'mac' : ''} ${chatOpen && !chatPopped ? 'chat-on' : ''} ${navSmall ? 'nav-collapsed' : ''}`}>
+    <div className={`app ${incognito ? 'incognito' : ''} ${focus && page === 'edit' ? 'app-focus' : ''} ${info?.platform === 'darwin' ? 'mac' : ''} ${chatOpen && !chatPopped ? 'chat-on' : ''}`}>
       <header className="titlebar">
-        {/* the IV logo is the Hivemind button: it glows softly and opens Hivemind when clicked */}
-        <IVWorkspace api={ivWorkspaceApi} appId="studio" disabled={incognito} projectId={productionId} launcher={<img className="brand-logo" src={incognito ? ivMarkClosed : ivMark} alt="Infinite Variance" />} onOpen={r=>{if(r.kind==='production'){setWelcome(null);openProject(r.id)}}} />
+        {/* the Techlit mark is the Techlit Link button: it glows softly and opens Techlit Link when clicked */}
+        <IVWorkspace api={ivWorkspaceApi} appId="studio" disabled={incognito} projectId={productionId} launcher={<img className="brand-logo" src={incognito ? tlMarkClosed : tlMark} alt="DD'S Techlit AI Solutions" />} onOpen={r=>{if(r.kind==='production'){setWelcome(null);openProject(r.id)}}} />
         <div className="nav-arrows">
-          <button className="nav-arrow" onClick={foldNav} aria-label={navSmall ? 'Show the sidebar' : 'Collapse the sidebar'} aria-pressed={navSmall} title={navSmall ? 'Show the sidebar' : 'Collapse the sidebar'}>
-            <NavIcon id="sidebar" className="nav-arrow-icon" />
-          </button>
+          <span className="menu-anchor" ref={menuBtnRef}>
+            <button className={`nav-arrow menu-arrow ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen((v) => !v)} aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Menu" title="Menu">
+              <NavIcon id="sidebar" className="nav-arrow-icon" />
+            </button>
+            {menuOpen && (
+              <TopMenu
+                page={page}
+                section={section}
+                sections={SECTIONS}
+                subpages={SUBPAGES}
+                missing={missing}
+                notify={notify}
+                website={info?.links?.website || 'https://infinitevariance.ai'}
+                queueRemote={!!setup?.remote}
+                openQueued={openQueued}
+                onGo={goMenu}
+                onClose={(back) => {
+                  setMenuOpen(false)
+                  if (back) menuBtnRef.current?.querySelector('button')?.focus()
+                }}
+              />
+            )}
+          </span>
           <button className="nav-arrow" onClick={() => step(-1)} disabled={!navAt.back} aria-label="Back" title="Back (Alt+Left)">
             <NavIcon id="back" className="nav-arrow-icon" />
           </button>
@@ -574,7 +628,7 @@ export default function App() {
             <NavIcon id="forward" className="nav-arrow-icon" />
           </button>
         </div>
-        <span className="mono brand-text">Infinite Variance</span>
+        <span className="mono brand-text">DD'S Techlit</span>
         <span className="mono dim brand-text">/ Studio</span>
         {info?.testCopy && (
           <span className="mono test-copy">
@@ -582,8 +636,8 @@ export default function App() {
           </span>
         )}
         {info && (
-          <button className={`incognito-switch mono ${incognito ? 'on' : ''}`} aria-pressed={incognito} onClick={switchIncognito} title={incognito ? 'Leave Incognito (restarts IV Studio)' : 'Go Incognito: a private space (restarts IV Studio)'}>
-            {/* the IV eye: open in the normal space, shut in Incognito */}
+          <button className={`incognito-switch mono ${incognito ? 'on' : ''}`} aria-pressed={incognito} onClick={switchIncognito} title={incognito ? 'Leave Incognito (restarts Techlit Studio)' : 'Go Incognito: a private space (restarts Techlit Studio)'}>
+            {/* the Techlit mark: open in the normal space, shut in Incognito */}
             <svg className="incognito-eye" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               {incognito ? (
                 <>
@@ -620,35 +674,6 @@ export default function App() {
           <BalanceChip />
         </div>
       </header>
-      <nav className="nav">
-        {SECTIONS[section].map(([id, label], i) => (
-          <button key={id} className={`nav-item ${page === id || SUBPAGES[id]?.includes(page) ? 'on' : ''}`} onClick={() => setPage(id)} title={navSmall ? label : undefined} aria-label={navSmall ? label : undefined}>
-            <NavIcon id={id} />
-            <span className="mono dim nav-num">{String(i + 1).padStart(2, '0')}</span>
-            <span className="nav-label">{label}</span>
-            {id === 'settings' && missing > 0 && <span className="nav-dot" />}
-          </button>
-        ))}
-        <div className="nav-foot mono">
-          <RenderQueue remote={!!setup?.remote} notify={notify} open={openQueued} />
-          <button className={`nav-library ${page === 'media' ? 'on' : ''}`} onClick={() => setPage('media')} title={navSmall ? 'Library' : undefined} aria-label={navSmall ? 'Library' : undefined}>
-            <NavIcon id="media" />
-            <span className="nav-label">Library</span>
-          </button>
-          <div className="section-switch" role="tablist" aria-label="Visual or audio">
-            {['video', 'audio'].map((id) => (
-              <button key={id} role="tab" aria-selected={section === id} className={section === id ? 'on' : ''} onClick={() => switchSection(id)} title={navSmall ? (id === 'video' ? 'Visual' : 'Audio') : undefined} aria-label={id === 'video' ? 'Visual' : 'Audio'}>
-                <NavIcon id={id === 'video' ? 'visual' : 'audio'} />
-                <span className="nav-label">{id === 'video' ? 'Visual' : 'Audio'}</span>
-              </button>
-            ))}
-          </div>
-          <UpdateButton notify={notify} />
-          <button className="link-btn mono nav-site" onClick={() => window.ivstudio.links.open(info?.links?.website || 'https://infinitevariance.ai')}>
-            infinitevariance.ai ↗
-          </button>
-        </div>
-      </nav>
       {/* keyed by page: each page change remounts it, so the themed page-in animation plays (studio.css .page-anim) */}
       <main key={page} ref={watchPage} className={`page page-anim ${page === 'edit' ? 'page-editor' : ''}`}>
         {page === 'home' && <Dashboard {...ctx} start={startTool} startShotWith={startShotWith} news={unseenNews(info?.version, seenNews)} dismissNews={() => markNewsSeen(info?.version)} />}
@@ -668,6 +693,8 @@ export default function App() {
         {page === 'library' && <Library {...ctx} />}
         {page === 'shot' && projectId && <Shot key={projectId} projectId={projectId} {...ctx} />}
         {page === 'projects' && <ProjectsList {...ctx} />}
+        {page === 'features' && <Features {...ctx} />}
+        {page === 'storymap' && storyMapOf && <StoryMap key={`${storyMapOf.kind}:${storyMapOf.id}`} kind={storyMapOf.kind} id={storyMapOf.id} {...ctx} />}
         {page === 'project' && productionId && <ProjectPage key={productionId} productionId={productionId} {...ctx} />}
         {page === 'sequences' && <SequenceList {...ctx} />}
         {page === 'sequence' && sequenceId && <SequenceEditor key={sequenceId} sequenceId={sequenceId} {...ctx} shotFocus={sequenceFocus} clearShotFocus={() => setSequenceFocus(null)} />}
@@ -692,6 +719,7 @@ export default function App() {
         {page === 'cloud' && <Cloud {...ctx} />}
         {page === 'settings' && <Settings {...ctx} />}
       </main>
+      {setupWizard && <SetupWizard go={setPage} notify={notify} onClose={() => setSetupWizard(false)} />}
       {chatOpen && !chatPopped && (
         <ChatPanel
           status={chatStatus}

@@ -7,7 +7,7 @@ import { posixModelNames } from './remote.js'
 import { checkH3Terms } from './terms.js'
 
 export class Comfy {
-  // token: a cloud ComfyUI sits behind IV Studio's gate (resources/cloud/gate.py), which wants it as a
+  // token: a cloud ComfyUI sits behind Techlit Studio's gate (resources/cloud/gate.py), which wants it as a
   // Bearer header. A local ComfyUI has none.
   // apiKey: Comfy Cloud (cloud.comfy.org), Comfy's own hosted ComfyUI: the person's API key from
   // platform.comfy.org, sent as X-API-Key, with url COMFY_CLOUD (its routes are ComfyUI's under /api).
@@ -22,7 +22,7 @@ export class Comfy {
     // RunPod (runpod.js): async () => the address of a pod started because the last one shut itself off,
     // or null when the current one is fine. Called once when a request can't reach the cloud.
     this.waker = null
-    // Studio: async () => { IV Studio's model file: the version this ComfyUI has } (setup.js modelFileMap), so a
+    // Studio: async () => { Techlit Studio's model file: the version this ComfyUI has } (setup.js modelFileMap), so a
     // ComfyUI set up from ComfyUI's own templates (an fp8 or NVFP4 build) renders without the exact files.
     this.fileMapper = null
     this.fileMap = null
@@ -31,7 +31,7 @@ export class Comfy {
     this.prep = null
   }
 
-  // Whether this ComfyUI runs on Linux or a Mac, where its model lists use forward slashes. IV Studio's own cloud and
+  // Whether this ComfyUI runs on Linux or a Mac, where its model lists use forward slashes. Techlit Studio's own cloud and
   // Comfy Cloud are Linux; a local one is asked once (system_stats), and a ComfyUI that can't say counts as this PC.
   async posix() {
     if (this.remote) return true
@@ -55,7 +55,7 @@ export class Comfy {
     return !!(this.token || this.apiKey)
   }
 
-  // The person's own cloud GPU (Modal, RunPod): ComfyUI behind IV Studio's gate. Asking it anything wakes the GPU,
+  // The person's own cloud GPU (Modal, RunPod): ComfyUI behind Techlit Studio's gate. Asking it anything wakes the GPU,
   // so model lists come from cloudprep.js instead.
   get ownCloud() {
     return !!this.token && !this.apiKey
@@ -216,7 +216,7 @@ function summariseNodeErrors(errs) {
     .join(' ')
 }
 
-// Swaps model file names in a graph's inputs (IV Studio's own build -> the version this ComfyUI has).
+// Swaps model file names in a graph's inputs (Techlit Studio's own build -> the version this ComfyUI has).
 // map keys are file names; a graph's value matches with or without its folder ("Minimax H3\x.safetensors" or "x.safetensors")
 const MODEL_FILE = /\.(safetensors|gguf|sft|ckpt|pt|pth|bin)$/i
 // text inputs that take a bare file name and find its folder themselves: FaceRefine Plus's Tone Match adds

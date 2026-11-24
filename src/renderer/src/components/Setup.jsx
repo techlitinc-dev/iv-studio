@@ -7,7 +7,7 @@ import ComfyUpdates from './ComfyUpdates'
 import { Pill } from './SettingsKit'
 import HfLogin from './HfLogin'
 
-// Settings → Setup: what IV Studio needs on this PC, laid out so the answer comes first. A status card says
+// Settings → Setup: what Techlit Studio needs on this PC, laid out so the answer comes first. A status card says
 // whether shots can render and holds the one or two actions that fix it (and Restart ComfyUI). Below, five
 // folding cards: ComfyUI, Models for shots, Node packs, Optional tools (grouped by the tool that uses them, each
 // group downloadable at once) and Characters. A card opens by itself when something in it needs you, and
@@ -17,7 +17,7 @@ const GB = (b) => `${(b / 1024 ** 3).toFixed(1)} GB`
 const ACTIVE = ['queued', 'downloading', 'verifying']
 const VIEW_KEY = 'iv.setupView'
 
-// Optional models, by the part of IV Studio that uses them (models.json optionalFor), each with what it does and
+// Optional models, by the part of Techlit Studio that uses them (models.json optionalFor), each with what it does and
 // where to find it (GitHub #21: a title alone wasn't enough to decide). First match wins, so the order matters.
 const AREAS = [
   ['Live preview', /live step/i, 'The Live preview switch above the queue', 'Sharper step-by-step pictures of H3 shots and sequences while they render (a tiny H3 decoder, 0.1 GB). Without it, they show ComfyUI’s rougher colour preview.'],
@@ -99,7 +99,7 @@ function NodeInstaller({ missing, recheck, notify }) {
           <button className="btn btn-small" disabled={busy} onClick={install}>
             {busy ? 'Installing…' : `Install ${missing} missing node pack${missing === 1 ? '' : 's'}`}
           </button>
-          {!busy && <span className="dim small">At the versions IV Studio is tested with, with their requirements. Packs you already have are left alone (a missing DLSS runtime is still downloaded).</span>}
+          {!busy && <span className="dim small">At the versions Techlit Studio is tested with, with their requirements. Packs you already have are left alone (a missing DLSS runtime is still downloaded).</span>}
         </div>
       )}
       {list.length > 0 && (
@@ -217,9 +217,9 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
   const errors = Object.entries(dl).filter(([, s]) => s.status === 'error')
 
   const sections = [
-    { id: 'comfy', title: 'ComfyUI', sub: 'The engine IV Studio renders with.', list: [comfyItem, gpuItem].filter(Boolean) },
+    { id: 'comfy', title: 'ComfyUI', sub: 'The engine Techlit Studio renders with.', list: [comfyItem, gpuItem].filter(Boolean) },
     { id: 'core', title: 'Models for shots', sub: 'MiniMax H3 and what every shot needs.', list: required },
-    { id: 'packs', title: 'Node packs', sub: 'Extra ComfyUI nodes IV Studio’s tools use.', list: packs },
+    { id: 'packs', title: 'Node packs', sub: 'Extra ComfyUI nodes Techlit Studio’s tools use.', list: packs },
     { id: 'extras', title: 'Optional tools', sub: 'Only what you want to use. None of it is needed for shots.', list: optional, optional: true },
     { id: 'chars', title: 'Characters', sub: 'Each character’s LoRA or RefMod.', list: chars }
   ].filter((x) => x.list.length)
@@ -261,7 +261,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
 
   return (
     <div className="setup">
-      <Stage effect="dial" art="settings" title="Settings" kicker="Infinite Variance" help="setup" />
+      <Stage effect="dial" art="settings" title="Settings" kicker="DD'S Techlit AI Solutions" help="setup" />
       <SettingsTabs tab="setup" go={go} setup={setup} />
 
       <section className={`setup-summary ${verdict.tone}`}>

@@ -112,7 +112,7 @@ const SORT_FILMS = [
   ['shots', 'Most shots']
 ]
 
-export function ProjectsList({ notify, openProject }) {
+export function ProjectsList({ notify, openProject, openStoryMap }) {
   const [items, setItems] = useState(null)
   const [busy, setBusy] = useState(false)
   const [q, setQ] = useState('')
@@ -225,6 +225,16 @@ export function ProjectsList({ notify, openProject }) {
               </span>
               <span className="dim">{p.shots ? plural(p.shots, 'shot') : p.scenes ? plural(p.scenes, 'scene') : 'just started'}</span>
               <button
+                className="link-btn mono small proj-card-map"
+                title="The whole film as a mindmap"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openStoryMap('production', p.id)
+                }}
+              >
+                map
+              </button>
+              <button
                 className="link-btn mono small proj-card-x"
                 title="Delete"
                 onClick={(e) => {
@@ -244,7 +254,7 @@ export function ProjectsList({ notify, openProject }) {
 }
 
 // ---------- one film ----------
-export function ProjectPage({ productionId, notify, go, openShot, openEdit, characters, filmShotToCreate }) {
+export function ProjectPage({ productionId, notify, go, openShot, openEdit, characters, filmShotToCreate, openStoryMap }) {
   const [v, setV] = useState(null)
   const top = useRef(null)
   const timer = useRef(null)
@@ -293,6 +303,11 @@ export function ProjectPage({ productionId, notify, go, openShot, openEdit, char
       <Hero art="projects" help="project" back={{ label: 'All films', onClick: () => go('projects') }} kicker={`Short film · ${v.aspect} · ${t.shots ? `${clock(t.seconds)} planned · ` : ''}${clock(v.targetSeconds)} goal`}>
         <input className="shot-name hero-title-input" value={v.name} aria-label="Film title" onChange={(e) => setV({ ...v, name: e.target.value })} onBlur={(e) => act(() => P().update(v.id, { name: e.target.value.trim() || 'Untitled film' }))} />
       </Hero>
+      <div className="proj-map-row">
+        <button className="btn btn-small" onClick={() => openStoryMap('production', v.id)} title="The whole film as a mindmap: scenes and shots, coloured by what is written, filmed and finished">
+          Storyboard map
+        </button>
+      </div>
       <nav className="wiz-steps" aria-label="Steps">
         {STEPS.map(([id, label], i) => (
           <button key={id} className={`wiz-step-btn ${i === at ? 'on' : i < at ? 'done' : ''}`} aria-current={i === at ? 'step' : undefined} onClick={() => setStep(id)}>
@@ -410,7 +425,7 @@ function Story({ v, act, notify, setStep }) {
   const next = async () => {
     if (await save()) setStep('cast')
   }
-  const lines = v.scenes.reduce((n, s) => n + s.elements.filter((e) => e.type === 'dialogue').length, 0)
+  const lines = v.scenes.reduce((n, s) => n + (s.elements || []).filter((e) => e.type === 'dialogue').length, 0)
   const input = <input ref={file} type="file" accept=".txt,.fountain,.text,.md" hidden onChange={pickFile} />
   if (v.writing)
     return (
@@ -502,7 +517,7 @@ function Cast({ v, act, characters, notify, go, setStep }) {
   const save = (patch, ok) => act(() => P().update(v.id, patch), ok)
   const saveLook = (patch) => save({ look: { ...v.look, ...patch } })
   // everyone who speaks in the script, plus anyone cast who doesn't
-  const speakers = [...new Set(v.scenes.flatMap((s) => s.elements.filter((e) => e.type === 'dialogue').map((e) => e.who)))]
+  const speakers = [...new Set(v.scenes.flatMap((s) => (s.elements || []).filter((e) => e.type === 'dialogue').map((e) => e.who)))]
   const roles = [...speakers, ...v.cast.filter((c) => !speakers.some((s) => first(s) === first(c.as))).map((c) => c.as)]
   const playedBy = (role) => v.cast.find((c) => first(c.as) === first(role))
   const madeUp = (role) => v.cast.find((c) => !c.characterId && first(c.as) === first(role))
@@ -871,7 +886,7 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate }
             ))}
           </div>
           <h2 className="wiz-q">Turn the script into a storyboard</h2>
-          <p className="wiz-help">IV Studio reads your script and plans every shot: what we see, the camera and who speaks. Then it sketches each panel, so you can see the film before you make it. Planning uses your prompt writer (Settings → Prompt writer) and takes a minute or two.</p>
+          <p className="wiz-help">Techlit Studio reads your script and plans every shot: what we see, the camera and who speaks. Then it sketches each panel, so you can see the film before you make it. Planning uses your prompt writer (Settings → Prompt writer) and takes a minute or two.</p>
           {b?.state === 'error' && <p className="small pink">The last try stopped: {b.error}</p>}
           <button className="btn btn-primary wiz-next" onClick={plan}>
             ✦ Plan my storyboard
@@ -946,6 +961,27 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate }
                     CSV
                   </button>
                 </span>
+                <button
+                  className="link-btn mono small"
+                  title="Hermes writes a visual description for every character without one"
+                  onClick={() => act(() => P().writeCastPrompts(v.id), (r) => (r?.written ? `Wrote ${r.written} character prompt(s).` : 'Every character already has a description.'))}
+                >
+                  Character prompts
+                </button>
+                <button
+                  className="link-btn mono small"
+                  title="Hermes writes an establishing-shot prompt for every place without one"
+                  onClick={() => act(() => P().writeEnvironmentPrompts(v.id), (r) => (r?.written ? `Wrote ${r.written} place prompt(s).` : 'Every place already has a prompt.'))}
+                >
+                  Place prompts
+                </button>
+                <button
+                  className="link-btn mono small"
+                  title="Puts a written establishing shot at the head of each scene that lacks one"
+                  onClick={() => act(() => P().addEstablishingShots(v.id), (r) => (r?.added ? `Added ${r.added} establishing shot(s).` : 'Nothing added — write place prompts first, or every scene already has one.'))}
+                >
+                  Establishing shots
+                </button>
                 <button
                   className="link-btn mono small"
                   onClick={async () => (await ask({ title: 'Plan it all again?', message: 'Every scene gets new shots, prompts and sketches. Anything you filmed stays in Shots and the Library.', confirm: 'Plan it again' })) && act(() => P().breakDown(v.id, { redo: true, sketch: true }))}

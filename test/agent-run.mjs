@@ -41,19 +41,19 @@ const ca = claudeArgs({ mcpConfigFile: 'C:\\t\\mcp.json', promptFile: 'C:\\t\\p.
 const at = (a, flag) => a[a.indexOf(flag) + 1]
 check('claude: stream-json with verbose', at(ca, '--output-format') === 'stream-json' && ca.includes('--verbose') && ca.includes('-p'))
 check('claude: no built-in tools', at(ca, '--tools') === '')
-check('claude: only IV Studio\'s server, pre-approved', ca.includes('--strict-mcp-config') && at(ca, '--allowedTools') === 'mcp__iv-studio' && at(ca, '--permission-mode') === 'dontAsk')
+check('claude: only Techlit Studio\'s server, pre-approved', ca.includes('--strict-mcp-config') && at(ca, '--allowedTools') === 'mcp__iv-studio' && at(ca, '--permission-mode') === 'dontAsk')
 check('claude: model passed', at(ca, '--model') === 'claude-sonnet-5-5')
 check('claude: no model, no flag', !claudeArgs({ mcpConfigFile: 'a', promptFile: 'b' }).includes('--model'))
-const xa = codexArgs({ mcp: { command: 'C:\\Program Files\\IV Studio\\IV Studio.exe', args: ['C:\\x\\mcp.js'], env: { ELECTRON_RUN_AS_NODE: '1', IV_STUDIO_AGENT_RUN: '1' } }, dir: 'C:\\t' })
+const xa = codexArgs({ mcp: { command: 'C:\\Program Files\\Techlit Studio\\Techlit Studio.exe', args: ['C:\\x\\mcp.js'], env: { ELECTRON_RUN_AS_NODE: '1', IV_STUDIO_AGENT_RUN: '1' } }, dir: 'C:\\t' })
 const cfg = xa.filter((_, i) => xa[i - 1] === '-c')
 check('codex: exec --json, read-only, no user config', xa[0] === 'exec' && xa.includes('--json') && at(xa, '--sandbox') === 'read-only' && xa.includes('--ignore-user-config'))
-check('codex: server command is a TOML string with escaped backslashes', cfg.includes('mcp_servers.iv-studio.command="C:\\\\Program Files\\\\IV Studio\\\\IV Studio.exe"'), cfg.join(' | '))
+check('codex: server command is a TOML string with escaped backslashes', cfg.includes('mcp_servers.iv-studio.command="C:\\\\Program Files\\\\Techlit Studio\\\\Techlit Studio.exe"'), cfg.join(' | '))
 check('codex: server env is an inline table', cfg.includes('mcp_servers.iv-studio.env={ELECTRON_RUN_AS_NODE="1",IV_STUDIO_AGENT_RUN="1"}'))
 check('codex: prompt from stdin', xa[xa.length - 1] === '-')
 
 // stream parsing
 const line = (o) => JSON.stringify(o)
-let ev = parseLine('claude', line({ type: 'assistant', message: { content: [{ type: 'text', text: 'Checking.' }, { type: 'tool_use', id: 'a', name: 'mcp__iv-studio__check_setup' }] } }))
+let ev = parseLine('claude', line({ type: 'assistant', message: { content: [{ type: 'text', text: 'Checking.' }, { type: 'tool_use', id: 'a', name: 'mcp__techlit-studio__check_setup' }] } }))
 check('claude parse: words and a step', ev.length === 2 && ev[0].type === 'say' && ev[1].tool === 'check_setup' && ev[1].label === 'Checked your setup')
 ev = parseLine('claude', line({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: [{ type: 'text', text: 'refused' }] }] } }))
 check('claude parse: a refused call', ev[0]?.type === 'stepError' && ev[0].text === 'refused')

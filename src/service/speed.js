@@ -1,8 +1,8 @@
 // Speed presets: ready-made trades of picture size and steps for time and memory, so H3 runs on smaller
-// graphics cards. Each preset only sets values IV Studio already has (preview size, steps, how many takes,
+// graphics cards. Each preset only sets values Techlit Studio already has (preview size, steps, how many takes,
 // the finish size and the 2x upscale); the graph itself never changes.
 //
-// Measured on an RTX 4090 with one 5 s Tess shot, one take, through IV Studio's own service (2026-11-08):
+// Measured on an RTX 4090 with one 5 s Tess shot, one take, through Techlit Studio's own service (2026-11-08):
 //   8 steps of sampling: 0.3 MP 32 s, 0.4 MP 43 s, 0.6 MP 75 s, 0.8 MP 111 s; 4 steps at 0.4 MP 24 s.
 //   Each hunt also pays about 48 s once (the text encoder and H3 loading, then decoding).
 //   Finish: 2 MP pass 194 s (only 1 GB of H3 stays on a 24 GB card), 1 MP + RTX 2x 116 s (2752x1536).

@@ -11,7 +11,7 @@ import { isHarness } from './harness.js'
 //     H3 prompt's sections, spoken lines and labels;
 //   - a continuity check across a scene's shot prompts, like a script supervisor;
 //   - a Lookbook: a film, director or cinematographer turned into look language with no names in it.
-// The wording of the tools is IV Studio's own, written for MiniMax H3's sectioned prompts; the ideas are Slate's.
+// The wording of the tools is Techlit Studio's own, written for MiniMax H3's sectioned prompts; the ideas are Slate's.
 import fs from 'node:fs'
 import path from 'node:path'
 import { harnessJson } from './harness.js'

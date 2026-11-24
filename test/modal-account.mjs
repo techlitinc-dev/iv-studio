@@ -31,7 +31,7 @@ ok('signing out removes the active profile and keeps the others', () => {
   assert.ok(crlf.text.startsWith('[y]\r\n'))
 })
 
-// every Modal command asks for the image builder IV Studio is tested with; other programs don't get it
+// every Modal command asks for the image builder Techlit Studio is tested with; other programs don't get it
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ivm-'))
 const cloud = new Cloud({ dataDir: dir, resourcesDir: dir })
 const show = ['-e', 'process.stdout.write(process.env.MODAL_IMAGE_BUILDER_VERSION || "none")']
@@ -44,7 +44,7 @@ fs.rmSync(dir, { recursive: true, force: true })
 n++
 console.log('ok  Modal commands ask for image builder', IMAGE_BUILDER)
 
-// an install from an older IV Studio: its client version is read from its files and it's updated once, before
+// an install from an older Techlit Studio: its client version is read from its files and it's updated once, before
 // commands that build or run, never before quick questions
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ivm-'))
@@ -93,7 +93,7 @@ console.log('ok  Modal commands ask for image builder', IMAGE_BUILDER)
     return args[0] === 'container' && args[1] === 'list' ? JSON.stringify([{ container_id: 'ta-1', app_name: 'iv-studio', start_time: 1 }, { container_id: 'ta-2', app_name: 'other-app', start_time: 1 }]) : ''
   }
   assert.deepEqual(await cloud.stopGpu(), { stopped: 1 })
-  assert.deepEqual(ran.at(-1), ['container', 'stop', 'ta-1', '--yes'], 'stops only IV Studio’s container, without a prompt')
+  assert.deepEqual(ran.at(-1), ['container', 'stop', 'ta-1', '--yes'], 'stops only Techlit Studio’s container, without a prompt')
   fs.rmSync(dir, { recursive: true, force: true })
   n++
   console.log('ok  Shut down GPU stops the container without Modal asking first')

@@ -1,4 +1,4 @@
-// Runs test/latent-cache-key.py (IV Studio's own ComfyUI pack: the take cache looks through the live preview) with
+// Runs test/latent-cache-key.py (Techlit Studio's own ComfyUI pack: the take cache looks through the live preview) with
 // whichever Python this machine has. Plain Python 3, no packages.
 //   node test/latent-cache-key.mjs
 import { execFileSync } from 'node:child_process'

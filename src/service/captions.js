@@ -1,4 +1,4 @@
-// Captions for an edit ("put captions on", from IV Studio's chat or any agent): the voice engine's Whisper hears each
+// Captions for an edit ("put captions on", from Techlit Studio's chat or any agent): the voice engine's Whisper hears each
 // clip with sound, and its words become short title lines at the bottom of the picture, spread over the clip by
 // word count. Whisper here gives the words without timings, so this is clip by clip, which suits edits made of
 // shots: a line said in a shot is captioned while that shot plays. Captions are titles on T1 marked caption: true,

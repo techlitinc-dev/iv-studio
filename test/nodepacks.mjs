@@ -1,5 +1,5 @@
 // The node pack installer (src/service/nodepacks.js) without the network: which packs a ComfyUI needs, its
-// Python, the requirements it may install, copying IV Studio's own pack, and leaving existing folders alone.
+// Python, the requirements it may install, copying Techlit Studio's own pack, and leaving existing folders alone.
 //   node test/nodepacks.mjs
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -34,7 +34,7 @@ await ok('missing packs: any absent node, and never the other OS’s pack', () =
   assert.deepEqual(missingPacks(manifest, all), [])
   const noIv = { ...all }
   delete noIv.IVShotList
-  assert.deepEqual(missingPacks(manifest, noIv).map((p) => p.dir), ['ComfyUI-IV-Studio'])
+  assert.deepEqual(missingPacks(manifest, noIv).map((p) => p.dir), ['ComfyUI-Techlit-Studio'])
   const none = missingPacks(manifest, {}).map((p) => p.dir)
   assert.ok(none.includes('comfyui-dlss5-enhancer-v15') && !none.includes('comfyui-frame-interpolation'))
   const linux = missingPacks(manifest, {}, { linux: true }).map((p) => p.dir)
@@ -62,17 +62,17 @@ try {
     assert.equal(findPython(path.join(tmp, 'nothing'), 'win32'), null)
   })
 
-  await ok('IV Studio’s own pack is copied in; a folder already there is left alone', async () => {
+  await ok('Techlit Studio’s own pack is copied in; a folder already there is left alone', async () => {
     const customNodes = path.join(tmp, 'custom_nodes')
     fs.mkdirSync(path.join(customNodes, 'rgthree-comfy'), { recursive: true })
     fs.writeFileSync(path.join(customNodes, 'rgthree-comfy', 'mine.txt'), 'keep me')
-    const packs = manifest.node_packs.filter((p) => p.dir === 'ComfyUI-IV-Studio' || p.dir === 'rgthree-comfy')
+    const packs = manifest.node_packs.filter((p) => p.dir === 'ComfyUI-Techlit-Studio' || p.dir === 'rgthree-comfy')
     const steps = []
     const results = await installPacks(packs, { customNodes, python: null, resourcesDir: path.join(ROOT, 'resources'), onProgress: (u) => steps.push(`${u.dir}:${u.step}`) })
-    assert.deepEqual(results.map((r) => [r.dir, r.status]), [['rgthree-comfy', 'skipped'], ['ComfyUI-IV-Studio', 'installed']].sort((a, b) => packs.findIndex((p) => p.dir === a[0]) - packs.findIndex((p) => p.dir === b[0])))
-    assert.ok(fs.existsSync(path.join(customNodes, 'ComfyUI-IV-Studio', '__init__.py')))
+    assert.deepEqual(results.map((r) => [r.dir, r.status]), [['rgthree-comfy', 'skipped'], ['ComfyUI-Techlit-Studio', 'installed']].sort((a, b) => packs.findIndex((p) => p.dir === a[0]) - packs.findIndex((p) => p.dir === b[0])))
+    assert.ok(fs.existsSync(path.join(customNodes, 'ComfyUI-Techlit-Studio', '__init__.py')))
     assert.equal(fs.readFileSync(path.join(customNodes, 'rgthree-comfy', 'mine.txt'), 'utf8'), 'keep me')
-    assert.ok(steps.includes('ComfyUI-IV-Studio:done') && steps.includes('rgthree-comfy:skipped'))
+    assert.ok(steps.includes('ComfyUI-Techlit-Studio:done') && steps.includes('rgthree-comfy:skipped'))
   })
 
   // GitHub #36: the DLSS pack's nodes load without its runtime, and every DLSS finish then fails
@@ -117,15 +117,15 @@ try {
     assert.match(r2.runtimeDetail, /install\.py/)
   })
 
-  await ok("an older copy of IV Studio's own pack is updated even when every node loads", async () => {
+  await ok("an older copy of Techlit Studio's own pack is updated even when every node loads", async () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'resources', 'models.json'), 'utf8'))
-    const own = manifest.node_packs.find((p) => p.dir === 'ComfyUI-IV-Studio')
+    const own = manifest.node_packs.find((p) => p.dir === 'ComfyUI-Techlit-Studio')
     const customNodes = path.join(tmp, 'outdated')
     const dir = path.join(customNodes, own.dir)
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, 'VERSION'), String(own.version - 1))
     fs.writeFileSync(path.join(dir, '__init__.py'), '# old')
-    assert.deepEqual(packsOutdated(manifest, customNodes).map((p) => p.dir), ['ComfyUI-IV-Studio'])
+    assert.deepEqual(packsOutdated(manifest, customNodes).map((p) => p.dir), ['ComfyUI-Techlit-Studio'])
     const [r] = await installPacks([own], { customNodes, python: null, resourcesDir: path.join(ROOT, 'resources') })
     assert.equal(r.status, 'installed')
     assert.equal(fs.readFileSync(path.join(dir, 'VERSION'), 'utf8').trim(), String(own.version))

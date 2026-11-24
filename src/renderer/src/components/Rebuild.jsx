@@ -8,8 +8,8 @@ import TileDelete from './TileDelete'
 import { fileUrl } from './edit/model'
 import VoiceLines from './VoiceLines'
 
-// Rebuild: a video the person made (or may rework), read into shots and made again on this PC. IV Studio reads it
-// (cuts, frames, captions, tempo); your agent (Claude Code or Codex, through IV Studio's tools) says what each shot
+// Rebuild: a video the person made (or may rework), read into shots and made again on this PC. Techlit Studio reads it
+// (cuts, frames, captions, tempo); your agent (Claude Code or Codex, through Techlit Studio's tools) says what each shot
 // is and writes the plan; you approve the plan and the frames here; H3 renders the new shots; a first cut lands in
 // Edit with the original sound as a guide. rebuild.js does the work; the agent guide's "Rebuild" is the agent side.
 const B = () => window.ivstudio.rebuild
@@ -32,7 +32,7 @@ function stageOf(r) {
 function agentMessage(r) {
   const swap = r.swap?.ask ? ` The person wants this changed: "${r.swap.ask}".` : ''
   if (r.status === 'reading')
-    return `Rebuild "${r.name}" with IV Studio's Rebuild workflow (rebuild id ${r.id}). IV Studio has already read it (${r.shots.length} shots), and the person has confirmed they made it or have the right to rework it.${swap}
+    return `Rebuild "${r.name}" with Techlit Studio's Rebuild workflow (rebuild id ${r.id}). Techlit Studio has already read it (${r.shots.length} shots), and the person has confirmed they made it or have the right to rework it.${swap}
 
 1. Call get_guide and read "Rebuild".
 2. get_rebuild ${r.id}, then look at each shot with view_rebuild_shot and say what it is with save_rebuild_reading.
@@ -81,7 +81,7 @@ export function RebuildList({ notify, openRebuild, go }) {
         <label className="rb-rights small">
           <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} />I made this video or I have the right to rework it
         </label>
-        <p className="stage-note small">{busy || 'IV Studio finds the cuts, frames, captions and tempo; your agent says what each shot is and plans the remake; you approve the plan and the frames before anything renders.'}</p>
+        <p className="stage-note small">{busy || 'Techlit Studio finds the cuts, frames, captions and tempo; your agent says what each shot is and plans the remake; you approve the plan and the frames before anything renders.'}</p>
         <WorkflowNeeds page="rebuild" />
       </Stage>
 
@@ -252,7 +252,7 @@ export function RebuildProject({ rebuildId, notify, go, openEdit }) {
                 ))}
               </select>
             </div>
-            {voiceId && !voiceReady && <p className="small pink">Swapping the voice needs IV Studio’s voice engine: set it up once on Audio › Voices.</p>}
+            {voiceId && !voiceReady && <p className="small pink">Swapping the voice needs Techlit Studio’s voice engine: set it up once on Audio › Voices.</p>}
             {voiceId && voiceReady && (
               <VoiceLines voice={r.voice?.peopleKey === voiceId ? r.voice : r.voice && { ...r.voice, track: null }} busy={busy} step={voiceStep} names={[swap.name || voiceName]} onMake={(opts) => withVoice('Making the voice', () => B().voice(r.id, opts))} onPhrase={(i, patch) => withVoice('Saying it again', () => B().setPhrase(r.id, i, patch))} onSetupSplitter={() => act('Setting up the voice splitter', async () => (await window.ivstudio.remake.setupSplitter(), setVoiceState(await window.ivstudio.remake.voiceStatus()), B().voice(r.id, { rehear: true })))} settingUp={busy === 'Setting up the voice splitter'} />
             )}
@@ -338,7 +338,7 @@ export function RebuildProject({ rebuildId, notify, go, openEdit }) {
           </Step>
         )}
 
-        <Step n={(r.framesApprovedAt ? 5 : r.planApprovedAt ? 4 : 3) + shift} title="Your agent" sub="Paste this into Claude or ChatGPT, connected to IV Studio (Settings → Agents).">
+        <Step n={(r.framesApprovedAt ? 5 : r.planApprovedAt ? 4 : 3) + shift} title="Your agent" sub="Paste this into Claude or ChatGPT, connected to Techlit Studio (Settings → Agents).">
           <SetCode text={agentMessage(r)} label="Copy message" tall />
         </Step>
       </div>

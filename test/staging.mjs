@@ -106,7 +106,7 @@ ok('only an arc films from its previs', () => {
   assert.equal(needsPrevis(null), false)
 })
 ok('a previs is a camera guide: the writer is told so, and a prompt that describes its mannequins is stopped', () => {
-  const file = String.raw`C:\Users\x\AppData\Roaming\IV Studio\previs\arc_mvw.mp4`
+  const file = String.raw`C:\Users\x\AppData\Roaming\Techlit Studio\previs\arc_mvw.mp4`
   assert.ok(isPrevis(file) && !isPrevis(String.raw`C:\clips\take.mp4`))
   const media = [{ kind: 'picture', file: 'a.png' }, { kind: 'video', file }]
   const sys = systemPrompt({ mode: 'reference', seconds: 5, media })

@@ -1,8 +1,8 @@
-// Shinobi: IV Studio's agent-driven editor. An agent (or a recipe) writes the edit - cuts on the beat, speed
+// Shinobi: Techlit Studio's agent-driven editor. An agent (or a recipe) writes the edit - cuts on the beat, speed
 // ramps, camera moves, typography, effects, sound - and Shinobi renders it locally. The engine is OpenKatana
-// (Apache-2.0, github.com/rk0neki/OpenKatana), installed at a pinned commit into IV Studio's own folder with
+// (Apache-2.0, github.com/rk0neki/OpenKatana), installed at a pinned commit into Techlit Studio's own folder with
 // uv, and driven through its CLI (`python -m openkatana call <tool>`, JSON in and out). It renders with the
-// Edge or Chrome already on the PC and IV Studio's bundled ffmpeg. Licence and notice: resources/licenses.
+// Edge or Chrome already on the PC and Techlit Studio's bundled ffmpeg. Licence and notice: resources/licenses.
 //
 // The same Python environment runs face likeness (resources/python/likeness.py) for character training:
 // InsightFace's buffalo_l detector and ArcFace, downloaded by the user (non-commercial weights).

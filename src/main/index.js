@@ -20,6 +20,7 @@ import { pasteMessage, skillMarkdown, readGuide } from '../service/agent'
 import { Cloud, GPUS, MODAL_VERSION } from '../service/cloud'
 import { SetupProgress, about } from '../service/setupprogress'
 import { RunPod, GPUS as RUNPOD_GPUS, VOLUME_PER_GB_MONTH } from '../service/runpod'
+import { CLOUD_BUDGET_DEFAULTS, CloudSpend, cloudBudgetCheck, cloudBudgetOf, cloudSpendByDay, cloudSpentToday, readCloudLedger } from '../service/cloudspend'
 import { CloudPrep, cloudCatalog, roomOnVolume } from '../service/cloudprep'
 import { CloudVoiceEngine } from '../service/cloudvoice'
 import { MODEL_GROUPS, recommend, scanHardware } from '../service/hardware'
@@ -29,9 +30,12 @@ import { managerReq } from '../service/comfyupdate'
 import { comfyHome, comfyProcesses, comfyUp, findComfyElsewhere, findLaunchers, isComfyFolder, isLocalUrl, launch as launchComfy, launcherFor, launchersIn, noteLaunch, recentLaunch, sameComfy, STOPPED_WAITING, stopComfy, waitDown, waitUp } from '../service/comfylauncher'
 import { ComfyInstaller, checkFolder, latestAsset, pickBuild, suggestFolder } from '../service/comfyinstall'
 import { createHash, randomBytes } from 'node:crypto'
+import { execFile } from 'node:child_process'
 import { Edits, FORMATS, LOUDNESS } from '../service/edits'
 import { EditGen } from '../service/editgen'
 import { Productions } from '../service/productions'
+import { Features } from '../service/feature'
+import { storyTree } from '../service/storymap'
 import { Reels } from '../service/reel'
 import { MusicVideos } from '../service/musicvideo'
 import { Keyframes } from '../service/keyframes'
@@ -86,10 +90,10 @@ import { Usage } from '../service/usage'
 import { createNewsletter, fileStore, NEWSLETTER_PAGE } from '../service/newsletter'
 import { estimate, estimateLine, samples, shapeOfPlan } from '../service/timing'
 
-// An app opened from Finder gets a short PATH (/usr/bin:/bin:/usr/sbin:/sbin), so the tools IV Studio runs (Claude
+// An app opened from Finder gets a short PATH (/usr/bin:/bin:/usr/sbin:/sbin), so the tools Techlit Studio runs (Claude
 // Code, Codex, Ollama, git) and what they need (node) would not be found; add the usual install folders.
 if (process.platform === 'darwin') process.env.PATH = [...new Set([...String(process.env.PATH || '').split(':'), ...EXTRA_BIN()].filter(Boolean))].join(':')
-// Where the data folder is (paths.js): IV_STUDIO_DATA, a "data" folder beside IV Studio.exe (the portable zip),
+// Where the data folder is (paths.js): IV_STUDIO_DATA, a "data" folder beside Techlit Studio.exe (the portable zip),
 // the folder it was moved to in Settings, or the default. A portable copy keeps the window's own files there too,
 // so it leaves nothing behind in %APPDATA%.
 const LOCATION = dataLocation()
@@ -97,7 +101,7 @@ const PORTABLE = LOCATION.source === 'portable'
 if (process.env.IV_STUDIO_USER_DATA) app.setPath('userData', process.env.IV_STUDIO_USER_DATA)
 else if (PORTABLE) app.setPath('userData', path.join(LOCATION.dir, 'browser'))
 if (!app.requestSingleInstanceLock()) {
-  console.error('IV Studio is already running; this copy quits.')
+  console.error('Techlit Studio is already running; this copy quits.')
   app.quit()
 }
 // ComfyUI refuses cross-site browser requests, so the window loads outputs through ivmedia://view?...,
@@ -157,7 +161,7 @@ const DATA = INCOGNITO ? incognitoDir(BASE) : BASE
 let ivWorkspace
 let pendingWorkspaceArgs = process.argv
 app.on('open-url',(event,url)=>{event.preventDefault();pendingWorkspaceArgs=[url];ivWorkspace?.capture([url])})
-// Downloads and exports: Videos\IV Studio, or a folder inside the Incognito data
+// Downloads and exports: Videos\Techlit Studio, or a folder inside the Incognito data
 const videosDir = () => videosFolderOf(readSettings(BASE), { incognito: INCOGNITO, dataDir: DATA, videos: app.getPath('videos') })
 let win = null
 let studio = null
@@ -232,7 +236,7 @@ function openChatWindow() {
     minHeight: 480,
     show: false,
     backgroundColor: BG,
-    title: 'IV Studio · Chat',
+    title: 'Techlit Studio · Chat',
     icon: path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'icon.png'),
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 14, y: 13 } } : { titleBarOverlay: { color: BG, symbolColor: '#f1ede5', height: 40 } }),
@@ -289,7 +293,7 @@ const llmOf = (s) => {
   try {
     headers = parseHeaders(unseal(s.openaiHeaders) || '')
   } catch {}
-  return { provider: s.promptEngine === 'openai' ? 'openai' : 'ollama', url: s.openaiUrl, model: s.openaiModel, vision: !!s.openaiVision, key: unseal(s.openaiKey) || '', headers }
+  return { provider: s.promptEngine === 'openai' ? 'openai' : 'ollama', url: s.openaiUrl, model: s.openaiModel, vision: !!s.openaiVision, key: unseal(s.openaiKey) || unseal(s.openaiAltKey) || '', headers }
 }
 setLlmSource(() => llmOf(readSettings(BASE)))
 
@@ -332,7 +336,7 @@ function makeStudio() {
   if (images) images.studio = studio
   // LoRAs live on this PC's ComfyUI, also when renders go to the cloud
   if (civitai) civitai.comfy = new Comfy(s.comfyUrl)
-  // nothing of IV Studio's own holds the GPU while ComfyUI renders (see Studio.makeRoom)
+  // nothing of Techlit Studio's own holds the GPU while ComfyUI renders (see Studio.makeRoom)
   studio.beforeRender = () => (describer?.pause(), voices?.release())
   // Seedance and other partner nodes: the person's Comfy.org key, read when a render needs it (never sent to the window)
   studio.partnerKey = () => unseal(readSettings(BASE).comfyApiKey)
@@ -391,7 +395,7 @@ function createWindow() {
     minHeight: 720,
     show: false,
     backgroundColor: BG,
-    title: TEST_COPY ? 'IV Studio (TEST COPY)' : 'IV Studio',
+    title: TEST_COPY ? 'Techlit Studio (TEST COPY)' : 'Techlit Studio',
     icon: path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'icon.png'),
     titleBarStyle: 'hidden',
     // Windows and Linux draw their window buttons on the right over the bar; a Mac its traffic lights on the
@@ -500,7 +504,7 @@ function handle(channel, fn) {
   })
 }
 
-const KEY_STORE_MISSING = process.platform === 'win32' ? 'Windows encryption is not available, so the key cannot be stored safely.' : process.platform === 'darwin' ? 'The macOS Keychain is not available to IV Studio, so the key cannot be stored safely.' : 'No system keyring (GNOME Keyring or KWallet) is available, so the key cannot be stored safely.'
+const KEY_STORE_MISSING = process.platform === 'win32' ? 'Windows encryption is not available, so the key cannot be stored safely.' : process.platform === 'darwin' ? 'The macOS Keychain is not available to Techlit Studio, so the key cannot be stored safely.' : 'No system keyring (GNOME Keyring or KWallet) is available, so the key cannot be stored safely.'
 
 // On Linux without a keyring Electron falls back to a fixed built-in password ('basic_text'), which isn't safe.
 const keysSafe = () => safeStorage.isEncryptionAvailable() && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text')
@@ -515,7 +519,7 @@ function mcpCommand() {
     const q = (s) => `'${s.replace(/'/g, `'\\''`)}'`
     const text = [
       '#!/bin/sh',
-      '# Written by IV Studio: starts its MCP server from the AppImage.',
+      '# Written by Techlit Studio: starts its MCP server from the AppImage.',
       `APP=${q(process.env.APPIMAGE)}`,
       'out=$(mktemp)',
       '"$APP" --appimage-mount >"$out" </dev/null &',
@@ -524,7 +528,7 @@ function mcpCommand() {
       'i=0',
       'while [ ! -s "$out" ] && [ $i -lt 150 ]; do sleep 0.1; i=$((i + 1)); done',
       'dir=$(head -n 1 "$out")',
-      '[ -n "$dir" ] || { echo "IV Studio: could not open $APP" >&2; exit 1; }',
+      '[ -n "$dir" ] || { echo "Techlit Studio: could not open $APP" >&2; exit 1; }',
       `ELECTRON_RUN_AS_NODE=1 "$dir/iv-studio" "$dir/resources/app.asar/out/main/mcp.js"`,
       ''
     ].join('\n')
@@ -539,14 +543,14 @@ function mcpCommand() {
 }
 
 // The data folder was moved to a drive that isn't there: try again (after plugging it in), use the default
-// folder for this run, or quit. Returns false when IV Studio is restarting or quitting.
+// folder for this run, or quit. Returns false when Techlit Studio is restarting or quitting.
 function missingDataFolder() {
   if (!LOCATION.missing) return true
   const r = dialog.showMessageBoxSync({
     type: 'warning',
-    title: 'IV Studio',
-    message: 'IV Studio can’t find its data folder',
-    detail: `Your projects, voices and settings were moved to\n${LOCATION.dir}\nbut that folder isn’t there. If it’s on a drive that isn’t plugged in, connect it and press Try again.\n\nUse the default folder opens IV Studio with the data in ${LOCATION.defaultDir} for now; your moved data isn’t touched.`,
+    title: 'Techlit Studio',
+    message: 'Techlit Studio can’t find its data folder',
+    detail: `Your projects, voices and settings were moved to\n${LOCATION.dir}\nbut that folder isn’t there. If it’s on a drive that isn’t plugged in, connect it and press Try again.\n\nUse the default folder opens Techlit Studio with the data in ${LOCATION.defaultDir} for now; your moved data isn’t touched.`,
     buttons: ['Try again', 'Use the default folder', 'Quit'],
     defaultId: 0,
     cancelId: 2,
@@ -580,8 +584,8 @@ app.whenReady().then(() => {
   handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, dataDir: DATA, dataSource: LOCATION.missing ? 'default' : LOCATION.source, portable: PORTABLE, mcp: mcpCommand(), testCopy: TEST_COPY, incognito: INCOGNITO, links }))
   // The window never sees the Comfy.org or Civitai key, only whether one is saved.
   const publicSettings = (s) => {
-    const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, comfyCloudKey: _ck, hfToken, openaiKey, openaiHeaders, ...rest } = s
-    return { ...rest, hasComfyKey: !!comfyApiKey, hasCloudToken: !!cloudToken, hasCivitaiKey: !!civitaiKey, hasRunpodKey: !!runpodKey, hasHfToken: !!hfToken, hasOpenaiKey: !!openaiKey, hasOpenaiHeaders: !!openaiHeaders }
+    const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, comfyCloudKey: _ck, hfToken, openaiKey, openaiAltKey, openaiHeaders, ...rest } = s
+    return { ...rest, hasComfyKey: !!comfyApiKey, hasCloudToken: !!cloudToken, hasCivitaiKey: !!civitaiKey, hasRunpodKey: !!runpodKey, hasHfToken: !!hfToken, hasOpenaiKey: !!openaiKey, hasOpenaiAltKey: !!openaiAltKey, hasOpenaiHeaders: !!openaiHeaders }
   }
   const comfyKey = () => unseal(readSettings(BASE).comfyApiKey)
   // Anonymous usage counting and the cloud beta signup (usage.js): both off until the person says yes. A test copy
@@ -599,7 +603,7 @@ app.whenReady().then(() => {
   handle('usage:preview', () => usage.preview())
   handle('usage:joinBeta', (email) => usage.joinBeta(email))
   usage.count('app_opened')
-  // The IV Newsletter (src/service/newsletter.js, shared by every IV app): sends only an address typed and joined,
+  // The Techlit Newsletter (src/service/newsletter.js, shared by every IV app): sends only an address typed and joined,
   // keeps only the join date. A test copy only ever sends to IV_NEWSLETTER_URL (a local stand-in), never the live one.
   const newsletter = createNewsletter({
     app: 'iv-studio',
@@ -641,7 +645,7 @@ app.whenReady().then(() => {
       timed = { at: Date.now(), dir, history: samples(jobs) }
     }
     const provider = s.cloudProvider || 'modal'
-    const perHour = where !== 'cloud' ? null : provider === 'runpod' ? RUNPOD_GPUS.find((g) => g.id === s.runpod?.gpu)?.perHour ?? null : provider === 'modal' ? GPUS.find((g) => g.id === s.cloud?.gpu)?.perHour ?? null : null
+    const perHour = where !== 'cloud' ? null : provider === 'runpod' ? RUNPOD_GPUS.find((g) => g.id === s.runpod?.gpu)?.perHour ?? s.runpod?.gpuPerHour ?? null : provider === 'modal' ? GPUS.find((g) => g.id === s.cloud?.gpu)?.perHour ?? null : null
     const e = estimate(plan, timed.history, { perHour })
     return e ? { ...e, where, line: estimateLine(e, { where }) } : null
   })
@@ -668,6 +672,33 @@ app.whenReady().then(() => {
       patch.openaiHeaders = seal(h)
     }
     return publicSettings(writeSettings(patch, BASE))
+  })
+  // The first-run wizard (SetupWizard.jsx): checks and stores the Kimi and optional OpenAI keys in one go.
+  // Kimi doubles as the OpenAI-compatible writer and Hermes's model key, so it goes to both.
+  handle('setup:wizardKeys', async ({ kimiKey = '', openaiKey = '' } = {}) => {
+    const out = { kimi: false, openai: false, hermes: false }
+    const k = String(kimiKey || '').trim()
+    if (k) {
+      const KIMI_URL = 'https://api.kimi.ai/coding/v1'
+      const st = await openaiStatus({ provider: 'openai', url: KIMI_URL, model: 'kimi-for-coding', vision: false, key: k }).catch(() => null)
+      if (!st?.ok) throw new Error(`Kimi refused this key (${st?.error || "it couldn't be reached"}). Check the key and try again.`)
+      if (!keysSafe()) throw new Error(KEY_STORE_MISSING)
+      writeSettings({ openaiKey: seal(k), openaiUrl: KIMI_URL, openaiModel: 'kimi-for-coding' }, BASE)
+      out.kimi = true
+      // Hermes's own config: the same key becomes Hermes's model key (provider/base URL are set during install)
+      const exe = findHermes()
+      if (exe) {
+        await new Promise((resolve) => execFile(exe, ['config', 'set', 'model.api_key', k], () => resolve()))
+        out.hermes = true
+      }
+    }
+    const o = String(openaiKey || '').trim()
+    if (o) {
+      if (!keysSafe()) throw new Error(KEY_STORE_MISSING)
+      writeSettings({ openaiAltKey: seal(o) }, BASE)
+      out.openai = true
+    }
+    return out
   })
   handle('settings:setCivitaiKey', (key) => {
     const k = String(key || '').trim()
@@ -776,7 +807,7 @@ app.whenReady().then(() => {
   })
   // Crop and trim references before they go to H3 (Create's media editor).
   const mediaTools = new MediaTools({ dataDir: DATA, ffmpeg: edits.ffmpeg, ffprobe: edits.ffprobe })
-  // ---------- Audio: voices (IV Studio's own engine speaks: VoxCPM2 and Whisper in its data folder) ----------
+  // ---------- Audio: voices (Techlit Studio's own engine speaks: VoxCPM2 and Whisper in its data folder) ----------
   voices = new Voices({ dataDir: DATA, resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')), ffmpeg: edits.ffmpeg, onLog: (line) => send('voices:log', line), comfy: () => (readSettings(BASE).target === 'cloud' ? null : studio.comfy), cloud: () => cloudVoice?.() || null })
   handle('voices:status', () => voices.status())
   handle('voices:setup', () => voices.setup())
@@ -892,7 +923,7 @@ app.whenReady().then(() => {
   handle('turnaround:list', (characterId) => turnarounds.list(characterId))
   handle('turnaround:make', (opts) => turnarounds.make(opts))
   handle('turnaround:delete', (id) => turnarounds.remove(id))
-  // ---------- Library: everything made in IV Studio, in one place ----------
+  // ---------- Library: everything made in Techlit Studio, in one place ----------
   // every Library item; each video and picture carries its description (describe.js) when it has one
   const libraryItems = () => {
     const items = studio.library().map((i) => ({ ...i, type: 'video' }))
@@ -940,7 +971,7 @@ app.whenReady().then(() => {
   handle('shinobi:project', (id) => ({ ...shinobi.project(id), brief: fs.existsSync(briefFile(id)) ? fs.readFileSync(briefFile(id), 'utf8') : '' }))
   handle('shinobi:create', (name) => shinobi.call('create_project', { name: name || 'Untitled film' }))
   handle('shinobi:saveBrief', (id, text) => fs.writeFileSync(briefFile(id), String(text)))
-  // Files from a dialog, or IV Studio renders (library items); clips over 64 MB import fine through the engine.
+  // Files from a dialog, or Techlit Studio renders (library items); clips over 64 MB import fine through the engine.
   handle('shinobi:importFiles', async (id) => {
     const r = await dialog.showOpenDialog(win, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'Media', extensions: ['mp4', 'mov', 'webm', 'mkv', 'm4v', 'wav', 'mp3', 'm4a', 'flac', 'ogg', 'png', 'jpg', 'jpeg', 'webp'] }] })
     for (const f of r.canceled ? [] : r.filePaths) await shinobi.call('import_media', { project_id: id, source: f, audio_only: false })
@@ -1210,6 +1241,23 @@ app.whenReady().then(() => {
   handle('editgen:cancel', (id, genId) => editgen.cancel(id, genId))
   // ---------- Projects (a short film from script to rough cut) ----------
   const productions = new Productions({ dataDir: DATA, studio: () => studio, voices: () => voices, images: () => images, previs: () => previs, catalog: () => catalog, edits, localCopy, onChange: (id) => send('productions:changed', { id }), model: () => readSettings(BASE).ollamaModel || undefined, writer: () => writerOf(readSettings(BASE)) })
+  // Feature films (feature.js): acts and sequences over the productions above, with the trailer (a Sizzle) and songs (Music)
+  const features = new Features({ dataDir: DATA, productions: () => productions, edits: () => edits, writer: () => writerOf(readSettings(BASE)), onChange: (id) => send('features:changed', { id }) })
+  handle('features:list', () => features.list())
+  handle('features:get', (id) => features.get(id))
+  handle('features:create', (opts) => features.create(opts))
+  handle('features:update', (id, patch) => features.update(id, patch))
+  handle('features:delete', (id) => features.remove(id))
+  handle('features:setActs', (id, acts) => features.setActs(id, acts))
+  handle('features:attach', (id, productionId, opts) => features.attach(id, productionId, opts))
+  handle('features:detach', (id, productionId) => features.detach(id, productionId))
+  handle('features:stats', (id) => features.stats(id))
+  handle('features:explore', (id) => features.explore(id))
+  // The mindmap tree for anything (service/storymap.js): a feature, a short film (Project) or a song
+  handle('storymap:explore', ({ kind, id }) => storyTree({ productions, features, music }, kind, id))
+  handle('features:masterCut', (id) => features.masterCut(id))
+  handle('features:auto', (id, opts) => features.auto(id, opts))
+  handle('features:planAll', (id, opts) => features.planAll(id, opts))
   ivWorkspace = workspaceHost({appId:'studio',dataDir:DATA,disabled:INCOGNITO,receive:(h,w)=>receiveStudio(h,w,productions)})
   ivWorkspace.capture(pendingWorkspaceArgs);ivWorkspace.ready()
   handle('workspace:call',(method,args)=>{if(!Object.hasOwn(ivWorkspace.api,method))throw Error('Unknown workspace action.');return ivWorkspace.api[method](args||{})})
@@ -1226,6 +1274,9 @@ app.whenReady().then(() => {
   })
   handle('productions:breakDown', (id, opts) => productions.breakDown(id, opts))
   handle('productions:writePrompt', (id, sceneId, shotId) => productions.writeShotPrompt(id, sceneId, shotId))
+  handle('productions:writeCastPrompts', (id) => productions.writeCastPrompts(id))
+  handle('productions:writeEnvironmentPrompts', (id) => productions.writeEnvironmentPrompts(id))
+  handle('productions:addEstablishingShots', (id) => productions.addEstablishingShots(id))
   handle('productions:editShot', (id, sceneId, shotId, patch) => productions.editShot(id, sceneId, shotId, patch))
   handle('productions:speak', (id, shotId, opts) => productions.speak(id, shotId, opts))
   handle('productions:render', async (id, shotId, opts) => {
@@ -1353,7 +1404,7 @@ app.whenReady().then(() => {
     return {
       provider: s.cloudProvider || 'modal',
       toolkit: cloud.toolkitReady(),
-      // an install from an older IV Studio: Modal's client is updated before the next setup, render or training
+      // an install from an older Techlit Studio: Modal's client is updated before the next setup, render or training
       toolkitVersion: cloud.toolkitReady() ? cloud.toolkitVersion() : null,
       toolkitUpdate: cloud.toolkitReady() && !cloud.toolkitCurrent() ? MODAL_VERSION : null,
       workspace: s.cloudProvider === 'runpod' || s.cloudProvider === 'comfycloud' ? null : await cloud.workspace(),
@@ -1387,7 +1438,7 @@ app.whenReady().then(() => {
     writeSettings({ comfyCloudKey: seal(k) }, BASE)
     return { hasKey: true }
   })
-  // What IV Studio can do on Comfy Cloud today: asks it (free: no render runs) and keeps the answer for the page.
+  // What Techlit Studio can do on Comfy Cloud today: asks it (free: no render runs) and keeps the answer for the page.
   handle('cloud:comfyCloudCheck', async () => {
     const key = comfyCloudKey()
     if (!key) throw new Error('Save your Comfy API key first.')
@@ -1523,6 +1574,27 @@ app.whenReady().then(() => {
   handle('cloud:uploadCharacters', () => cloudTask('uploading characters', async () => (await uploadModalCharacters()) || []))
   // ---------- cloud on RunPod (the user's own account; runpod.js) ----------
   const runpod = new RunPod({ resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')), key: () => unseal(readSettings(BASE).runpodKey), onLog: (line) => send('cloud:log', line) })
+  // The cloud GPU spend ledger behind the daily budget (cloudspend.js): the meter's 30 s polls feed it.
+  const cloudSpend = new CloudSpend({ dataDir: DATA })
+  const cloudBudget = () => cloudBudgetOf(readSettings(BASE))
+  const cloudToday = () => cloudSpentToday(readCloudLedger(DATA))
+  // Over the daily budget with a GPU still up? Shut it down and tell the window — except while Techlit Studio
+  // itself is mid-setup, which needs the pod to finish what the person already approved.
+  const enforceCloudBudget = async (running) => {
+    const budget = cloudBudget()
+    const today = cloudToday()
+    if (!cloudBudgetCheck(budget, today).over || !running.length || cloudBusy) return
+    send('cloud:log', `Today's cloud budget ($${budget.daily.toFixed(2)}) is spent — shutting the GPU down. Raise the limit on the Cloud page, or wait for tomorrow.`)
+    send('cloud:budgetStop', { today, daily: budget.daily })
+    try {
+      if (provider() === 'runpod') await runpod.stopAll()
+      else if (cloud.toolkitReady()) await cloud.stopGpu()
+    } catch {}
+  }
+  const overBudgetError = () => new Error(`Today's cloud budget is spent ($${cloudBudget().daily.toFixed(2)} a day). Raise it on the Cloud page, or wait for tomorrow.`)
+  // The director's display rate: rupees per $1, shown beside every cloud cost (topbar meter, dashboard, feature page)
+  const RUPEES_PER_USD = 11.5
+  const rateOf = (s) => (Number(s.rupeesPerUsd) > 0 ? Number(s.rupeesPerUsd) : RUPEES_PER_USD)
   // character training on RunPod uses the same account
   if (trainings) trainings.runpod = runpod
   const saveRunpod = (patch) => writeSettings({ runpod: { ...(readSettings(BASE).runpod || {}), ...patch } }, BASE)
@@ -1536,6 +1608,10 @@ app.whenReady().then(() => {
     return { hasKey: true }
   })
   handle('cloud:runpodCatalog', () => runpod.catalog())
+  // every catalog GPU with room for H3 (not only the curated six): the Cloud page's graphics-card dropdown
+  handle('cloud:runpodAllGpus', () => runpod.allGpus())
+  // every pod on the account (the person's own too): the Cloud page's compatible-pods list
+  handle('cloud:runpodPods', () => runpod.myPods())
   // A running pod's address: the current one when its ComfyUI answers, else a booting one of ours, else a new
   // pod in the volume's data center. Single flight: the window and a render asking at once start one pod.
   let waking = null
@@ -1547,8 +1623,9 @@ app.whenReady().then(() => {
       if (current?.stage === 'ready') return r.url
       let url = current ? r.url : (await runpod.pods())[0]?.url
       if (!url) {
+        if (cloudBudgetCheck(cloudBudget(), cloudToday()).over) throw overBudgetError()
         send('cloud:log', 'Starting a cloud GPU on RunPod…')
-        const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300, hf: hfToken() })
+        const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, perHour: r.gpuPerHour ?? null, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300, hf: hfToken() })
         url = pod.url
         saveRunpod({ url, podId: pod.id, podGpu: pod.gpu, podStamp: cloudStamp() })
       } else saveRunpod({ url })
@@ -1630,7 +1707,7 @@ app.whenReady().then(() => {
     list: () => cloud.listFiles(),
     async download(entries, onEvent) {
       const c = readSettings(BASE).cloud || {}
-      if (c.stamp !== cloudStamp()) throw new Error('Your Modal cloud was set up by an older IV Studio. Press Set up again on the Cloud page (your models stay), then try again.')
+      if (c.stamp !== cloudStamp()) throw new Error('Your Modal cloud was set up by an older Techlit Studio. Press Set up again on the Cloud page (your models stay), then try again.')
       if (c.hfSavedFor !== (readSettings(BASE).hfTokenAt || null)) {
         await cloud.saveHfToken(hfToken())
         saveCloud({ hfSaved: !!hfToken(), hfSavedFor: readSettings(BASE).hfTokenAt || null })
@@ -1661,11 +1738,11 @@ app.whenReady().then(() => {
     }
   })
   // RunPod: downloads and uploads go through the running pod's gate, onto the network volume, which ComfyUI sees at
-  // once. A pod from an older IV Studio is replaced first: it doesn't have the routes or the new model folders.
+  // once. A pod from an older Techlit Studio is replaced first: it doesn't have the routes or the new model folders.
   const freshPod = async () => {
     const r = readSettings(BASE).runpod || {}
     if (r.podStamp !== cloudStamp() && r.url) {
-      send('cloud:log', 'Restarting the cloud GPU with this version of IV Studio…')
+      send('cloud:log', 'Restarting the cloud GPU with this version of Techlit Studio…')
       await runpod.stopAll()
       saveRunpod({ url: null, podId: null })
     }
@@ -1722,7 +1799,7 @@ app.whenReady().then(() => {
     const log = (line) => send('voices:log', line)
     if (which === 'modal') {
       const c = readSettings(BASE).cloud || {}
-      if (c.stamp !== cloudStamp()) throw new Error('Your Modal cloud was set up by an older IV Studio. Press Set up again on the Cloud page (your models stay), then set up voices.')
+      if (c.stamp !== cloudStamp()) throw new Error('Your Modal cloud was set up by an older Techlit Studio. Press Set up again on the Cloud page (your models stay), then set up voices.')
       log('Downloading the voice models into your Modal storage (about 6.6 GB, once, on a CPU)…')
       await cloud.fetchVoice()
       // a GPU container that's up doesn't see files added after it started
@@ -1825,20 +1902,26 @@ app.whenReady().then(() => {
   }
   // Set up (and Set up again): the volume, a pod that installs ComfyUI and downloads the models onto it, then
   // the characters. A new gate token each time, so pods started with the old one are shut down first.
-  handle('cloud:runpodSetUp', ({ gpu, idleSeconds }) =>
+  handle('cloud:runpodSetUp', ({ gpu, idleSeconds, perHour }) =>
     cloudTask('setting up RunPod', () => tracked('runpod', async (t) => {
       const s = readSettings(BASE)
       if (s.target === 'cloud') throw new Error('Switch rendering to My PC first.')
-      await runpod.stopAll()
       const known = s.runpod?.volumeId ? { id: s.runpod.volumeId, dataCenter: s.runpod.dataCenter } : null
       if (!known) send('cloud:log', 'Finding a data center with network storage and a free GPU…')
       if (known) t.skip('storage', `Already made, in ${known.dataCenter}`)
       else t.start('storage', 'Finding a data center with network storage and a free GPU')
       const volume = known || (await runpod.ensureVolume(await runpod.pickDataCenter(gpu)))
-      t.start('pod', `Starting a ${RUNPOD_GPUS.find((g) => g.id === gpu)?.label.split(' ·')[0] || 'GPU'} in ${volume.dataCenter}`)
+      t.start('pod', `Starting a ${RUNPOD_GPUS.find((g) => g.id === gpu)?.label.split(' ·')[0] || (gpu || 'GPU').replace(/^NVIDIA /, '')} in ${volume.dataCenter}`)
+      // A new gate token each time. The old pods (which know only the old token) are shut down once the new pod
+      // exists — not before — so a setup that finds no free GPU leaves the pod you had running, not nothing.
       writeSettings({ runpodToken: seal(randomBytes(24).toString('base64url')) }, BASE)
-      saveRunpod({ gpu, idleSeconds, volumeId: volume.id, dataCenter: volume.dataCenter, url: null, podId: null })
+      saveRunpod({ gpu, gpuPerHour: perHour ?? null, idleSeconds, volumeId: volume.id, dataCenter: volume.dataCenter, url: null, podId: null })
       send('cloud:log', `Starting a pod in ${volume.dataCenter}. The first time, it installs ComfyUI and downloads the H3 models onto your volume (20–40 minutes).`)
+      const pod = await runpod.createPod({ gpu: gpu || RUNPOD_GPUS[0].id, perHour: perHour ?? null, volume: { id: volume.id, dataCenter: volume.dataCenter }, token: runpodToken(), idleSeconds: idleSeconds || 300, hf: hfToken() }).catch((e) => {
+        throw new Error(`${e.message} Your storage and any running pod are untouched.`)
+      })
+      await runpod.stopAll(pod.id)
+      saveRunpod({ url: pod.url, podId: pod.id, podGpu: pod.gpu, podStamp: cloudStamp() })
       runpod.onHealth = (h) => t.fromHealth(h)
       let url
       try {
@@ -1875,6 +1958,7 @@ app.whenReady().then(() => {
     return target
   })
   // What the cloud GPU is doing, for the title-bar meter: the running containers and the chosen GPU's rate.
+  // Each poll also adds the GPU-seconds since the last one to the spend ledger, and enforces the daily budget.
   handle('cloud:usage', async () => {
     const s = readSettings(BASE)
     // Comfy Cloud bills per run on the person's Comfy account: no GPU of theirs runs between renders
@@ -1882,11 +1966,72 @@ app.whenReady().then(() => {
     if (provider() === 'runpod') {
       const running = s.runpodKey ? await runpod.pods() : []
       const gpu = RUNPOD_GPUS.find((g) => g.id === (running[0]?.gpu || s.runpod?.gpu)) || RUNPOD_GPUS[0]
-      return { gpu: gpu.label.split(' · ')[0], perHour: running[0]?.perHour || gpu.perHour, running: running.map((p) => ({ id: p.id, startedAt: Date.parse(p.startedAt) })) }
+      const perHour = running[0]?.perHour || gpu.perHour
+      const boxes = running.map((p) => ({ id: p.id, startedAt: Date.parse(p.startedAt) }))
+      const { today } = cloudSpend.record(boxes, perHour, 'runpod', running[0]?.gpu || s.runpod?.gpu)
+      await enforceCloudBudget(boxes)
+      return { gpu: gpu.label.split(' · ')[0], perHour, running: boxes, today, budget: cloudBudget(), rate: rateOf(s) }
     }
     const gpu = GPUS.find((g) => g.id === s.cloud?.gpu) || GPUS[0]
     const running = cloud.toolkitReady() ? await cloud.containers() : []
-    return { gpu: gpu.id, perHour: gpu.perHour, running: running.map((c) => ({ id: c.id, startedAt: Date.parse(String(c.startedAt).replace(' ', 'T')) })) }
+    const boxes = running.map((c) => ({ id: c.id, startedAt: Date.parse(String(c.startedAt).replace(' ', 'T')) }))
+    const { today } = cloudSpend.record(boxes, gpu.perHour, 'modal', gpu.id)
+    await enforceCloudBudget(boxes)
+    return { gpu: gpu.id, perHour: gpu.perHour, running: boxes, today, budget: cloudBudget(), rate: rateOf(s) }
+  })
+  // The Cloud page's dashboard: what's up (with the pod's idle countdown), what today cost, the budget, the volume.
+  handle('cloud:dash', async () => {
+    const s = readSettings(BASE)
+    const p = provider()
+    const dash = { provider: p, budget: cloudBudget(), today: cloudToday(), pod: null, volume: null, rate: rateOf(s), gpuPerHour: s.runpod?.gpuPerHour ?? null }
+    if (p === 'comfycloud') return dash
+    if (p === 'runpod') {
+      const running = s.runpodKey ? await runpod.pods().catch(() => []) : []
+      if (running.length) {
+        const h = await runpod.health(running[0].url).catch(() => null)
+        dash.pod = { id: running[0].id, gpu: running[0].gpu, perHour: running[0].perHour, stage: h?.stage || null, idleLimit: h?.idleLimit ?? s.runpod?.idleSeconds ?? null, idleLeft: h?.idleLeft ?? null }
+      }
+      if (s.runpod?.volumeId) {
+        const v = await runpod.volume(s.runpod.volumeId).catch(() => null)
+        if (v) dash.volume = { gb: v.size, dataCenter: v.dataCenter, perMonth: Math.round((v.size || 0) * VOLUME_PER_GB_MONTH * 100) / 100 }
+      }
+      return dash
+    }
+    const running = cloud.toolkitReady() ? await cloud.containers().catch(() => []) : []
+    if (running.length) dash.pod = { id: running[0].id, gpu: s.cloud?.gpu, perHour: GPUS.find((g) => g.id === s.cloud?.gpu)?.perHour ?? null, stage: null, idleLimit: s.cloud?.idleSeconds ?? null, idleLeft: null }
+    return dash
+  })
+  // The daily cloud budget (Settings live on the Cloud page, beside the meter that spends it).
+  handle('cloud:setBudget', ({ on, daily }) => {
+    const d = Number(daily)
+    writeSettings({ cloudBudget: { on: on === true, daily: Number.isFinite(d) && d >= 0 ? Math.round(d * 100) / 100 : CLOUD_BUDGET_DEFAULTS.daily } }, BASE)
+    return cloudBudget()
+  })
+  // The rupees-per-dollar display rate for every cloud cost shown in the app.
+  handle('cloud:setRate', (rate) => {
+    const r = Number(rate)
+    writeSettings({ rupeesPerUsd: Number.isFinite(r) && r > 0 ? Math.round(r * 100) / 100 : RUPEES_PER_USD }, BASE)
+    return rateOf(readSettings(BASE))
+  })
+  // The last two weeks' cloud spend, one number per day: the movie dashboard's cost chart.
+  handle('cloud:spendDays', () => cloudSpendByDay(readCloudLedger(DATA)))
+  // The storage manager: the model files on the volume through the running pod's gate. Never wakes a pod —
+  // listing files is not worth booting a GPU for; the person is told to wake it first.
+  const podUrlIfUp = async () => {
+    const r = readSettings(BASE).runpod || {}
+    if (r.url && (await runpod.health(r.url))) return r.url
+    return (await runpod.pods())[0]?.url || null
+  }
+  handle('cloud:runpodFiles', async () => {
+    if (!readSettings(BASE).runpodKey) return { up: false, files: null }
+    const url = await podUrlIfUp().catch(() => null)
+    if (!url) return { up: false, files: null }
+    return { up: true, files: await runpod.files(url, runpodToken()) }
+  })
+  handle('cloud:runpodDeleteFile', async (rel) => {
+    const url = await podUrlIfUp().catch(() => null)
+    if (!url) throw new Error('No cloud GPU is up. Wake it (or run a render) first, then remove files.')
+    return runpod.deleteFile(url, runpodToken(), String(rel || ''))
   })
   // Stops the cloud GPU now (the "Shut down GPU" button). A render running there is lost.
   handle('cloud:stop', () => {
@@ -1904,6 +2049,7 @@ app.whenReady().then(() => {
       const stats = await studio.comfy.req('/system_stats', { timeout: 60000 })
       return { seconds: Math.round((Date.now() - t0) / 1000), gpu: stats.devices?.[0]?.name }
     }
+    if (cloudBudgetCheck(cloudBudget(), cloudToday()).over) throw overBudgetError()
     for (;;) {
       try {
         const stats = await studio.comfy.req('/system_stats', { timeout: 600000 })
@@ -1992,7 +2138,7 @@ app.whenReady().then(() => {
     }
     const launchers = findLaunchers()
     // the drive to measure: the running ComfyUI's models folder, else the chosen folder, else the folder the launcher
-    // IV Studio would start keeps its ComfyUI in (a shortcut's target, the Desktop app's install folder)
+    // Techlit Studio would start keeps its ComfyUI in (a shortcut's target, the Desktop app's install folder)
     const home = (f) => comfyHome(f, { readLink: (p) => shell.readShortcutLink(p) })
     const comfyFolder = modelsFolder || s.comfyFolder || home(launcherFor(s)) || launchers.map((l) => home(l.path)).find(Boolean) || ''
     const harness = agentsStatus()
@@ -2057,11 +2203,11 @@ app.whenReady().then(() => {
   const startComfy = () =>
     (comfyStarting ||= (async () => {
       const s = readSettings(BASE)
-      if (!isLocalUrl(s.comfyUrl)) throw new Error('ComfyUI isn’t on this PC (Settings → ComfyUI), so IV Studio can’t start it.')
+      if (!isLocalUrl(s.comfyUrl)) throw new Error('ComfyUI isn’t on this PC (Settings → ComfyUI), so Techlit Studio can’t start it.')
       if (await comfyUp(s.comfyUrl)) return { seconds: 0, already: true }
       const file = launcherOf(s)
       if (!file) throw new Error('No ComfyUI launcher found. Pick one in Settings → ComfyUI.')
-      // already starting (IV Studio reopened while it booted, another window, or started by hand): wait for that one
+      // already starting (Techlit Studio reopened while it booted, another window, or started by hand): wait for that one
       const marker = launchMarker()
       const running = recentLaunch(marker) ? null : sameComfy(await comfyProcesses(), { home: comfyHome(file, { readLink: (p) => shell.readShortcutLink(p) }), url: s.comfyUrl, launcher: file })
       const joining = !!(recentLaunch(marker) || running)
@@ -2108,7 +2254,7 @@ app.whenReady().then(() => {
     writeSettings({ comfyLauncher: r.filePaths[0] }, BASE)
     return r.filePaths[0]
   })
-  // The main ComfyUI folder: IV Studio starts it with the best launcher in it (or the one picked from it).
+  // The main ComfyUI folder: Techlit Studio starts it with the best launcher in it (or the one picked from it).
   handle('comfy:chooseFolder', async () => {
     const r = await dialog.showOpenDialog(win, { title: 'Your ComfyUI folder', properties: ['openDirectory'] })
     if (r.canceled || !r.filePaths[0]) return null
@@ -2125,14 +2271,14 @@ app.whenReady().then(() => {
       throw err
     }
   })
-  // Restart: ComfyUI-Manager's own restart when it's there (ComfyUI keeps its window and flags), else IV Studio
+  // Restart: ComfyUI-Manager's own restart when it's there (ComfyUI keeps its window and flags), else Techlit Studio
   // stops this ComfyUI (and the console of its .bat) and starts it again with the person's launcher. A ComfyUI
   // that is rendering or has work waiting isn't restarted unless force: the window asks first.
   let comfyRestarting = null
   const restartComfy = ({ force = false } = {}) =>
     (comfyRestarting ||= (async () => {
       const s = readSettings(BASE)
-      if (!isLocalUrl(s.comfyUrl) || s.target === 'cloud') throw new Error('ComfyUI isn’t on this PC (Settings → ComfyUI), so IV Studio can’t restart it.')
+      if (!isLocalUrl(s.comfyUrl) || s.target === 'cloud') throw new Error('ComfyUI isn’t on this PC (Settings → ComfyUI), so Techlit Studio can’t restart it.')
       const t0 = Date.now()
       if (!(await comfyUp(s.comfyUrl))) return { ...(await startComfy()), restarted: false }
       if (!force) {
@@ -2163,7 +2309,7 @@ app.whenReady().then(() => {
           const file = launcherOf(s)
           if (!file) throw new Error('No ComfyUI launcher found to start it again. Pick one in Settings → ComfyUI.')
           const proc = sameComfy(await comfyProcesses(), { home: comfyHome(file, { readLink: (p) => shell.readShortcutLink(p) }), url: s.comfyUrl, launcher: file })
-          if (!proc) throw new Error('IV Studio can’t tell which program is this ComfyUI, so it can’t restart it. Close ComfyUI’s window, then press Start ComfyUI.')
+          if (!proc) throw new Error('Techlit Studio can’t tell which program is this ComfyUI, so it can’t restart it. Close ComfyUI’s window, then press Start ComfyUI.')
           await stopComfy(proc)
           if (!(await waitDown(s.comfyUrl, { timeoutMs: 30000 }))) throw new Error('ComfyUI didn’t stop. Close its window, then press Start ComfyUI.')
           via = 'launcher'
@@ -2208,7 +2354,7 @@ app.whenReady().then(() => {
       folder,
       free: folder ? freeBytes(folder) : null,
       state: comfyInstaller.state,
-      // a ComfyUI IV Studio can already start: the button isn't offered then
+      // a ComfyUI Techlit Studio can already start: the button isn't offered then
       // IV_STUDIO_PRETEND_NO_COMFY (test copies only): show the button on a PC that has a ComfyUI
       found: TEST_COPY && process.env.IV_STUDIO_PRETEND_NO_COMFY ? false : findLaunchers().length > 0 || !!(s.comfyFolder && fs.existsSync(s.comfyFolder)) || !!s.comfyLauncher
     }
@@ -2248,7 +2394,7 @@ app.whenReady().then(() => {
     const problem = checkFolder(folder, { size: asset.size, freeOf: freeBytes })
     if (problem) throw new Error(problem)
     const dir = await comfyInstaller.install({ folder, asset })
-    // IV Studio starts it the way it starts any ComfyUI: with the folder's run_nvidia_gpu.bat
+    // Techlit Studio starts it the way it starts any ComfyUI: with the folder's run_nvidia_gpu.bat
     writeSettings({ comfyFolder: dir, comfyLauncher: '' }, BASE)
     // IV_STUDIO_COMFY_INSTALL_NOSTART (test copies only): stop before starting it (a second ComfyUI on this PC's port)
     if (TEST_COPY && process.env.IV_STUDIO_COMFY_INSTALL_NOSTART) return (send('comfy:install', { ...comfyInstaller.state, phase: 'done', done: true, started: false, startError: 'Not started (test copy).' }), { dir, version: asset.version })
@@ -2264,14 +2410,14 @@ app.whenReady().then(() => {
   handle('comfy:installCancel', () => comfyInstaller.cancel())
 
   // ---------- the data folder (Settings → Data folder; datafolder.js) ----------
-  // Moves IV Studio's own data (not ComfyUI's models or renders, which live in ComfyUI) to another folder:
+  // Moves Techlit Studio's own data (not ComfyUI's models or renders, which live in ComfyUI) to another folder:
   // copy, check, point the default folder at it, restart. The window hears data:progress
   // ({ phase: 'counting' | 'copying' | 'copied' | 'checking' | 'checked' | 'done', done, total, file }).
   let moving = false
   const canMove = () => !PORTABLE && LOCATION.source !== 'env' && !LOCATION.missing
   const whyNot = () =>
     PORTABLE
-      ? 'This is the portable copy: its data folder is the “data” folder beside IV Studio.exe. Move the whole IV Studio folder to move it.'
+      ? 'This is the portable copy: its data folder is the “data” folder beside Techlit Studio.exe. Move the whole Techlit Studio folder to move it.'
       : LOCATION.source === 'env'
         ? 'IV_STUDIO_DATA sets the data folder on this PC, so it can’t be moved from here.'
         : 'The data folder can’t be moved from this copy.'
@@ -2292,16 +2438,27 @@ app.whenReady().then(() => {
     const items = await listData(BASE)
     return { bytes: items.reduce((n, i) => n + i.size, 0), files: items.filter((i) => !i.dir).length }
   })
+  // What's using the space, by top-level folder ("What's inside" in Settings → Data folder).
+  handle('data:breakdown', async () => {
+    const items = await listData(BASE)
+    const by = new Map()
+    for (const i of items) {
+      if (i.dir || i.link) continue
+      const top = i.rel.split(path.sep)[0]
+      by.set(top, (by.get(top) || 0) + i.size)
+    }
+    return [...by].map(([name, bytes]) => ({ name, bytes })).sort((a, b) => b.bytes - a.bytes)
+  })
   handle('data:choose', async () => {
     if (!canMove()) throw new Error(whyNot())
-    const r = await dialog.showOpenDialog(win, { title: 'Move IV Studio’s data to…', properties: ['openDirectory', 'createDirectory'] })
+    const r = await dialog.showOpenDialog(win, { title: 'Move Techlit Studio’s data to…', properties: ['openDirectory', 'createDirectory'] })
     if (r.canceled || !r.filePaths[0]) return null
     const to = target(r.filePaths[0])
     return { to, free: freeBytes(to) }
   })
   handle('data:move', async (picked) => {
     if (!canMove()) throw new Error(whyNot())
-    if (moving) throw new Error('IV Studio is already moving its data.')
+    if (moving) throw new Error('Techlit Studio is already moving its data.')
     const to = target(picked)
     const keepDir = fs.existsSync(to)
     const entries = movableEntries(BASE)
@@ -2366,7 +2523,7 @@ app.whenReady().then(() => {
   const pushSetup = () => agentSetup().then((s) => send('agents:setupChanged', s), () => {})
   handle('agents:setup', () => agentSetup())
   handle('agents:install', (engine) => {
-    if (!AGENT_INFO[engine]) throw new Error('IV Studio can install Claude or ChatGPT.')
+    if (!AGENT_INFO[engine]) throw new Error('Techlit Studio can install Claude or ChatGPT.')
     if (agentInstall?.status === 'running') throw new Error(`${AGENT_INFO[agentInstall.engine].name} is still installing.`)
     const stand = TEST_COPY && process.env.IV_STUDIO_TEST_INSTALL
     const state = { engine, status: 'running', lines: [], error: null, run: null }
@@ -2384,7 +2541,7 @@ app.whenReady().then(() => {
     state.run.promise.then((r) => {
       const there = !!agentsFound()[engine]
       state.status = r.ok && there ? 'done' : 'failed'
-      state.error = r.ok && !there ? `The installer finished, but IV Studio can't find ${AGENT_INFO[engine].name} yet. Restart IV Studio, or install it from ${AGENT_INFO[engine].site}` : r.error
+      state.error = r.ok && !there ? `The installer finished, but Techlit Studio can't find ${AGENT_INFO[engine].name} yet. Restart Techlit Studio, or install it from ${AGENT_INFO[engine].site}` : r.error
       if (agentInstall === state) pushSetup()
     })
     return true
@@ -2394,14 +2551,14 @@ app.whenReady().then(() => {
     return true
   })
   handle('agents:signIn', (engine) => {
-    if (!AGENT_INFO[engine]) throw new Error('IV Studio can sign in to Claude or ChatGPT.')
+    if (!AGENT_INFO[engine]) throw new Error('Techlit Studio can sign in to Claude or ChatGPT.')
     const exe = agentsFound()[engine]
     if (!exe) throw new Error(`${AGENT_INFO[engine].name} isn't installed yet.`)
     if (testHome()) fs.writeFileSync(testSigned(engine), 'test')
     else openSignIn(engine, exe, { env: agentHome().extra })
     return true
   })
-  // The Dashboard's "Let Claude Code make it": the person's own agent makes their idea inside IV Studio (agentrun.js).
+  // The Dashboard's "Let Claude Code make it": the person's own agent makes their idea inside Techlit Studio (agentrun.js).
   // The writer chosen in Settings when it's Claude Code or Codex, else whichever is installed, Claude Code first. A test
   // copy can stand in a recorded agent (IV_STUDIO_TEST_AGENT, a .cmd or program printing an agent's stream).
   let agentRun = null
@@ -2443,7 +2600,7 @@ app.whenReady().then(() => {
     if (!text) throw new Error('Type what you want to make first.')
     if (agentRun && agentRun.state().status === 'running') throw new Error(`${agentRun.state().name} is still working on the last idea. Stop it first.`)
     if (chatTurn) throw new Error(`${chat.name} is answering in the chat. Wait for it, or stop it there.`)
-    if (readSettings(BASE).target === 'cloud') throw new Error('IV Studio is set to render on the cloud. Your agent only renders on this PC (free): switch Cloud to This PC, or press Make it.')
+    if (readSettings(BASE).target === 'cloud') throw new Error('Techlit Studio is set to render on the cloud. Your agent only renders on this PC (free): switch Cloud to This PC, or press Make it.')
     const { pick, exe } = agentPick()
     if (!pick) throw new Error('Neither Claude nor ChatGPT is installed on this PC.')
     const mcp = mcpCommand()
@@ -2480,7 +2637,7 @@ app.whenReady().then(() => {
     send('agentRun:changed', agentView())
     return null
   })
-  // The chat panel (agentchat.js): the person's own Claude Code or Codex with every IV Studio tool, asking first for
+  // The chat panel (agentchat.js): the person's own Claude Code or Codex with every Techlit Studio tool, asking first for
   // anything that deletes, costs money, installs or changes Settings. One open chat; one message at a time; chats
   // saved under the data folder's chats. A test copy can stand in an agent (IV_STUDIO_TEST_CHAT).
   const chatsRoot = path.join(DATA, 'chats')
@@ -2793,11 +2950,11 @@ app.whenReady().then(() => {
     if (win && !win.isDestroyed()) win.webContents.send('app:open', where), win.show(), win.focus()
     return true
   })
-  // ---------- talking to the chat (ChatPanel's mic): IV Studio's own Whisper, and its voices to read replies ----------
+  // ---------- talking to the chat (ChatPanel's mic): Techlit Studio's own Whisper, and its voices to read replies ----------
   // bytes: what the window recorded (webm/opus). The words come back; the window sends them as the message.
   handle('chat:hear', async (bytes) => {
     const st = voices.status()
-    if (!st.installed) throw Object.assign(new Error('Talking to the chat needs IV Studio’s voices set up once: Audio → Voices → Set up voices (about 12 GB, free).'), { code: 'voices' })
+    if (!st.installed) throw Object.assign(new Error('Talking to the chat needs Techlit Studio’s voices set up once: Audio → Voices → Set up voices (about 12 GB, free).'), { code: 'voices' })
     const buf = Buffer.from(bytes || [])
     if (buf.length < 2000) throw new Error('That was too short to hear. Hold the mic a little longer.')
     if (buf.length > 40 * 1024 * 1024) throw new Error('That recording is too long for one message.')
@@ -2814,7 +2971,7 @@ app.whenReady().then(() => {
   // this PC the window is told, so the voice engine doesn't load next to a render on the same graphics card.
   handle('chat:say', async ({ text, voiceId } = {}) => {
     const st = voices.status()
-    if (!st.installed) throw Object.assign(new Error('Reading replies aloud needs IV Studio’s voices set up once: Audio → Voices → Set up voices.'), { code: 'voices' })
+    if (!st.installed) throw Object.assign(new Error('Reading replies aloud needs Techlit Studio’s voices set up once: Audio → Voices → Set up voices.'), { code: 'voices' })
     const local = readSettings(BASE).target !== 'cloud'
     if (local) {
       const q = await studio.comfy.queue().catch(() => null)
@@ -2867,7 +3024,7 @@ app.whenReady().then(() => {
   handle('models:status', () => installer.status())
   handle('models:download', (ids) => installer.enqueue(ids))
   handle('models:cancel', (id) => installer.cancel(id))
-  // a Hugging Face login for gated models on this PC (Flux.2 Klein, Flux 3 Klein, the LTX effects): IV Studio's saved
+  // a Hugging Face login for gated models on this PC (Flux.2 Klein, Flux 3 Klein, the LTX effects): Techlit Studio's saved
   // token (the same one the cloud uses), else HF_TOKEN, else hf auth login's
   try {
     setSavedHfToken(unseal(readSettings(BASE).hfToken))
@@ -3022,7 +3179,7 @@ app.whenReady().then(() => {
     }
   })
   // The title bar's Free memory: ComfyUI unloads its models and frees memory (between prompts, so a running render
-  // carries on), IV Studio's voice engine stops, and Ollama lets go of a writer model. Returns what changed.
+  // carries on), Techlit Studio's voice engine stops, and Ollama lets go of a writer model. Returns what changed.
   handle('system:free', async () => {
     const vram = async () => {
       const d = (await studio.comfy.systemStats({ timeout: 4000 }).catch(() => null))?.devices?.[0]
@@ -3079,13 +3236,13 @@ app.whenReady().then(() => {
     return true
   })
   handle('jobs:cancel', (id) => studio.cancelJob(id))
-  // The sidebar's render queue, and its cancel (only for IV Studio's own work, never someone else's).
+  // The sidebar's render queue, and its cancel (only for Techlit Studio's own work, never someone else's).
   handle('queue:list', () => studio.renderQueue())
   handle('queue:cancel', async (promptId) => {
     const { items } = await studio.renderQueue()
     const item = items.find((i) => i.promptId === promptId)
     if (!item) return 'already finished'
-    if (!item.ours) throw new Error("That render isn't IV Studio's, so it is left alone.")
+    if (!item.ours) throw new Error("That render isn't Techlit Studio's, so it is left alone.")
     return studio.cancelQueued(promptId)
   })
   handle('files:pick', async (kind) => {
@@ -3100,7 +3257,7 @@ app.whenReady().then(() => {
     return r.canceled ? [] : r.filePaths
   })
   // A path on this PC opens in Explorer. An output that lives in the cloud is downloaded to
-  // Videos\IV Studio first (same file name), then shown.
+  // Videos\Techlit Studio first (same file name), then shown.
   handle('files:reveal', async (file) => {
     const p = await localCopy(file)
     shell.showItemInFolder(p)
@@ -3109,8 +3266,8 @@ app.whenReady().then(() => {
   // The guide: the bundled PDF (resources/guide), copied to the data folder first so it opens from a normal
   // path (an AppImage's resources live in a temporary mount), then opened in the PC's PDF viewer.
   handle('learn:openGuide', async () => {
-    const src = path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'guide', 'IV Studio Guide.pdf')
-    const dest = path.join(BASE, 'guide', `IV Studio Guide ${app.getVersion()}.pdf`)
+    const src = path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'guide', 'Techlit Studio Guide.pdf')
+    const dest = path.join(BASE, 'guide', `Techlit Studio Guide ${app.getVersion()}.pdf`)
     if (!fs.existsSync(dest)) {
       fs.mkdirSync(path.dirname(dest), { recursive: true })
       fs.copyFileSync(src, dest)
@@ -3160,7 +3317,7 @@ app.whenReady().then(() => {
     shell.openExternal(REPORT_URL)
     return ABUSE_EMAIL
   })
-  // MiniMax's licence as shipped with IV Studio (resources/licenses); online if the file can't be opened
+  // MiniMax's licence as shipped with Techlit Studio (resources/licenses); online if the file can't be opened
   handle('terms:openLicense', async () => {
     // copied to the data folder first, like the guide (an AppImage's resources live in a temporary mount)
     const src = path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'licenses', 'MiniMax-H3-LICENSE.txt')
@@ -3184,8 +3341,8 @@ app.whenReady().then(() => {
       installer?.running && 'models are downloading',
       Object.values(civitai.downloadState()).some((d) => d.status === 'downloading') && 'a LoRA is downloading'
     ].filter(Boolean)
-  // The update pop-up (Update.jsx, appupdate.js): once IV Studio's update is downloaded, ComfyUI and its node packs
-  // are checked too, so the person can update them together before IV Studio restarts.
+  // The update pop-up (Update.jsx, appupdate.js): once Techlit Studio's update is downloaded, ComfyUI and its node packs
+  // are checked too, so the person can update them together before Techlit Studio restarts.
   let appUpdate = null
   const updater = initUpdater((state) => {
     send('update:changed', state)
@@ -3222,7 +3379,7 @@ app.whenReady().then(() => {
 
   // ---------- Incognito ----------
   // Switching restarts the app into the other set of data (see BASE / DATA). Leaving Incognito also takes
-  // its renders out of ComfyUI's history, whose queue panel would show them; the files stay in IV Private.
+  // its renders out of ComfyUI's history, whose queue panel would show them; the files stay in Techlit Private.
   handle('incognito:set', async (on) => {
     if (!!on === INCOGNITO) return { on: INCOGNITO }
     const waits = [...busy(), pending.size && 'a render is running'].filter(Boolean)
@@ -3243,7 +3400,7 @@ app.whenReady().then(() => {
     return { on: !!on, restarting: true }
   })
   createWindow()
-  // Start ComfyUI when IV Studio opens (Settings → ComfyUI), only for a ComfyUI on this PC that isn't up yet.
+  // Start ComfyUI when Techlit Studio opens (Settings → ComfyUI), only for a ComfyUI on this PC that isn't up yet.
   const boot = readSettings(BASE)
   if (boot.comfyAutoStart !== false && boot.target !== 'cloud' && isLocalUrl(boot.comfyUrl) && (!TEST_COPY || process.env.IV_STUDIO_COMFY_AUTOSTART === '1'))
     comfyUp(boot.comfyUrl).then((up) => up || startComfy().catch(() => {}))

@@ -1,4 +1,4 @@
-// Checks for the shared IV Newsletter sender (newsletter-main.js). Copied into each IV app next to its copy of the
+// Checks for the shared Techlit Newsletter sender (newsletter-main.js). Copied into each IV app next to its copy of the
 // sender; only the import line changes. Run: node --test <this file>
 import test from 'node:test'
 import assert from 'node:assert/strict'

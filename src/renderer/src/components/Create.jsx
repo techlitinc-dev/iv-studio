@@ -39,7 +39,7 @@ const MODES = [
 ]
 const ASPECTS = ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9']
 const PREVIEW_MP = [0.3, 0.4, 0.6, 0.8]
-// Preview quality: the turbo add-on IV Studio uses (DMAD) was trained for 4 steps; Standard gives it 8. A finish
+// Preview quality: the turbo add-on Techlit Studio uses (DMAD) was trained for 4 steps; Standard gives it 8. A finish
 // re-uses the picked preview's latent, so the 2 MP pass is the same either way.
 const QUALITY = [
   [4, 'Draft', '4 steps: about 40% quicker previews, a touch softer. Good for hunting.'],
@@ -558,7 +558,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
     const face = form.mode !== 'frames' && char && faceOf(char) ? 1 : 0
     const n = (k) => form.media.filter((m) => m.kind === k).length
     const voice = form.voiceLine && form.mode !== 'frames' ? 1 : 0
-    // the face and the voice line get their role lines from IV Studio when the prompt leaves them out
+    // the face and the voice line get their role lines from Techlit Studio when the prompt leaves them out
     const auto = [face && `@image${n('picture') + 1}`, voice && `@audio${n('audio') + 1}`].filter(Boolean)
     return { pictures: Array(n('picture') + face).fill(0), videos: Array(n('video')).fill(0), audios: Array(n('audio') + voice).fill(0), auto }
   }, [form.media, form.mode, form.voiceLine, char, catalog])
@@ -1126,7 +1126,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
                     </select>
                   </div>
                   <p className="dim small adv-note">
-                    For the previews. {samplers && !samplers.samplers.length ? 'Start ComfyUI to see every choice. ' : ''}er_sde with beta is what IV Studio is tuned on; the full-size finish keeps its own refine settings.
+                    For the previews. {samplers && !samplers.samplers.length ? 'Start ComfyUI to see every choice. ' : ''}er_sde with beta is what Techlit Studio is tuned on; the full-size finish keeps its own refine settings.
                     {(form.sampler !== SAMPLER_DEFAULT || form.scheduler !== SCHEDULER_DEFAULT) && (
                       <>
                         {' '}

@@ -7,7 +7,7 @@ import { SetCard, SetCode, SetField, SetSwitch, Pill } from './SettingsKit'
 
 const U = () => window.ivstudio.usage
 
-export const COUNTED = ['IV Studio was opened', 'A render started', 'A render finished', 'The first render ever finished on this copy']
+export const COUNTED = ['Techlit Studio was opened', 'A render started', 'A render finished', 'The first render ever finished on this copy']
 export const WITH_EACH = 'a random id made for this copy, the day, the app version, Windows / Mac / Linux, and the kind of render (preview, finish, picture…)'
 export const NEVER = 'Never your prompts, pictures, videos, file or folder names, keys, accounts or anything about you.'
 
@@ -52,9 +52,9 @@ export function UsageAsk({ on, onChange }) {
         ✓
       </span>
       <div>
-        <strong>Help improve IV Studio?</strong>
+        <strong>Help improve Techlit Studio?</strong>
         <p className="small dim">
-          Let IV Studio count, anonymously, when it’s opened and when a render starts and finishes. It tells us whether people get to a first render. {NEVER}{' '}
+          Let Techlit Studio count, anonymously, when it’s opened and when a render starts and finishes. It tells us whether people get to a first render. {NEVER}{' '}
           <button className="link-btn" onClick={() => setMore((m) => !m)} aria-expanded={more}>
             {more ? 'Hide the details' : 'Exactly what’s counted'}
           </button>
@@ -118,9 +118,9 @@ export function PrivacyCard({ n, notify }) {
   const show = async () => setSample(sample ? null : JSON.stringify(await U().preview(), null, 2))
   const on = status.choice === 'on'
   return (
-    <SetCard id="privacy" n={n} title="Privacy" sub="What IV Studio sends, which is nothing unless you turn it on here." aside={<Pill tone={on ? 'ok' : ''}>{on ? 'Counting' : 'Nothing sent'}</Pill>}>
+    <SetCard id="privacy" n={n} title="Privacy" sub="What Techlit Studio sends, which is nothing unless you turn it on here." aside={<Pill tone={on ? 'ok' : ''}>{on ? 'Counting' : 'Nothing sent'}</Pill>}>
       <SetField
-        label="Help improve IV Studio"
+        label="Help improve Techlit Studio"
         hint={
           on
             ? status.counting
@@ -128,7 +128,7 @@ export function PrivacyCard({ n, notify }) {
                 ? 'On. Counts are sent a few at a time. Turning this off deletes this copy’s id and anything not sent yet.'
                 : 'On. This version has nowhere to send counts yet, so they stay on this PC. Turning this off deletes them.'
               : 'On, but paused: Incognito is never counted.'
-            : 'Off. IV Studio counts nothing and sends nothing.'
+            : 'Off. Techlit Studio counts nothing and sends nothing.'
         }
       >
         <SetSwitch checked={on} onChange={set}>

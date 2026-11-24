@@ -1,4 +1,4 @@
-// Making new footage from inside an edit. Each is an ordinary IV Studio job (a shot project, so it also shows
+// Making new footage from inside an edit. Each is an ordinary Techlit Studio job (a shot project, so it also shows
 // in Shots and the Library), tracked on the edit as edit.gens until its result lands on the timeline:
 //   extend  - carry a clip on past its end (Create's Continue a video, from the clip's last seconds)
 //   bridge  - fill a gap, or a new shot between two touching clips (First / last frame: clip A's last frame to
@@ -22,7 +22,7 @@ export const OVERLAPS = [5, 22, 39, 56] // the choices: fewer carries less of th
 const FPS = 24
 const round = (x) => Math.round(x * 1000) / 1000
 
-// The aspect of IV Studio's list closest to a width x height.
+// The aspect of Techlit Studio's list closest to a width x height.
 export function nearestAspect(width, height) {
   if (!width || !height) return '16:9'
   const r = width / height
@@ -99,7 +99,7 @@ export class EditGen {
     return { file: out, width: m.width, height: m.height }
   }
 
-  // What IV Studio knows about the render a media file came from: its shot's request (prompt, character, LoRAs,
+  // What Techlit Studio knows about the render a media file came from: its shot's request (prompt, character, LoRAs,
   // aspect), so new footage for it starts the same way.
   origin(m) {
     const base = path.basename(m.path || '').toLowerCase()
@@ -361,7 +361,7 @@ export class EditGen {
     return f
   }
 
-  // Stops a gen: its job is cancelled (if IV Studio's and still running) and the placeholder goes away.
+  // Stops a gen: its job is cancelled (if Techlit Studio's and still running) and the placeholder goes away.
   async cancel(editId, genId) {
     const g = (this.edits.get(editId).gens || []).find((x) => x.id === genId)
     if (!g) throw new Error('No such generation.')

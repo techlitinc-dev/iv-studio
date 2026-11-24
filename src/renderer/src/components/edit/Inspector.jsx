@@ -70,15 +70,15 @@ export default function Inspector({ clip, media, meta, settings, markers, selMar
             </div>
           </>
         )}
-        <span className="dim small" title="Adds 'Made with IV Studio' on black for 2.5 seconds after your last clip, in the exported file only. Off unless you turn it on.">
+        <span className="dim small" title="Adds 'Made with Techlit Studio' on black for 2.5 seconds after your last clip, in the exported file only. Off unless you turn it on.">
           End card
         </span>
         <div className="segmented ed-seg">
           <button className={settings.endCard ? '' : 'on'} onClick={() => onSettings({ endCard: false })}>
             None
           </button>
-          <button className={settings.endCard ? 'on' : ''} title="Made with IV Studio, for 2.5 seconds after the last clip" onClick={() => onSettings({ endCard: true })}>
-            Made with IV Studio
+          <button className={settings.endCard ? 'on' : ''} title="Made with Techlit Studio, for 2.5 seconds after the last clip" onClick={() => onSettings({ endCard: true })}>
+            Made with Techlit Studio
           </button>
         </div>
         <p className="small dim ed-share-hint">{SHARE_HINT[settings.format] || SHARE_HINT['1080p']}</p>

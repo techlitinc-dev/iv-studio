@@ -2,7 +2,7 @@
 // gate's model routes), without a cloud: stand-in providers and a stand-in ComfyUI.
 //   node test/cloudprep.mjs [python-with-aiohttp]
 // The Python part (ivcloud_test.py, and gate.py's /iv/files and /iv/fetch) runs when a Python with aiohttp is
-// given or found (IV Studio's voice engine on Windows).
+// given or found (Techlit Studio's voice engine on Windows).
 import { spawn, execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
@@ -16,7 +16,7 @@ import { RunPod } from '../src/service/runpod.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const RES = path.join(ROOT, 'resources')
-const PY = process.argv[2] || path.join(process.env.APPDATA || '', 'IV Studio', 'voiceengine', 'venv', 'Scripts', 'python.exe')
+const PY = process.argv[2] || path.join(process.env.APPDATA || '', 'Techlit Studio', 'voiceengine', 'venv', 'Scripts', 'python.exe')
 let pass = 0
 let fail = 0
 const ok = (cond, what) => (cond ? (pass++, console.log(`  ok   ${what}`)) : (fail++, console.log(`  FAIL ${what}`)))
@@ -196,7 +196,7 @@ function bundleTests() {
   fs.writeFileSync(path.join(dir, 'b.tgz'), Buffer.from(rp.bundle(), 'base64'))
   const tar = process.platform === 'win32' ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : 'tar'
   execFileSync(tar, ['-xzf', path.join(dir, 'b.tgz'), '-C', dir])
-  ok(['ivcloud.py', 'gate.py', 'runpod_boot.py', 'models.json', 'cloud.json', path.join('ComfyUI-IV-Studio', '__init__.py'), path.join('ComfyUI-Viggle-Remake', 'nodes.py')].every((f) => fs.existsSync(path.join(dir, f))), 'RunPod: the pod gets ivcloud.py and both packs that ship inside IV Studio')
+  ok(['ivcloud.py', 'gate.py', 'runpod_boot.py', 'models.json', 'cloud.json', path.join('ComfyUI-Techlit-Studio', '__init__.py'), path.join('ComfyUI-Viggle-Remake', 'nodes.py')].every((f) => fs.existsSync(path.join(dir, f))), 'RunPod: the pod gets ivcloud.py and both packs that ship inside Techlit Studio')
   fs.rmSync(dir, { recursive: true, force: true })
   const body = rp.podBody({ gpu: 'NVIDIA L40S', volume: { id: 'v', dataCenter: 'X' }, token: 't', idleSeconds: 300, hf: 'hf_x' })
   ok(body.env.HF_TOKEN === 'hf_x' && !('HF_TOKEN' in rp.podBody({ gpu: 'NVIDIA L40S', volume: { id: 'v', dataCenter: 'X' }, token: 't', idleSeconds: 300 }).env), 'RunPod: the Hugging Face token goes to the pod only when there is one')
@@ -242,7 +242,7 @@ async function pythonTests() {
     const done = await rp.fetchModels(url, 'tok', ['m1'], { pollMs: 200, onProgress: (f) => progress.push(f.state) })
     const landed = path.join(models, 'checkpoints', 'Test', 'm1.safetensors')
     ok(done.join() === 'm1' && fs.existsSync(landed) && fs.readFileSync(landed).equals(body), 'fetch: the model downloads onto the volume, byte for byte, checked')
-    ok(progress.at(-1) === 'done', 'fetch: IV Studio follows it until done')
+    ok(progress.at(-1) === 'done', 'fetch: Techlit Studio follows it until done')
     const files = await rp.files(url, 'tok')
     ok(files['checkpoints/Test/m1.safetensors'] === body.length, 'files: the volume’s model files, with sizes')
     const h = await rp.health(url)

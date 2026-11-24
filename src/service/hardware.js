@@ -1,4 +1,4 @@
-// Check my PC: what this computer can do in IV Studio, read from the computer itself (no ComfyUI needed), and what
+// Check my PC: what this computer can do in Techlit Studio, read from the computer itself (no ComfyUI needed), and what
 // to set up for it. scanHardware() reads the parts; recommend() turns a scan into plain verdicts, a way of working
 // (this PC, the cloud or both), the downloads worth getting and the defaults to apply. recommend() is pure, so it
 // can be tested on made-up machines (test/hardware.mjs).
@@ -142,7 +142,7 @@ const TIERS = {
   all: { title: 'This PC can do everything', summary: 'Render shots, pictures, music and voices here and finish at full size. Big jobs take a few minutes.', renderOn: 'local' },
   most: { title: 'This PC can make shots, a little smaller', summary: 'Shots, pictures, music and voices all run here. Keep finals at 1 to 1.5 MP; use the cloud for the biggest jobs.', renderOn: 'both' },
   some: { title: 'Pictures here, video in the cloud', summary: 'Pictures, music and voices run here. Video shots are slow on this card: make them in the cloud, or here on the Low memory speed preset.', renderOn: 'both' },
-  cloud: { title: 'Make video in the cloud', summary: 'This PC has no NVIDIA card with enough memory for video. Shots render on RunPod, Modal or Comfy Cloud; IV Studio still edits, plans and organises here.', renderOn: 'cloud' }
+  cloud: { title: 'Make video in the cloud', summary: 'This PC has no NVIDIA card with enough memory for video. Shots render on RunPod, Modal or Comfy Cloud; Techlit Studio still edits, plans and organises here.', renderOn: 'cloud' }
 }
 
 export function recommend(scan) {
@@ -184,7 +184,7 @@ export function recommend(scan) {
     label: 'Memory (RAM)',
     value: fmt(scan.ram || 0),
     state: ramState,
-    say: ramState === 'great' ? 'Plenty for H3 and the other models, one family at a time.' : ramState === 'ok' ? 'Enough, but H3 loads slowly. IV Studio unloads one kind of model before the next.' : 'Under 32 GB: H3 struggles to load here. Use the cloud for video shots.'
+    say: ramState === 'great' ? 'Plenty for H3 and the other models, one family at a time.' : ramState === 'ok' ? 'Enough, but H3 loads slowly. Techlit Studio unloads one kind of model before the next.' : 'Under 32 GB: H3 struggles to load here. Use the cloud for video shots.'
   })
   if (ramState === 'weak' && t.id !== 'cloud') {
     tier.title = 'Pictures here, video in the cloud'

@@ -1,6 +1,6 @@
-// Freefield's apps (github.com/neuregex/freefield, MIT, Sammir Femat), run by IV Studio. Each app is a ComfyUI API
+// Freefield's apps (github.com/neuregex/freefield, MIT, Sammir Femat), run by Techlit Studio. Each app is a ComfyUI API
 // workflow with a manifest that says which node and field each input fills (resources/workflows/freefield/<app>/,
-// copied unchanged at the commit in COMMIT). IV Studio fills them in from its own windows (the editor's right-click,
+// copied unchanged at the commit in COMMIT). Techlit Studio fills them in from its own windows (the editor's right-click,
 // Workflows → Effects) and its MCP tools, swaps in this PC's own builds of models it already has under other names,
 // runs the job and copies the results into the data folder.
 import fs from 'node:fs'
@@ -8,7 +8,7 @@ import path from 'node:path'
 import { comboOptions } from './setup.js'
 import { resolveModel } from './setup.js'
 
-// What IV Studio offers, and which Freefield app each runs.
+// What Techlit Studio offers, and which Freefield app each runs.
 export const CLIP_FX = {
   // New angle starts gentler than Freefield's app (-30° / 20°, a 50° lens): tested on a 4090 with 64 GB, a 15° / 5° move
   // with the lens read from the clip gave a warp H3 follows, while 30° / 15° left most of the frame for H3 to invent
@@ -26,7 +26,7 @@ export const CLIP_FX = {
   transitions: { app: 'transitions', label: 'Transition', what: 'A first frame morphs into a last frame', media: 'image' }
 }
 
-// Freefield's model files that this PC may have as another build: the manifest id IV Studio resolves it through.
+// Freefield's model files that this PC may have as another build: the manifest id Techlit Studio resolves it through.
 const SAME_AS = [
   [/^qwen3vl_32b_minimax_h3_/, 'text_encoder'],
   [/^minimax_h3_video_vae_/, 'video_vae'],
@@ -79,9 +79,9 @@ export function sizeOf(spec, size) {
 }
 
 // Freefield's LTX apps rewrite the prompt inside ComfyUI with a small Gemma model (TextGenerateLTX2Prompt), behind a
-// switch. IV Studio takes that out: whatever read the switch reads the plain prompt instead, and the rewriter and its
+// switch. Techlit Studio takes that out: whatever read the switch reads the plain prompt instead, and the rewriter and its
 // model leave the graph (ComfyUI checks every model in a graph before it starts, used or not). Prompts come from the
-// person, or IV Studio's own writer, as written.
+// person, or Techlit Studio's own writer, as written.
 export function withoutPromptWriter(graph) {
   const gens = new Set(Object.entries(graph).filter(([, n]) => n.class_type === 'TextGenerateLTX2Prompt').map(([k]) => k))
   if (!gens.size) return graph
@@ -114,7 +114,7 @@ export function upstream(graph, outIds) {
   return Object.fromEntries(Object.entries(graph).filter(([k]) => keep.has(k)))
 }
 
-// Unload before the video model loads: an IV Free Memory node (IV Studio's own pack) on the first sampling
+// Unload before the video model loads: an IV Free Memory node (Techlit Studio's own pack) on the first sampling
 // stage's conditioning, waiting for every prompt branch, so the text encoder (and MoGe, a VAE...) leave the GPU
 // before the sampler loads the big model. Later stages (an upscale pass with the same model) are left alone, so
 // that model isn't loaded twice. Only when this ComfyUI has the node (info), else the graph is unchanged.
@@ -139,7 +139,7 @@ export function withFreeMemory(graph, info = null) {
   return g
 }
 
-// The effects IV Studio offers (CLIP_FX minus those switched off)
+// The effects Techlit Studio offers (CLIP_FX minus those switched off)
 export const offeredFx = () => Object.keys(CLIP_FX).filter((k) => !CLIP_FX[k].off)
 
 export function loadApp(resourcesDir, id) {
@@ -185,7 +185,7 @@ export function fillGraph(app, graph, values = {}) {
 }
 
 // Every model file a workflow names that this ComfyUI doesn't list, swapped for this PC's build of the same model
-// where IV Studio knows one. Returns { graph, missing: [file] }.
+// where Techlit Studio knows one. Returns { graph, missing: [file] }.
 export function swapModels(graph, info, manifest) {
   const g = JSON.parse(JSON.stringify(graph))
   const missing = []
@@ -247,7 +247,7 @@ export class FreefieldApps {
     const cam = spec.preview && graph[CAMERA_NODE]?.class_type === 'CrossViewWarp' ? graph[CAMERA_NODE].inputs : null
     // New angle: the warp node's own settings as Freefield's graph has them, which the live preview must repeat
     const camera = cam ? Object.fromEntries(LIVE_PARAMS.filter((k) => k in cam).map((k) => [k, cam[k]])) : undefined
-    // IV Studio's own starting values (spec.defaults, cameraDefaults) over the app's
+    // Techlit Studio's own starting values (spec.defaults, cameraDefaults) over the app's
     const inputs = (app.inputs || []).map((i) => (spec.defaults && i.id in spec.defaults ? { ...i, default: spec.defaults[i.id] } : i))
     return { fx, ...spec, name: app.name, summary: app.summary, inputs, outputs: app.outputs, models: app.models, nodes: (app.custom_nodes || []).map((n) => n.repo), camera: camera && { ...camera, ...(spec.cameraDefaults || {}) } }
   }
@@ -377,7 +377,7 @@ export class FreefieldApps {
     if (missing.length) throw new Error(`${spec.label} needs ${missing.join(', ')}. Download on Setup.`)
     const stamp = Date.now().toString(36)
     const title = String(name || '').trim() || `${spec.label} · ${path.basename(file).replace(/\.[^.]+$/, '')}`.slice(0, 60)
-    // every Save node writes under IV Studio's own folder in ComfyUI's output
+    // every Save node writes under Techlit Studio's own folder in ComfyUI's output
     for (const n of Object.values(g)) if (n.inputs && 'filename_prefix' in n.inputs) n.inputs.filename_prefix = `iv_studio/clipfx/${slug(title)}_${stamp}`
     const job = await studio.submitGraph({ kind: `clipfx:${fx}`, graph: g, name: title, plan: { clipfx: { fx, app: spec.app, from: file, outputs: app.outputs } } })
     const run = { id: `${fx}_${stamp}`, fx, label: spec.label, title, from: file, ...(last ? { last } : {}), values, jobId: job.id, status: 'running', files: [], createdAt: new Date().toISOString() }

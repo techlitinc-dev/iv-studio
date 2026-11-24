@@ -16,7 +16,7 @@ const IMAGE = /\.(png|jpe?g|webp|bmp)$/i
 const api = () => window.ivstudio.keyframes
 const base = (p) => String(p || '').split(/[\\/]/).pop()
 const JOINS = [
-  ['auto', 'Let IV Studio pick', 'One take when the pictures fit in one 15 s shot, else a chain.'],
+  ['auto', 'Let Techlit Studio pick', 'One take when the pictures fit in one 15 s shot, else a chain.'],
   ['onetake', 'One take', 'Every picture in one H3 shot of up to 15 s: no joins at all.'],
   ['carried', 'A chain, motion carried', 'Each move carries on from the one before and ends on its picture, so the motion flows through.'],
   ['plain', 'A chain, move by move', 'Each move is its own shot, picture to picture, joined in Edit.']
@@ -61,7 +61,7 @@ function List({ openOne, notify, go }) {
             {making ? 'Starting…' : 'Pick pictures'}
           </button>
         </div>
-        <p className="stage-note small">A photoshoot, a character’s poses, product angles, storyboard frames: IV Studio moves from each picture to the next, and back to the first if you loop it.</p>
+        <p className="stage-note small">A photoshoot, a character’s poses, product angles, storyboard frames: Techlit Studio moves from each picture to the next, and back to the first if you loop it.</p>
         <WorkflowNeeds page="keyframes" />
       </Stage>
       <ToolShelf label="Your keyframes videos" count={shown.length} q={q} setQ={setQ} empty="None yet. Drop some pictures above.">

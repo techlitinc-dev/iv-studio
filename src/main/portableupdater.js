@@ -1,7 +1,7 @@
 // The portable copy's updates (see src/service/portableupdate.js for why it isn't electron-updater): the same states
 // and the same { check, install } as updater.js, so Settings -> Updates and the sidebar work as for the installed
 // copy. It checks on launch and every six hours, downloads the new zip in the background, and installs on
-// "Restart to update" or when IV Studio quits. A copy that can't change its own folder says why and offers the
+// "Restart to update" or when Techlit Studio quits. A copy that can't change its own folder says why and offers the
 // download page instead; so does a release that has no portable feed.
 // IV_STUDIO_UPDATE_FEED points a test copy at a local feed; IV_STUDIO_UPDATE_SELFTEST=1 then installs as soon as
 // the download is ready (scripts/portable-update-selftest.mjs, on a copy of the app in a temporary folder).
@@ -90,7 +90,7 @@ export function initPortableUpdater({ set, get, testFeed }) {
 
   // Hand the swap to a script that waits for this process to end. Started through a short-lived PowerShell's
   // Start-Process (as comfylauncher.js starts ComfyUI): a detached, console-less PowerShell runs nothing, and a
-  // plain child could go down with IV Studio.
+  // plain child could go down with Techlit Studio.
   function swap(relaunch) {
     const script = path.join(work, 'install.ps1')
     fs.writeFileSync(script, installScript({ pid: process.pid, appDir, staged: staged.dir, log: path.join(work, 'update.log'), relaunch }))
@@ -114,7 +114,7 @@ export function initPortableUpdater({ set, get, testFeed }) {
     return true
   }
 
-  // a downloaded update also installs when IV Studio quits (never from a test feed, except the selftest)
+  // a downloaded update also installs when Techlit Studio quits (never from a test feed, except the selftest)
   app.on('will-quit', () => {
     if (!staged || get().status !== 'ready' || (testFeed && !selftest)) return
     try {

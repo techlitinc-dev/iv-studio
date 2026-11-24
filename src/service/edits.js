@@ -1,4 +1,4 @@
-// Edits: IV Studio's own timeline editor. An edit is media (files on this PC) plus clips on tracks;
+// Edits: Techlit Studio's own timeline editor. An edit is media (files on this PC) plus clips on tracks;
 // the window plays it live, and export turns the whole timeline into one ffmpeg run.
 //   tracks  T1 (titles), V1..Vn (video, a higher number drawn over a lower one), A1..An (audio); each can be
 //           hidden, locked, muted or soloed (edit.tracks, see timeline.js tracksOf)
@@ -52,10 +52,10 @@ export function filterScriptFlag(ffmpeg) {
 
 export const editLength = (e) => e.clips.reduce((m, c) => Math.max(m, clipEnd(c)), 0)
 
-// The end card (settings.endCard, off unless the person turns it on in the editor): "Made with IV Studio" on black
+// The end card (settings.endCard, off unless the person turns it on in the editor): "Made with Techlit Studio" on black
 // for a moment after the last clip, as one more title. It is added to the export only, never saved into the
 // timeline, and it shows even when the titles track is hidden.
-export const END_CARD = { text: 'Made with IV Studio', seconds: 2.5, fade: 0.4, size: 7 }
+export const END_CARD = { text: 'Made with Techlit Studio', seconds: 2.5, fade: 0.4, size: 7 }
 export function withEndCard(e) {
   if (!e.settings?.endCard || !e.clips.length) return e
   const start = editLength(e)

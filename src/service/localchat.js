@@ -1,5 +1,5 @@
-// Local AI in IV Studio's chat: a model in the person's own Ollama, free and on this PC, driving IV Studio's tools.
-// Claude Code, Codex and Hermes run their own agent loops; Local AI's loop is this one. It starts IV Studio's MCP
+// Local AI in Techlit Studio's chat: a model in the person's own Ollama, free and on this PC, driving Techlit Studio's tools.
+// Claude Code, Codex and Hermes run their own agent loops; Local AI's loop is this one. It starts Techlit Studio's MCP
 // server (the same one, with the same environment, so Allow cards, undo points, the activity log and the spend desk
 // work as for the others), offers the model a short list of everyday tools (all of them would swamp a small model's
 // memory), and goes round: the model answers or asks for tools, the tools run, their results go back, until it
@@ -48,15 +48,15 @@ const MAX_STEPS = 14
 const MAX_RESULT = 6000
 const KEEP_MESSAGES = 40
 
-export const LOCAL_PROMPT = `You are Local AI, the assistant inside IV Studio, the person's video app, talking with them in a chat panel at the side of the app. You run on a small model on their own PC.
+export const LOCAL_PROMPT = `You are Local AI, the assistant inside Techlit Studio, the person's video app, talking with them in a chat panel at the side of the app. You run on a small model on their own PC.
 
-You have some of IV Studio's tools and nothing else. Use them: look things up before you answer, and never make up shots, characters, files or ids. Call one tool at a time and read its result before the next.
+You have some of Techlit Studio's tools and nothing else. Use them: look things up before you answer, and never make up shots, characters, files or ids. Call one tool at a time and read its result before the next.
 
-Each message starts with a line in [brackets] saying what IV Studio is showing them now (the page, and the ids of the open shot, film or edit). "This" and "it" usually mean that. Use the ids with the tools; never show raw ids to the person.
+Each message starts with a line in [brackets] saying what Techlit Studio is showing them now (the page, and the ids of the open shot, film or edit). "This" and "it" usually mean that. Use the ids with the tools; never show raw ids to the person.
 
 To make a video shot, call make_shot with their idea in plain words (list_characters first if they name someone, and pass that character's id). It writes the prompt and starts the previews. Renders take minutes: tell the person it's on its way and that the takes will appear on the shot's page; check with get_job only if they ask.
 
-When the person asks where something is in IV Studio, find it with list_places and show it with show_in_app.
+When the person asks where something is in Techlit Studio, find it with list_places and show it with show_in_app.
 
 Anything that deletes, costs money or changes a setting shows the person an Allow card and waits. If they say no, accept it and say what you could do instead.
 
@@ -117,7 +117,7 @@ export function trimHistory(h, keep = KEEP_MESSAGES) {
   return out.map((m, i) => (i < out.length - 4 && m.images ? { ...m, images: undefined } : m))
 }
 
-// One message's turn. server: { command, args, env } for IV Studio's MCP server. emit(e): the chat's events
+// One message's turn. server: { command, args, env } for Techlit Studio's MCP server. emit(e): the chat's events
 // (session, step, stepError, say, end, usage). cpu: start off the graphics card (a render is running).
 // Returns { done: Promise<{ ok, error, session }>, cancel() }.
 export function localTurn({ server, dir, system, text, model = '', cpu = false, emit = () => {}, fetchFn = fetch, connect = null, maxSteps = MAX_STEPS }) {
@@ -186,7 +186,7 @@ export function localTurn({ server, dir, system, text, model = '', cpu = false, 
           history.push({ role: 'tool', content: out.text, tool_name: tool })
           if (out.images.length) history.push({ role: 'user', content: `(The picture from ${tool}.)`, images: out.images.slice(0, 2), fromTool: true })
         }
-        // A render has started and nothing failed: the turn ends with IV Studio's own words. Another answer from the
+        // A render has started and nothing failed: the turn ends with Techlit Studio's own words. Another answer from the
         // model would now come from the CPU, competing with the render, and take minutes to say "it's on its way".
         if (started.length && !calls.some((c) => failed.has(`${c.function?.name || ''} ${JSON.stringify(argsOf(c))}`))) {
           const said = startedReply(started)
@@ -213,7 +213,7 @@ export function localTurn({ server, dir, system, text, model = '', cpu = false, 
   }
 }
 
-// What IV Studio says when Local AI has started renders, from the tools' own results.
+// What Techlit Studio says when Local AI has started renders, from the tools' own results.
 const STARTED = {
   make_shot: () => "I've started the previews. They'll show on the shot's page in a few minutes, and the queue in the sidebar shows how far along they are.",
   finish_candidate: () => "I've started finishing that take at full size. It shows on the shot's page when it's done.",
@@ -260,7 +260,7 @@ async function ask({ fetchFn, name, system, history, tools, onCpu, signal }) {
   if (!r.ok) {
     const t = (await r.text()).slice(0, 300)
     if (/not found/i.test(t)) throw new Error(`The model ${name} isn't in Ollama yet. Install it in Settings → Prompt writer, or pick another for Local AI.`)
-    if (/does not support tools/i.test(t)) throw new Error(`${name} can't use tools, so it can't work IV Studio. Pick a model that can (Qwen3 or Llama 3.1 and newer) for Local AI.`)
+    if (/does not support tools/i.test(t)) throw new Error(`${name} can't use tools, so it can't work Techlit Studio. Pick a model that can (Qwen3 or Llama 3.1 and newer) for Local AI.`)
     throw new Error(`Ollama: ${t}`)
   }
   return r.json()

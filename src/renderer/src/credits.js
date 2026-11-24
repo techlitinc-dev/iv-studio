@@ -1,11 +1,11 @@
-// Credits: everything IV Studio is built on, shown in Settings → About → Credits. Each entry names the work, who made it
-// (only where that's certain), what IV Studio uses it for, its licence where IV Studio records one, and a link.
+// Credits: everything Techlit Studio is built on, shown in Settings → About → Credits. Each entry names the work, who made it
+// (only where that's certain), what Techlit Studio uses it for, its licence where Techlit Studio records one, and a link.
 // test/credits.mjs fails when resources/models.json gains a model or node pack that isn't credited here, so a new
 // download or pack gets its line in the same change (covers: the manifest ids and image families an entry stands for).
 export const CREDITS = [
   {
     group: 'Models',
-    note: 'IV Studio bundles no model weights. Each downloads from its own page, under its own licence.',
+    note: 'Techlit Studio bundles no model weights. Each downloads from its own page, under its own licence.',
     items: [
       { name: 'MiniMax H3', covers: ['fl2va', 'ref2va', 'video_vae', 'audio_vae', 'image:h3', 'train_te', 'train_video_vae'], by: 'MiniMax', use: 'Every shot: video with sound, references, first and last frames, Continue', licence: 'MiniMax H3 Community License', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3', note: 'Powered by MiniMax H3. ComfyUI’s packaging by Comfy Org.' },
       { name: 'MiniMax H3 Image Training Adapter', covers: ['train_adapter'], by: 'circlestone labs', use: 'Training a character LoRA on this PC (the trainer reads it alongside H3)', licence: 'MiniMax H3 Community License', url: 'https://huggingface.co/circlestone-labs/MiniMax-H3-Image-Training-Adapter' },
@@ -60,9 +60,9 @@ export const CREDITS = [
     ]
   },
   {
-    group: 'Tools IV Studio runs on',
+    group: 'Tools Techlit Studio runs on',
     items: [
-      { name: 'ComfyUI', by: 'Comfy Org', use: 'Everything that renders: IV Studio is a front end for ComfyUI', licence: 'GPL-3.0', url: 'https://github.com/comfyanonymous/ComfyUI' },
+      { name: 'ComfyUI', by: 'Comfy Org', use: 'Everything that renders: Techlit Studio is a front end for ComfyUI', licence: 'GPL-3.0', url: 'https://github.com/comfyanonymous/ComfyUI' },
       { name: 'Fizgig', by: 'shootthesound', use: 'Character LoRA training, on this PC, Modal and RunPod. RunPod training pods start from Fizgig’s own template.', url: 'https://github.com/shootthesound/Fizgig' },
       { name: 'Freefield', by: 'Sammir Femat (neuregex)', use: 'The workflows behind Sounds, the picture tools, the editor’s Effects (dub, VFX, slow motion) and Workflows → Effects', licence: 'MIT', url: 'https://github.com/neuregex/freefield' },
       { name: 'CrossView Warp', by: 'comfyrob', use: 'The camera warp behind New angle (switched off for now)', url: 'https://github.com/comfyrob/ComfyUI-CrossViewWarp' },
@@ -88,7 +88,7 @@ export const CREDITS = [
       { name: 'DLSS5 Enhancer v15', by: 'Strix-3D', use: 'Quick sharpen (DLSS 5) when finishing', url: 'https://github.com/Strix-3D/ComfyUI-DLSS5-Enhancer-v15' },
       { name: 'rgthree-comfy', by: 'rgthree', use: 'Switches in the shot workflow', url: 'https://github.com/rgthree/rgthree-comfy' },
       { name: 'Impact Pack', by: 'ltdrdata', use: 'Utility nodes in the shot workflow', url: 'https://github.com/ltdrdata/ComfyUI-Impact-Pack' },
-      { name: 'ComfyUI-Pixaroma', by: 'Pixaroma', use: 'The LoRA loader; its by-hash lookup inspired IV Studio’s LoRA pages', url: 'https://github.com/pixaroma/ComfyUI-Pixaroma' },
+      { name: 'ComfyUI-Pixaroma', by: 'Pixaroma', use: 'The LoRA loader; its by-hash lookup inspired Techlit Studio’s LoRA pages', url: 'https://github.com/pixaroma/ComfyUI-Pixaroma' },
       { name: 'ComfyUI-Easy-Use', by: 'yolain', use: 'Seeds', url: 'https://github.com/yolain/ComfyUI-Easy-Use' },
       { name: 'ComfyUI_essentials', by: 'cubiq', use: 'Maths nodes', url: 'https://github.com/cubiq/ComfyUI_essentials' },
       { name: 'ComfyUI-KJNodes', by: 'Kijai', use: 'Live previews and utility nodes', url: 'https://github.com/kijai/ComfyUI-KJNodes' },
@@ -105,7 +105,7 @@ export const CREDITS = [
       { name: 'Viggle Remake nodes and prompt guide', by: 'Viggle AI', use: 'Replace (Remake)', licence: 'Apache-2.0', url: 'https://huggingface.co/Viggle/Viggle-Remake/tree/main/comfyui/ComfyUI-Viggle-Remake' },
       { name: 'ComfyUI-LTXVideo', by: 'Lightricks', use: 'Dub, VFX and SDR to HDR', url: 'https://github.com/Lightricks/ComfyUI-LTXVideo' },
       { name: 'ComfyUI-H3-ContactSheet', by: 'matlowai', use: 'Turnaround sheets: packs five pictures into one H3 run and decodes them', licence: 'GPL-3.0', url: 'https://github.com/matlowai/ComfyUI-H3-ContactSheet' },
-      { name: 'IV Studio nodes', by: 'Infinite Variance', use: 'The latent cache, picks that survive restarts, the shot list', licence: 'MIT', url: 'https://github.com/hollisorg/iv-studio/tree/main/resources/comfy-nodes/ComfyUI-IV-Studio' }
+      { name: 'Techlit Studio nodes', by: "DD'S Techlit AI Solutions", use: 'The latent cache, picks that survive restarts, the shot list', licence: 'MIT', url: 'https://github.com/hollisorg/iv-studio/tree/main/resources/comfy-nodes/ComfyUI-IV-Studio' }
     ]
   },
   {

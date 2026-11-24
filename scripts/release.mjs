@@ -1,4 +1,4 @@
-// IV Studio's release, in one command, with every check before anything is published.
+// Techlit Studio's release, in one command, with every check before anything is published.
 //
 //   node scripts/release.mjs 1.1.6              # check everything, then publish
 //   node scripts/release.mjs 1.1.6 --dry        # check everything, publish nothing
@@ -7,7 +7,7 @@
 //
 // Runs on Windows from a release worktree with its own node_modules (npm ci; never a junction). In order:
 //   1. The tree is clean, it fast-forwards from origin/main, and there are notes and a What's new entry.
-//   2. package.json gets the version (one commit, "IV Studio <version>").
+//   2. package.json gets the version (one commit, "Techlit Studio <version>").
 //   3. Every CI test here (scripts/ci-linux.sh's list) and the cloud tests.
 //   4. The exact commit goes to a candidate branch, and GitHub builds and checks it on Linux and Mac
 //      (the workflows with no release tag: build and check only). Meanwhile the Windows installer and portable zip are
@@ -107,7 +107,7 @@ const current = JSON.parse(pkgText).version
 if (current !== version) {
   fs.writeFileSync(pkgFile, pkgText.replace(`"version": "${current}"`, `"version": "${version}"`))
   git('add', 'package.json')
-  git('commit', '-q', '-m', `IV Studio ${version}`)
+  git('commit', '-q', '-m', `Techlit Studio ${version}`)
 }
 const SHA = git('rev-parse', 'HEAD')
 report.commit = SHA
@@ -149,14 +149,14 @@ step('Windows installer and portable zip')
 npm('run', 'dist')
 npm('run', 'dist:portable')
 const dist = path.join(ROOT, 'dist')
-const winFiles = ['IV-Studio-Setup.exe', 'IV-Studio-Setup.exe.blockmap', 'latest.yml', 'IV-Studio-Portable-win-x64.zip', 'latest-portable.yml'].map((f) => path.join(dist, f))
+const winFiles = ['Techlit-Studio-Setup.exe', 'Techlit-Studio-Setup.exe.blockmap', 'latest.yml', 'Techlit-Studio-Portable-win-x64.zip', 'latest-portable.yml'].map((f) => path.join(dist, f))
 for (const f of winFiles) if (!fs.existsSync(f)) die(`Missing ${f}`)
 for (const y of ['latest.yml', 'latest-portable.yml']) if (!fs.readFileSync(path.join(dist, y), 'utf8').includes(`version: ${version}`)) die(`${y} isn't ${version}`)
 report.windows = { installer: sha256(winFiles[0]), portable: sha256(winFiles[3]) }
 
 step('The packaged app opens every page, and its MCP server starts')
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-release-'))
-const exe = path.join(dist, 'win-unpacked', 'IV Studio.exe')
+const exe = path.join(dist, 'win-unpacked', 'Techlit Studio.exe')
 const env = { ...process.env, IV_STUDIO_SMOKE: scratch, IV_STUDIO_DATA: path.join(scratch, 'data'), IV_STUDIO_USER_DATA: path.join(scratch, 'ud') }
 run(exe, [], { env, quiet: true, allowFail: true, timeout: 180000 })
 const smoke = JSON.parse(fs.readFileSync(path.join(scratch, 'smoke.json'), 'utf8'))
@@ -182,7 +182,7 @@ if (DRY) {
 // ---------- 5. publish
 step(`Publishing ${TAG}`)
 git('push', '-q', 'origin', 'HEAD:main')
-gh('release', 'create', TAG, '--repo', REPO, '--target', SHA, '--title', `IV Studio ${version}`, '--notes-file', notes, '--latest', ...winFiles)
+gh('release', 'create', TAG, '--repo', REPO, '--target', SHA, '--title', `Techlit Studio ${version}`, '--notes-file', notes, '--latest', ...winFiles)
 gh('workflow', 'run', 'linux.yml', '--repo', REPO, '--ref', 'main', '-f', `release=${TAG}`)
 gh('workflow', 'run', 'mac.yml', '--repo', REPO, '--ref', 'main', '-f', `release=${TAG}`)
 const linuxRel = await runFor('linux.yml', 'main', SHA)
@@ -192,8 +192,8 @@ const macRel = await runFor('mac.yml', 'main', SHA)
 step('Checking the public Windows files')
 const pub = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-public-'))
 const base = `https://github.com/${REPO}/releases/latest/download`
-if (sha256(await download(`${base}/IV-Studio-Setup.exe`, path.join(pub, 'setup.exe'))) !== report.windows.installer) die('The public installer is not the one built here.')
-if (sha256(await download(`${base}/IV-Studio-Portable-win-x64.zip`, path.join(pub, 'portable.zip'))) !== report.windows.portable) die('The public portable zip is not the one built here.')
+if (sha256(await download(`${base}/Techlit-Studio-Setup.exe`, path.join(pub, 'setup.exe'))) !== report.windows.installer) die('The public installer is not the one built here.')
+if (sha256(await download(`${base}/Techlit-Studio-Portable-win-x64.zip`, path.join(pub, 'portable.zip'))) !== report.windows.portable) die('The public portable zip is not the one built here.')
 console.log('✓ Windows installer and portable zip match')
 
 step('Waiting for the Linux and Mac release builds')
@@ -210,9 +210,9 @@ async function checkFeed(feed, files) {
   }
   console.log(`✓ ${files.join(', ')} match ${feed}`)
 }
-await checkFeed('latest-linux.yml', ['IV-Studio.AppImage'])
-await checkFeed('latest-mac.yml', ['IV-Studio-mac-arm64.dmg', 'IV-Studio-mac-arm64.zip', 'IV-Studio-mac-x64.dmg', 'IV-Studio-mac-x64.zip'])
+await checkFeed('latest-linux.yml', ['Techlit-Studio.AppImage'])
+await checkFeed('latest-mac.yml', ['Techlit-Studio-mac-arm64.dmg', 'Techlit-Studio-mac-arm64.zip', 'Techlit-Studio-mac-x64.dmg', 'Techlit-Studio-mac-x64.zip'])
 run('git', ['push', '-q', 'origin', '--delete', CANDIDATE], { quiet: true, allowFail: true })
 report.release = { url: `https://github.com/${REPO}/releases/tag/${TAG}`, linux: linuxRel, mac: macRel }
 fs.writeFileSync(path.join(dist, `release-${version}.json`), JSON.stringify(report, null, 2))
-console.log(`\n✓ IV Studio ${version} is the public Latest release: ${report.release.url}`)
+console.log(`\n✓ Techlit Studio ${version} is the public Latest release: ${report.release.url}`)

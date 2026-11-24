@@ -1,12 +1,12 @@
 // The Workflows tools: one card each on the Workflows page, in this order, each its own page. needs: what a tool
-// requires beyond IV Studio itself, shown on its card and on its page (FlowKit's WorkflowNeeds), so nobody starts
+// requires beyond Techlit Studio itself, shown on its card and on its page (FlowKit's WorkflowNeeds), so nobody starts
 // one without it. New tools are added here.
 export const WORKFLOWS = [
   {
     page: 'replace',
     name: 'Replace',
     tag: 'Swap who is in the shot, or change the scene',
-    about: 'Like Higgsfield’s Genjutsu, on your own PC: put your characters in place of people in a video, or change the scene in plain words: snow, night, a new setting, something removed. IV Studio paints the frames, you check them, and the camera, motion and soundtrack stay.',
+    about: 'Like Higgsfield’s Genjutsu, on your own PC: put your characters in place of people in a video, or change the scene in plain words: snow, night, a new setting, something removed. Techlit Studio paints the frames, you check them, and the camera, motion and soundtrack stay.',
     needs: ['H3 on this PC', 'Its node packs and models (the page lists them)']
   },
   {
@@ -34,21 +34,21 @@ export const WORKFLOWS = [
     page: 'reel',
     name: 'Reel',
     tag: 'Pictures and a song, cut to the beat',
-    about: 'Add pictures in order and pick a song. IV Studio finds its beat and cuts them on its bars, with a slow move on each picture, as an edit you can finish in Edit.',
+    about: 'Add pictures in order and pick a song. Techlit Studio finds its beat and cuts them on its bars, with a slow move on each picture, as an edit you can finish in Edit.',
     needs: ['Nothing extra: your pictures and a song']
   },
   {
     page: 'musicvideo',
     name: 'Music video',
     tag: 'A song, cut into scenes that sing along',
-    about: 'Pick a song from Music or your own. IV Studio finds its beat, bars and parts and cuts it into scenes of up to 15 s. Your cast sings and plays along to each scene’s own stretch of the song, and the finished scenes land in Edit over the song.',
+    about: 'Pick a song from Music or your own. Techlit Studio finds its beat, bars and parts and cuts it into scenes of up to 15 s. Your cast sings and plays along to each scene’s own stretch of the song, and the finished scenes land in Edit over the song.',
     needs: ['H3 on this PC', 'A song (make one on Audio → Music)']
   },
   {
     page: 'keyframes',
     name: 'Keyframes',
     tag: 'Pictures, brought to life in one moving video',
-    about: 'Put pictures in order: a photoshoot, poses, product angles. IV Studio makes one smooth video that moves from each picture to the next, and loops back to the first if you like, in one take or as a chain of moves.',
+    about: 'Put pictures in order: a photoshoot, poses, product angles. Techlit Studio makes one smooth video that moves from each picture to the next, and loops back to the first if you like, in one take or as a chain of moves.',
     needs: ['H3 on this PC', 'Your pictures']
   },
   {
@@ -69,7 +69,7 @@ export const WORKFLOWS = [
     page: 'rebuild',
     name: 'Rebuild',
     tag: 'A video, taken apart and rebuilt',
-    about: 'Bring a video you made. IV Studio reads it shot by shot, your agent plans how each shot is remade, you approve the plan and the frames, H3 renders the new shots and a first cut lands in Edit beside the original.',
+    about: 'Bring a video you made. Techlit Studio reads it shot by shot, your agent plans how each shot is remade, you approve the plan and the frames, H3 renders the new shots and a first cut lands in Edit beside the original.',
     needs: ['Claude or ChatGPT', 'H3 on this PC']
   }
 ]

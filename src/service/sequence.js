@@ -1,10 +1,10 @@
 // Sequences: several shots that play as one continuous video. This builds the ComfyUI graphs that the
-// IV Studio workflow doesn't cover. The model, encoder, VAE and turbo LoRA names come from the IV Studio
+// Techlit Studio workflow doesn't cover. The model, encoder, VAE and turbo LoRA names come from the Techlit Studio
 // template, so a sequence renders with exactly the models Setup checked.
 //   take      - H3 Multishot's sampler renders every shot as one seamless take (ref2va)
 //   retake    - H3 Retake redoes one stretch of a finished video and keeps the rest
 //   renderout - optional colour smoothing across the joins (H3 Chain Normalize), then the DLSS pass
-// Shot by shot rendering reuses the IV Studio workflow's own Continue mode (see studio.js).
+// Shot by shot rendering reuses the Techlit Studio workflow's own Continue mode (see studio.js).
 import { resolveFrames, resolveSize } from './plan.js'
 import { sections } from './lint.js'
 
@@ -72,7 +72,7 @@ const fill = (text, character) => (character ? text.replaceAll('{char}', charact
 // One shot of a one-take script. With a voice attached, H3 Multishot writes the reference (ref2va) sections
 // itself (subject_definitions, summary, retention_analysis, non_diegetic_music: N/A) and puts the shot's text
 // in detailed_description, so the shot goes as plain text: the description with its sound folded in. Sent as
-// written, IV Studio's own section names ended up inside detailed_description (GitHub #14). With no
+// written, Techlit Studio's own section names ended up inside detailed_description (GitHub #14). With no
 // reference attached there is nothing for those sections to define, and the written prompt goes as it is.
 // bind ({pictures, voice}): the references this shot carries, named in one opening line the way the pack's docs
 // say to ("She looks like the woman in <Picture 1>." / "Her voice is the voice in <Audio 1>.").

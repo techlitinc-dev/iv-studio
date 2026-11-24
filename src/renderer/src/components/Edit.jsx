@@ -25,7 +25,7 @@ export function EditList({ openEdit, notify }) {
   const groups = groupBy(shown, (e) => whenGroup(e.updatedAt))
   return (
     <div className="edits shelf-page">
-      <Stage effect="snip" art="edit" title="Edit" kicker="Infinite Variance">
+      <Stage effect="snip" art="edit" title="Edit" kicker="DD'S Techlit AI Solutions">
         <QuickBar search label="Search edits" placeholder="Search your edits" value={q} onChange={setQ} results=".shelf-bar" found={shown.length} noun="edit" alt={{ label: '+ New edit', onClick: create }} />
       </Stage>
       <p className="lede">

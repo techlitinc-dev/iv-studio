@@ -47,7 +47,7 @@ ok('every required model says which other versions count', () => {
   for (const m of manifest.models.filter((m) => !m.optional)) assert.ok(m.accept?.length, m.id)
 })
 
-ok('IV Studio’s own build wins; another version is next; the Settings → Models pick last', () => {
+ok('Techlit Studio’s own build wins; another version is next; the Settings → Models pick last', () => {
   assert.deepEqual(resolveModel(byId.fl2va, ['minimax_h3_fl2va_fp8.safetensors', 'minimax_h3_fl2va_pruned_int8_convrot.safetensors']), { file: 'minimax_h3_fl2va_pruned_int8_convrot.safetensors', how: 'exact' })
   assert.deepEqual(resolveModel(byId.text_encoder, ['qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors']), { file: 'qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors', how: 'version' })
   assert.deepEqual(resolveModel(byId.ref2va, ['my_h3_merge.safetensors'], { reference: 'my_h3_merge.safetensors' }), { file: 'my_h3_merge.safetensors', how: 'picked' })
@@ -97,7 +97,7 @@ ok('the swap reaches every loader of the H3 workflow, and nothing else', () => {
 ok('an optional model is found in any folder by its own name, never swapped for another version', () => {
   const qma = byId.qma
   const lists = (files) => info({ LoraLoaderModelOnly: ['lora_name', files], UNETLoader: ['unet_name', []] })
-  // IV Studio puts it in "Qwen 2.1\"; someone keeps it at the top of loras: the graph's name follows
+  // Techlit Studio puts it in "Qwen 2.1\"; someone keeps it at the top of loras: the graph's name follows
   assert.equal(modelFileMap(manifest, lists([qma.match]))[qma.match], qma.match)
   assert.equal(renameFiles({ a: { inputs: { lora_name: `Qwen 2.1\\${qma.match}` } } }, modelFileMap(manifest, lists([qma.match]))).a.inputs.lora_name, qma.match)
   // a Flux.2 fine-tune in the Flux 2 folder is another version: optional models aren't swapped for it

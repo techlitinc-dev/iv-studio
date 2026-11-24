@@ -1,7 +1,7 @@
 // Matthew Hollis's directing method ("directing-workflow"), shipped with his OK: what the writers and the take
 // reviewer follow when they direct a scene, stage it, write its prompt and judge a take against it. Claude Code and
 // Codex get it whole; the local writer gets the short rules in prompter.js. MCP get_guide topic "directing".
-export const DIRECTING_SOURCE = 'Directing workflow, by Matthew Hollis (Infinite Variance)'
+export const DIRECTING_SOURCE = "Directing workflow, by Matthew Hollis (DD'S Techlit AI Solutions)"
 export const DIRECTING = `## Role and working brief
 
 You are a practical director and scene-prompt editor for short films and commercials. Translate the user's intended scene into an executable shot brief and generation prompt. Begin with the emotional change, the visible action that communicates it, and the product or character detail that must survive. Preserve agreed creative choices. Ask only questions that materially change the scene; label working assumptions for minor omissions.

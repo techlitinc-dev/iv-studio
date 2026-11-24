@@ -18,19 +18,19 @@ const sha = (buf) => crypto.createHash('sha512').update(buf).digest('base64')
 // the 1.0.8 release's own latest-mac.yml
 const FEED = `version: 1.0.8
 files:
-  - url: IV-Studio-mac-arm64.zip
+  - url: Techlit-Studio-mac-arm64.zip
     sha512: xax+zOqtIkMn5Vv2ai07W+d20lDeq2m2oB+SsA8032arHoYm1gRVIV5c98K3t7OEoQbLpgmJPMChjqmvpLvrfw==
     size: 212093489
-  - url: IV-Studio-mac-arm64.dmg
+  - url: Techlit-Studio-mac-arm64.dmg
     sha512: 1jTVRD+D4UDit+kB2JMomkC1L895n2mz9Tshdr3DG34skUjUNaJwF8uVeZW2rz0eFYoXHFlf3pLdwjdU3DJUWQ==
     size: 216516067
-  - url: IV-Studio-mac-x64.zip
+  - url: Techlit-Studio-mac-x64.zip
     sha512: Ged5gfHDCaEur8Fdj/tnBZAVqaiVGZ2oilLkq5kEoBUh/QLMLHXLKAYzwQR3D5yZqlLACznSAQGBJl+WLdkQMg==
     size: 228568186
-  - url: IV-Studio-mac-x64.dmg
+  - url: Techlit-Studio-mac-x64.dmg
     sha512: TbkmvZEFcIarUQjwI3+osBCuAGgiqiXs8cjhiZNSZwVQU/UPim6oexPiu3jBVK+6IZ8N1oP+WBSr+nvvdDvl9w==
     size: 232936948
-path: IV-Studio-mac-arm64.zip
+path: Techlit-Studio-mac-arm64.zip
 sha512: xax+zOqtIkMn5Vv2ai07W+d20lDeq2m2oB+SsA8032arHoYm1gRVIV5c98K3t7OEoQbLpgmJPMChjqmvpLvrfw==
 releaseDate: '2026-11-09T15:08:54.196Z'
 `
@@ -49,31 +49,31 @@ await ok('the feed, and the zip for each chip', () => {
   const f = parseFeed(FEED)
   assert.equal(f.version, '1.0.8')
   assert.equal(f.files.length, 4)
-  assert.equal(pickFile(f.files, 'arm64').url, 'IV-Studio-mac-arm64.zip')
-  assert.equal(pickFile(f.files, 'x64').url, 'IV-Studio-mac-x64.zip')
+  assert.equal(pickFile(f.files, 'arm64').url, 'Techlit-Studio-mac-arm64.zip')
+  assert.equal(pickFile(f.files, 'x64').url, 'Techlit-Studio-mac-x64.zip')
   assert.equal(pickFile(f.files, 'x64').size, 228568186)
-  assert.equal(pickFile([{ url: 'IV-Studio-mac-x64.zip', sha512: 'x' }], 'arm64'), null, 'an Apple Silicon copy never takes the Intel zip')
+  assert.equal(pickFile([{ url: 'Techlit-Studio-mac-x64.zip', sha512: 'x' }], 'arm64'), null, 'an Apple Silicon copy never takes the Intel zip')
   assert.throws(() => parseFeed('files: []'))
 })
 
 await ok('where the feed is', () => {
   const g = feedUrls()
   assert.equal(g.feed, 'https://github.com/hollisorg/iv-studio/releases/latest/download/latest-mac.yml')
-  assert.equal(g.file('IV-Studio-mac-arm64.zip', '1.1.0'), 'https://github.com/hollisorg/iv-studio/releases/download/v1.1.0/IV-Studio-mac-arm64.zip')
+  assert.equal(g.file('Techlit-Studio-mac-arm64.zip', '1.1.0'), 'https://github.com/hollisorg/iv-studio/releases/download/v1.1.0/Techlit-Studio-mac-arm64.zip')
   const t = feedUrls('http://127.0.0.1:9/feed/')
   assert.equal(t.feed, 'http://127.0.0.1:9/feed/latest-mac.yml')
-  assert.equal(t.file('IV Studio.zip'), 'http://127.0.0.1:9/feed/IV%20Studio.zip')
+  assert.equal(t.file('Techlit Studio.zip'), 'http://127.0.0.1:9/feed/IV%20Studio.zip')
 })
 
 await ok('which copies can replace themselves', () => {
-  assert.equal(appBundleOf('/Applications/IV Studio.app/Contents/MacOS/IV Studio'), '/Applications/IV Studio.app')
+  assert.equal(appBundleOf('/Applications/Techlit Studio.app/Contents/MacOS/Techlit Studio'), '/Applications/Techlit Studio.app')
   assert.equal(appBundleOf('/usr/local/bin/node'), null)
   const fine = () => {}
-  assert.equal(cannotReplace('/Applications/IV Studio.app', { access: fine }), null)
-  assert.match(cannotReplace('/private/var/folders/x/AppTranslocation/ABC/d/IV Studio.app', { access: fine }), /Applications folder/)
-  assert.match(cannotReplace('/Volumes/IV Studio 1.0.8/IV Studio.app', { access: fine }), /disk image/)
+  assert.equal(cannotReplace('/Applications/Techlit Studio.app', { access: fine }), null)
+  assert.match(cannotReplace('/private/var/folders/x/AppTranslocation/ABC/d/Techlit Studio.app', { access: fine }), /Applications folder/)
+  assert.match(cannotReplace('/Volumes/Techlit Studio 1.0.8/Techlit Studio.app', { access: fine }), /disk image/)
   assert.match(
-    cannotReplace('/Applications/IV Studio.app', {
+    cannotReplace('/Applications/Techlit Studio.app', {
       access: () => {
         throw new Error('EACCES')
       }
@@ -87,14 +87,14 @@ await ok('the download, then its size and checksum', async () => {
   const dir = tmp()
   const body = crypto.randomBytes(300_000)
   const server = http.createServer((req, res) => {
-    if (req.url !== '/IV-Studio-mac-arm64.zip') return res.writeHead(404).end()
+    if (req.url !== '/Techlit-Studio-mac-arm64.zip') return res.writeHead(404).end()
     res.writeHead(200, { 'content-length': body.length })
     res.end(body)
   })
   await new Promise((r) => server.listen(0, '127.0.0.1', r))
   const base = `http://127.0.0.1:${server.address().port}`
   const seen = []
-  const file = await download(`${base}/IV-Studio-mac-arm64.zip`, path.join(dir, 'u', 'a.zip'), { onProgress: (p) => seen.push(p) })
+  const file = await download(`${base}/Techlit-Studio-mac-arm64.zip`, path.join(dir, 'u', 'a.zip'), { onProgress: (p) => seen.push(p) })
   assert.equal(fs.readFileSync(file).length, body.length)
   assert.equal(seen.at(-1), 100)
   assert.equal(fs.existsSync(`${file}.part`), false)
@@ -113,7 +113,7 @@ function fakeTools({ version = '1.1.0', signed = true, apps = 1 } = {}) {
     calls.push(path.basename(cmd))
     if (cmd.endsWith('ditto')) {
       for (let i = 0; i < apps; i++) {
-        const b = path.join(args[3], i ? `Other ${i}.app` : 'IV Studio.app', 'Contents')
+        const b = path.join(args[3], i ? `Other ${i}.app` : 'Techlit Studio.app', 'Contents')
         fs.mkdirSync(path.join(b, 'MacOS'), { recursive: true })
         fs.writeFileSync(path.join(b, 'Info.plist'), version)
       }
@@ -130,7 +130,7 @@ await ok('unpacking checks the version and the signature', async () => {
   const dir = tmp()
   const t = fakeTools()
   const app = await stage('x.zip', path.join(dir, 's'), { version: '1.1.0', run: t.run })
-  assert.equal(path.basename(app), 'IV Studio.app')
+  assert.equal(path.basename(app), 'Techlit Studio.app')
   assert.deepEqual(t.calls, ['ditto', 'PlistBuddy', 'codesign', 'xattr'])
   await assert.rejects(stage('x.zip', path.join(dir, 's'), { version: '1.2.0', run: fakeTools().run }), /says it is 1\.1\.0, not 1\.2\.0/)
   await assert.rejects(stage('x.zip', path.join(dir, 's'), { version: '1.1.0', run: fakeTools({ signed: false }).run }), /signature/)
@@ -142,8 +142,8 @@ await ok('unpacking checks the version and the signature', async () => {
 const sh = spawnSync('sh', ['-c', 'echo yes'], { encoding: 'utf8' }).stdout?.trim() === 'yes'
 await ok(`the swap script${sh ? '' : ' (written only: no sh here)'}`, () => {
   const dir = tmp().replace(/\\/g, '/')
-  const bundle = `${dir}/Applications/IV Studio.app`
-  const staged = `${dir}/stage/IV Studio.app`
+  const bundle = `${dir}/Applications/Techlit Studio.app`
+  const staged = `${dir}/stage/Techlit Studio.app`
   for (const [b, v] of [
     [bundle, 'old'],
     [staged, 'new']
@@ -155,7 +155,7 @@ await ok(`the swap script${sh ? '' : ' (written only: no sh here)'}`, () => {
   // a pid that has already ended, so it doesn't wait
   const script = installScript({ pid: 999999, bundle, staged, log, relaunch: false })
   assert.match(script, /^#!\/bin\/sh/)
-  assert.match(script, /mv '.*IV Studio\.app' '.*IV Studio\.app\.iv-old'/)
+  assert.match(script, /mv '.*Techlit Studio\.app' '.*Techlit Studio\.app\.iv-old'/)
   assert.ok(installScript({ pid: 1, bundle: "/A/It's.app", staged: '/s', log: '/l' }).includes(`'/A/It'\\''s.app'`), 'quotes are escaped')
   if (!sh) return
   fs.writeFileSync(`${dir}/install.sh`, script)

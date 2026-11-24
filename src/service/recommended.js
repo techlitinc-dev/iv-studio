@@ -1,6 +1,6 @@
 // A short shelf of tested MiniMax H3 LoRAs for the LoRAs page, each pinned to one Hugging Face commit and its
 // SHA-256 (checked by ModelInstaller, the same downloader Setup uses), with what it does and how to use it in
-// IV Studio's own words. The list is our pick; the idea of a recommended shelf, and several of these picks, came
+// Techlit Studio's own words. The list is our pick; the idea of a recommended shelf, and several of these picks, came
 // from keys + Sam Wasserman's Imagination Studio (Apache-2.0). Every file is the person's to download, and each
 // keeps its own licence (shown on its card): Apache-2.0, or MiniMax's H3 Community Licence for most H3 LoRAs.
 // works: the H3 modes it was made for (text, frames, reference); use: 'shot' (the Create tray) or 'turnaround'

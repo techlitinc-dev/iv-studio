@@ -32,7 +32,7 @@ export default function ComfyUpdates({ notify, recheck }) {
   async function run() {
     const yes = await ask({
       title: 'Update ComfyUI and every custom node?',
-      message: 'IV Studio saves a snapshot, updates every custom node pack (ComfyUI-Manager included) and ComfyUI, then restarts ComfyUI. Renders can’t run meanwhile. Undo last update puts it all back.',
+      message: 'Techlit Studio saves a snapshot, updates every custom node pack (ComfyUI-Manager included) and ComfyUI, then restarts ComfyUI. Renders can’t run meanwhile. Undo last update puts it all back.',
       confirm: 'Update everything'
     })
     if (!yes) return

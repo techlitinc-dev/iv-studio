@@ -1,4 +1,4 @@
-// How IV Studio starts Ollama (prompter.js ollamaStartCommand). On Windows a detached `ollama serve` has no console, so
+// How Techlit Studio starts Ollama (prompter.js ollamaStartCommand). On Windows a detached `ollama serve` has no console, so
 // each model it loads opened a new terminal window: Windows must use Ollama's tray app, or a hidden PowerShell start.
 //   node test/ollama-start.mjs
 import assert from 'node:assert/strict'

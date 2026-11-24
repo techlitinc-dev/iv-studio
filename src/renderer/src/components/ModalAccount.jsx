@@ -49,7 +49,7 @@ export default function ModalAccount({ st, busy, run, info, notify, onChanged, c
     return (
       <div className="modal-account waiting">
         <p className="small">
-          <span className="version-dot" aria-hidden="true" /> Waiting for you to approve IV Studio on Modal’s page in your browser.
+          <span className="version-dot" aria-hidden="true" /> Waiting for you to approve Techlit Studio on Modal’s page in your browser.
         </p>
         <div className="modal-account-btns">
           {url && (
@@ -75,7 +75,7 @@ export default function ModalAccount({ st, busy, run, info, notify, onChanged, c
           Sign in with Modal
         </button>
       </div>
-      {info?.links?.modalSignup && <span className="cloud-support small">This is IV Studio’s referral link: signing up through it supports the app, and costs you nothing extra.</span>}
+      {info?.links?.modalSignup && <span className="cloud-support small">This is Techlit Studio’s referral link: signing up through it supports the app, and costs you nothing extra.</span>}
     </div>
   )
 }

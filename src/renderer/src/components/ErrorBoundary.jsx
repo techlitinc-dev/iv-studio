@@ -12,7 +12,7 @@ export default class ErrorBoundary extends Component {
     return { error }
   }
   componentDidCatch(error, info) {
-    console.error('IV Studio page error:', error, info?.componentStack)
+    console.error('Techlit Studio page error:', error, info?.componentStack)
   }
   render() {
     const e = this.state.error
@@ -21,7 +21,7 @@ export default class ErrorBoundary extends Component {
     return (
       <div className="page-error" role="alert">
         <h1>Something went wrong on this page</h1>
-        <p>IV Studio is still running: renders, downloads and cloud setups carry on. Reload the window to get back to work.</p>
+        <p>Techlit Studio is still running: renders, downloads and cloud setups carry on. Reload the window to get back to work.</p>
         <div className="page-error-btns">
           <button className="btn btn-primary" onClick={() => window.location.reload()}>
             Reload

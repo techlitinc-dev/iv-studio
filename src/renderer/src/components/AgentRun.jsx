@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-// The person's own Claude Code or Codex making their Dashboard idea inside IV Studio (src/service/agentrun.js).
+// The person's own Claude Code or Codex making their Dashboard idea inside Techlit Studio (src/service/agentrun.js).
 // useAgentRun: which agent there is and the current run, kept live. AgentPanel: the run's progress under the banner.
 // AgentPill: the run in the title bar on other pages.
 export function useAgentRun() {

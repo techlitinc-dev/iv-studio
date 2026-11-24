@@ -1,7 +1,7 @@
 // Anonymous usage counting, and the cloud beta signup. Both are off until the person says yes.
 //
-// Counting: Settings → Privacy → "Help improve IV Studio" (asked once in the welcome wizard, off by default).
-// When it's on, IV Studio counts four things: the app was opened, a render started, a render finished, and the
+// Counting: Settings → Privacy → "Help improve Techlit Studio" (asked once in the welcome wizard, off by default).
+// When it's on, Techlit Studio counts four things: the app was opened, a render started, a render finished, and the
 // first render ever finished on this copy. Each count carries a random id made for this copy (not tied to the
 // person, the PC's name or any account), the day, the app version, the platform and the kind of render. Nothing
 // else: no prompts, pictures, file names, folders, keys or addresses. `preview()` is exactly what is sent, and

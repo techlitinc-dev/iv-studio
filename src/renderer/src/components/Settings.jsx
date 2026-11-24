@@ -124,7 +124,7 @@ function WordsCard({ n, settings, setSettings }) {
     window.dispatchEvent(new CustomEvent('iv:settings'))
   }
   return (
-    <SetCard id="words" n={n} title="Words" sub="How IV Studio talks to you." aside={settings.plainWords ? <Pill tone="ok">Simple</Pill> : <Pill>Standard</Pill>}>
+    <SetCard id="words" n={n} title="Words" sub="How Techlit Studio talks to you." aside={settings.plainWords ? <Pill tone="ok">Simple</Pill> : <Pill>Standard</Pill>}>
       <SetField label="Simple words" hint="For people new to AI video and pictures: the app explains itself in everyday words. Only the words change; every page, control and setting stays the same.">
         <SetSwitch checked={settings.plainWords} onChange={(on) => set({ plainWords: on })}>
           {settings.plainWords ? 'On' : 'Off'}
@@ -198,7 +198,7 @@ function YouCard({ n, settings, setSettings, notify }) {
         </div>
       </SetField>
       {app === 'local' && (
-        <SetField label="Local AI’s model" hint="A model in your Ollama that can use tools, like Qwen3 or Llama 3.1. Free and private, on this PC; slower and simpler than Claude or ChatGPT, with IV Studio’s everyday tools. Empty uses the prompt writer’s model.">
+        <SetField label="Local AI’s model" hint="A model in your Ollama that can use tools, like Qwen3 or Llama 3.1. Free and private, on this PC; slower and simpler than Claude or ChatGPT, with Techlit Studio’s everyday tools. Empty uses the prompt writer’s model.">
           <select value={settings.localChatModel || ''} onChange={(e) => set({ localChatModel: e.target.value })}>
             <option value="">Same as the prompt writer{settings.ollamaModel ? ` (${settings.ollamaModel})` : ''}</option>
             {(ollamaModels || []).map((m) => (
@@ -230,7 +230,7 @@ function AccessCard({ n, settings, setSettings, notify }) {
   }
   const on = ['highContrast', 'reduceMotion', 'focusRings', 'underlineLinks'].filter((k) => settings[k]).length + (settings.textSize && settings.textSize !== 'normal' ? 1 : 0)
   return (
-    <SetCard id="access" n={n} title="Accessibility" sub="Make IV Studio easier to read and to use. Each change applies straight away." aside={on ? <Pill tone="ok">{on} on</Pill> : null}>
+    <SetCard id="access" n={n} title="Accessibility" sub="Make Techlit Studio easier to read and to use. Each change applies straight away." aside={on ? <Pill tone="ok">{on} on</Pill> : null}>
       <SetField label="Colour" hint="The colour of buttons, highlights and the artwork. Red is the default.">
         <AccentPicker value={settings.accent} onPick={(id) => (applyAccent(id), set({ accent: id }))} />
       </SetField>
@@ -267,7 +267,7 @@ function AccessCard({ n, settings, setSettings, notify }) {
   )
 }
 
-// The ComfyUI IV Studio renders on, and how IV Studio starts it: the person's own launcher (found or picked).
+// The ComfyUI Techlit Studio renders on, and how Techlit Studio starts it: the person's own launcher (found or picked).
 function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBusy }) {
   const [url, setUrl] = useState(settings.comfyUrl)
   const [l, setL] = useState(null)
@@ -301,7 +301,7 @@ function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBu
       id="comfy"
       n={n}
       title="ComfyUI"
-      sub="IV Studio uses the ComfyUI you already have, on any drive (or gets one for you: Setup → Get ComfyUI for me). H3 models, LoRAs from Civitai and your renders all go into that ComfyUI’s own folders."
+      sub="Techlit Studio uses the ComfyUI you already have, on any drive (or gets one for you: Setup → Get ComfyUI for me). H3 models, LoRAs from Civitai and your renders all go into that ComfyUI’s own folders."
       aside={comfyUp ? <Pill tone="ok">Ready</Pill> : comfyBusy ? <Pill tone="warn">Busy</Pill> : <Pill tone="warn">Not running</Pill>}
     >
       <SetField label="Address" hint="Where ComfyUI answers, such as localhost:8188 (portable) or localhost:8000 (the Desktop app). Typing http:// is optional.">
@@ -314,7 +314,7 @@ function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBu
       </SetField>
       {l && !l.local && (
         <SetField label="Starting it">
-          <p className="small dim set-plain">IV Studio can start ComfyUI only when it runs on this PC.</p>
+          <p className="small dim set-plain">Techlit Studio can start ComfyUI only when it runs on this PC.</p>
         </SetField>
       )}
       {l?.local && (
@@ -339,7 +339,7 @@ function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBu
               </select>
             </SetField>
           )}
-          <SetField label="Start it with" hint={linux ? 'A .sh script beside ComfyUI, or its main.py with its own venv’s Python. Its output goes to comfyui.log in IV Studio’s data folder.' : 'The same shortcut or .bat you’d double-click, so ComfyUI starts with your own settings in its own window.'}>
+          <SetField label="Start it with" hint={linux ? 'A .sh script beside ComfyUI, or its main.py with its own venv’s Python. Its output goes to comfyui.log in Techlit Studio’s data folder.' : 'The same shortcut or .bat you’d double-click, so ComfyUI starts with your own settings in its own window.'}>
             <div className="set-inline grow">
               <SetPath path={l.using} empty="No launcher found" />
               <button className="btn btn-small" onClick={choose}>
@@ -359,9 +359,9 @@ function ComfyCard({ n, settings, setSettings, notify, recheck, comfyUp, comfyBu
               </div>
             )}
           </SetField>
-          <SetField label="On open" hint="ComfyUI keeps running after IV Studio closes.">
+          <SetField label="On open" hint="ComfyUI keeps running after Techlit Studio closes.">
             <SetSwitch checked={settings.comfyAutoStart !== false} onChange={(on) => set({ comfyAutoStart: on })}>
-              Start ComfyUI when IV Studio opens, if it isn’t running already
+              Start ComfyUI when Techlit Studio opens, if it isn’t running already
             </SetSwitch>
           </SetField>
         </>
@@ -406,7 +406,7 @@ function FolderCard({ n, settings, setSettings, notify, incognito }) {
       title="Folders"
       sub="Where finished videos go, and where in ComfyUI’s output folder renders save. Files already made stay where they are."
       aside={incognito ? <Pill tone="warn">In Incognito now</Pill> : null}
-      foot={`Use a folder name, or a path such as Studio\\Private; it always stays inside ComfyUI’s folders. Pictures, videos and sounds you add in Incognito go into input\\${hidden.trim() || 'IV Private'}.`}
+      foot={`Use a folder name, or a path such as Studio\\Private; it always stays inside ComfyUI’s folders. Pictures, videos and sounds you add in Incognito go into input\\${hidden.trim() || 'Techlit Private'}.`}
     >
       <SetField label="Finished videos" hint={`Films and edits you export, and cloud renders brought to this PC.${videos?.free != null ? ` ${(videos.free / 1024 ** 3).toFixed(0)} GB free there.` : ''} Renders made on this PC stay in ComfyUI’s output folder, on its drive.`}>
         <div className="set-inline grow">
@@ -430,7 +430,7 @@ function FolderCard({ n, settings, setSettings, notify, incognito }) {
       <SetField label="Incognito renders">
         <div className="set-prefixed">
           <span className="mono">output\</span>
-          <input value={hidden} placeholder="IV Private" onChange={(e) => setHidden(e.target.value)} onKeyDown={enter} />
+          <input value={hidden} placeholder="Techlit Private" onChange={(e) => setHidden(e.target.value)} onKeyDown={enter} />
         </div>
       </SetField>
       {changed && (
@@ -768,7 +768,7 @@ function OpenAiWriter({ settings, setSettings, save, notify }) {
     <>
       <SetField
         label="Address"
-        hint={check && check !== 'checking' && !check.ok ? check.error : 'The server’s OpenAI API address: llama.cpp and llama-swap localhost:8080, LM Studio localhost:1234, vLLM localhost:8000, LiteLLM localhost:4000, or https://api.openai.com/v1. IV Studio adds /v1 when there’s no path.'}
+        hint={check && check !== 'checking' && !check.ok ? check.error : 'The server’s OpenAI API address: llama.cpp and llama-swap localhost:8080, LM Studio localhost:1234, vLLM localhost:8000, LiteLLM localhost:4000, or https://api.openai.com/v1. Techlit Studio adds /v1 when there’s no path.'}
       >
         <div className="set-inline grow">
           <input value={addr} placeholder="http://localhost:8080/v1" onChange={(e) => setAddr(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addrChanged && save({ openaiUrl: addr })} aria-label="OpenAI-compatible server address" />
@@ -786,7 +786,7 @@ function OpenAiWriter({ settings, setSettings, save, notify }) {
       <SetField
         label="Model"
         warn={!listed ? `The server doesn’t list ${settings.openaiModel}.` : null}
-        hint="The model name the server expects. With llama-swap, the name picks the model it loads. Your idea and pictures go to this server; nothing is unloaded by IV Studio."
+        hint="The model name the server expects. With llama-swap, the name picks the model it loads. Your idea and pictures go to this server; nothing is unloaded by Techlit Studio."
       >
         <div className="set-inline grow">
           <input value={model} list="iv-openai-models" placeholder={models[0] || 'qwen3-vl-8b'} onChange={(e) => setModel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && modelChanged && save({ openaiModel: model })} aria-label="Model name" />
@@ -805,7 +805,7 @@ function OpenAiWriter({ settings, setSettings, save, notify }) {
           It can see pictures
         </SetSwitch>
       </SetField>
-      <SetField label="API key" tag="optional" hint="Only if the server asks for one (OpenAI, a hosted provider, a LiteLLM with keys). Sent as Authorization: Bearer. Stored encrypted on this PC. Agents using IV Studio's MCP server read it from IV_STUDIO_LLM_KEY or OPENAI_API_KEY instead.">
+      <SetField label="API key" tag="optional" hint="Only if the server asks for one (OpenAI, a hosted provider, a LiteLLM with keys). Sent as Authorization: Bearer. Stored encrypted on this PC. Agents using Techlit Studio's MCP server read it from IV_STUDIO_LLM_KEY or OPENAI_API_KEY instead.">
         {settings.hasOpenaiKey ? (
           <div className="set-inline">
             <Pill tone="ok">Saved · encrypted on this PC</Pill>
@@ -958,7 +958,7 @@ function SpendingField({ settings, setSettings, notify }) {
   return (
     <SetField
       label="Spending limit"
-      hint="For IV Studio’s chat. Off: every step that spends Comfy.org credits asks first. On: a Seedance step goes ahead without asking when its price (IV Studio’s own, the top of any range) fits both amounts and your balance covers it. Cloud-GPU renders, character training and anything without a known price always ask. Every paid step counts when it starts, even if the render later fails; the day starts at midnight."
+      hint="For Techlit Studio’s chat. Off: every step that spends Comfy.org credits asks first. On: a Seedance step goes ahead without asking when its price (Techlit Studio’s own, the top of any range) fits both amounts and your balance covers it. Cloud-GPU renders, character training and anything without a known price always ask. Every paid step counts when it starts, even if the render later fails; the day starts at midnight."
     >
       <SetSwitch checked={b.on} onChange={(on) => save({ on })}>
         Let the chat spend credits without asking, up to a limit
@@ -989,9 +989,9 @@ function AgentCard({ n, mcp, settings, setSettings, notify }) {
     claude: `claude mcp add -s user iv-studio -e ELECTRON_RUN_AS_NODE=1 -- ${cmd}`,
     codex: `codex mcp add iv-studio --env ELECTRON_RUN_AS_NODE=1 -- ${cmd}
 # Then in ~/.codex/config.toml, under [mcp_servers.iv-studio], add the line below, or ChatGPT refuses
-# IV Studio's tools whenever its approvals are off:
+# Techlit Studio's tools whenever its approvals are off:
 # default_tools_approval_mode = "approve"`,
-    json: JSON.stringify({ mcpServers: { 'iv-studio': mcp } }, null, 2)
+    json: JSON.stringify({ mcpServers: { 'techlit-studio': mcp } }, null, 2)
   }
   async function installSkill() {
     try {
@@ -1003,12 +1003,12 @@ function AgentCard({ n, mcp, settings, setSettings, notify }) {
   }
   const skill = !agents.skillInstalled ? null : agents.skillCurrent ? 'ok' : 'warn'
   return (
-    <SetCard id="agents" n={n} title="Agents" sub="Claude, ChatGPT and other agents can render, sequence and edit in IV Studio, with the same projects and results you see here." aside={<Pill>MCP</Pill>}>
+    <SetCard id="agents" n={n} title="Agents" sub="Claude, ChatGPT and other agents can render, sequence and edit in Techlit Studio, with the same projects and results you see here." aside={<Pill>MCP</Pill>}>
       <SetField label="On this PC" hint="Your own Claude or ChatGPT, on your own plan. Install puts it in with the maker's own installer; Sign in opens its browser login.">
         <AgentRows setup={setup} notify={notify} />
       </SetField>
       <SpendingField settings={settings} setSettings={setSettings} notify={notify} />
-      <SetField label="Easiest" hint="One message: your agent adds IV Studio, reads its guide and checks your setup.">
+      <SetField label="Easiest" hint="One message: your agent adds Techlit Studio, reads its guide and checks your setup.">
         <SetCode text={agents.paste} label="Copy message" tall />
       </SetField>
       <SetField label="Add it yourself">
@@ -1025,7 +1025,7 @@ function AgentCard({ n, mcp, settings, setSettings, notify }) {
         </div>
         <SetCode text={manual[client]} label="Copy" />
       </SetField>
-      <SetField label="Claude skill" hint="Teaches Claude IV Studio's workflow (shots, H3 prompts, sequences, edits and the house rules) so it picks the right tools without being told.">
+      <SetField label="Claude skill" hint="Teaches Claude Techlit Studio's workflow (shots, H3 prompts, sequences, edits and the house rules) so it picks the right tools without being told.">
         <div className="set-inline">
           {skill && <Pill tone={skill}>{skill === 'ok' ? 'Added' : 'Out of date'}</Pill>}
           {skill !== 'ok' && (
@@ -1049,14 +1049,14 @@ function AboutCard({ n, info }) {
   const agreed = terms?.at ? new Date(terms.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : null
   return (
     <SetCard id="about" n={n} title="About" aside={terms && (terms.accepted ? <Pill tone="ok">Terms agreed</Pill> : <Pill tone="warn">Terms to agree</Pill>)}>
-      <SetField label="IV Studio">
+      <SetField label="Techlit Studio">
         <div className="set-inline">
           <span className="set-big mono">v{info?.version}</span>
           <button className="link-btn mono small" onClick={() => open('https://github.com/hollisorg/iv-studio')}>
             GitHub ↗
           </button>
           <button className="link-btn mono small" onClick={() => open('https://infinitevariance.ai')}>
-            infinitevariance.ai ↗
+            DD'S Techlit AI Solutions ↗
           </button>
           <button className="link-btn mono small" onClick={() => window.ivstudio.learn.openGuide().catch(() => {})}>
             The guide (PDF) ↗
@@ -1065,7 +1065,7 @@ function AboutCard({ n, info }) {
       </SetField>
       <SetField
         label="Terms of use"
-        hint="IV Studio is Powered by MiniMax H3. Using H3 means agreeing to IV Studio’s terms, which carry MiniMax’s use restrictions: real people only with consent, nothing involving minors, say it’s AI when you post it, and more. You’re asked once, before your first H3 render."
+        hint="Techlit Studio is Powered by MiniMax H3. Using H3 means agreeing to Techlit Studio’s terms, which carry MiniMax’s use restrictions: real people only with consent, nothing involving minors, say it’s AI when you post it, and more. You’re asked once, before your first H3 render."
       >
         <div className="set-inline about-terms">
           {terms?.accepted ? <span className="small">Agreed on {agreed}</span> : <span className="small pink">Not agreed yet</span>}
@@ -1077,7 +1077,7 @@ function AboutCard({ n, info }) {
           </button>
         </div>
       </SetField>
-      <SetField label="Report misuse" hint="Seen something made with IV Studio that breaks the terms, or that uses you or someone else without consent? Email us. Every report is read and acted on.">
+      <SetField label="Report misuse" hint="Seen something made with Techlit Studio that breaks the terms, or that uses you or someone else without consent? Email us. Every report is read and acted on.">
         <div className="set-inline about-report">
           <button className="btn btn-small" onClick={reportMisuse}>
             Report misuse
@@ -1088,14 +1088,14 @@ function AboutCard({ n, info }) {
           </button>
         </div>
       </SetField>
-      <SetField label="Tour" hint="A two-minute walk round IV Studio, page by page. Each page also has its own How it works button.">
+      <SetField label="Tour" hint="A two-minute walk round Techlit Studio, page by page. Each page also has its own How it works button.">
         <div className="set-inline">
           <button className="btn btn-small" onClick={() => startTour('full')}>
             Take the full tour
           </button>
         </div>
       </SetField>
-      <SetField label="Credits" hint="Every model, tool, node pack and library IV Studio is built on: who made it, what it does here and its licence.">
+      <SetField label="Credits" hint="Every model, tool, node pack and library Techlit Studio is built on: who made it, what it does here and its licence.">
         <div className="set-inline">
           <button className="btn btn-small about-credits" onClick={() => setCredits(true)}>
             Credits
@@ -1132,7 +1132,7 @@ function scroller(el) {
   return s
 }
 
-// Where IV Studio keeps its own data (projects, edits, voices, trainings, the voice engine and Shinobi), and moving
+// Where Techlit Studio keeps its own data (projects, edits, voices, trainings, the voice engine and Shinobi), and moving
 // it to another drive: copy, check, then restart on the new folder. ComfyUI's models, LoRAs and renders aren't
 // here; they live in ComfyUI's folders, on whatever drive ComfyUI is on.
 function DataCard({ n, notify }) {
@@ -1142,6 +1142,8 @@ function DataCard({ n, notify }) {
   const [progress, setProgress] = useState(null)
   const [moved, setMoved] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [parts, setParts] = useState(null) // the size breakdown by top-level folder, once asked
+  const [showParts, setShowParts] = useState(false)
   const refresh = () => window.ivstudio.data.info().then(setInfo).catch((err) => notify(err.message))
   useEffect(() => {
     refresh()
@@ -1171,7 +1173,7 @@ function DataCard({ n, notify }) {
     }
   }
   async function removeOld() {
-    if (!(await ask({ title: 'Remove the old copy?', message: `This deletes IV Studio’s old data in ${info.old.dir}. The copy IV Studio uses now, in ${info.dir}, stays.`, confirm: 'Remove the old copy', danger: true }))) return
+    if (!(await ask({ title: 'Remove the old copy?', message: `This deletes Techlit Studio’s old data in ${info.old.dir}. The copy Techlit Studio uses now, in ${info.dir}, stays.`, confirm: 'Remove the old copy', danger: true }))) return
     setBusy(true)
     try {
       await window.ivstudio.data.removeOld()
@@ -1191,7 +1193,7 @@ function DataCard({ n, notify }) {
       id="data"
       n={n}
       title="Data folder"
-      sub="What IV Studio makes and installs for itself: projects, edits, characters, voices, trainings, the voice engine and Shinobi. ComfyUI’s models, LoRAs and your renders aren’t here; they stay in ComfyUI’s own folders."
+      sub="What Techlit Studio makes and installs for itself: projects, edits, characters, voices, trainings, the voice engine and Shinobi. ComfyUI’s models, LoRAs and your renders aren’t here; they stay in ComfyUI’s own folders."
       aside={info.moved ? <Pill tone="warn">Drive not found</Pill> : where ? <Pill>{where}</Pill> : null}
     >
       <SetField label="Folder" hint={size ? `${GB(size.bytes)} in ${size.files.toLocaleString()} files${info.free != null ? ` · ${GB(info.free)} free on that drive` : ''}.` : 'Measuring…'}>
@@ -1202,10 +1204,39 @@ function DataCard({ n, notify }) {
           </button>
         </div>
       </SetField>
+      <SetField label="What's inside" hint="The top-level folders, biggest first, so you can see what uses the space.">
+        {!showParts ? (
+          <div className="set-inline">
+            <button
+              className="btn btn-small"
+              onClick={() => {
+                setShowParts(true)
+                if (!parts) window.ivstudio.data.breakdown().then(setParts, (err) => notify(err.message))
+              }}
+            >
+              Show the breakdown
+            </button>
+          </div>
+        ) : !parts ? (
+          <p className="small dim set-plain">Measuring…</p>
+        ) : parts.length === 0 ? (
+          <p className="small dim set-plain">Nothing here yet.</p>
+        ) : (
+          <div className="set-breakdown">
+            {parts.slice(0, 12).map((p) => (
+              <p key={p.name} className="mono small set-breakdown-row">
+                <span className="set-breakdown-name">{p.name}</span>
+                <span className="dim">{GB(p.bytes)}</span>
+              </p>
+            ))}
+            {parts.length > 12 && <p className="small dim set-plain">…and {parts.length - 12} smaller folders.</p>}
+          </div>
+        )}
+      </SetField>
       {info.moved && (
-        <SetField label="Moved data" warn={`Your data was moved to ${info.moved}, which isn’t there now. This run uses the default folder; connect the drive and restart IV Studio.`} />
+        <SetField label="Moved data" warn={`Your data was moved to ${info.moved}, which isn’t there now. This run uses the default folder; connect the drive and restart Techlit Studio.`} />
       )}
-      <SetField label="Another drive" hint={info.canMove ? 'Copies everything, checks the copy, then IV Studio restarts on it. The current folder isn’t changed until you remove it.' : null}>
+      <SetField label="Another drive" hint={info.canMove ? 'Copies everything, checks the copy, then Techlit Studio restarts on it. The current folder isn’t changed until you remove it.' : null}>
         {!info.canMove && <p className="small dim set-plain">{info.whyNot}</p>}
         {info.canMove && !moved && !plan && (
           <div className="set-inline">
@@ -1245,18 +1276,18 @@ function DataCard({ n, notify }) {
         {moved && (
           <>
             <p className="small set-plain">
-              Copied and checked: {GB(moved.bytes)} in {moved.files.toLocaleString()} files, now in <span className="mono">{moved.to}</span>. IV Studio uses it from its next start.
+              Copied and checked: {GB(moved.bytes)} in {moved.files.toLocaleString()} files, now in <span className="mono">{moved.to}</span>. Techlit Studio uses it from its next start.
             </p>
             <div className="set-inline">
               <button className="btn btn-small btn-primary" onClick={() => window.ivstudio.data.restart()}>
-                Restart IV Studio now
+                Restart Techlit Studio now
               </button>
             </div>
           </>
         )}
       </SetField>
       {info.old && !moved && (
-        <SetField label="Old copy" hint="Left behind by the move, in case you want it. IV Studio doesn’t use it.">
+        <SetField label="Old copy" hint="Left behind by the move, in case you want it. Techlit Studio doesn’t use it.">
           <div className="set-inline grow">
             <SetPath path={info.old.dir} />
             <button className="btn btn-small" disabled={busy} onClick={removeOld}>
@@ -1269,9 +1300,11 @@ function DataCard({ n, notify }) {
   )
 }
 
-export default function Settings({ info, recheck, notify, go, setup }) {
+export default function Settings({ info, recheck, notify, go, setup, openSetupWizard }) {
   const [settings, setSettings] = useState(null)
   const [active, setActive] = useState('pc')
+  const [query, setQuery] = useState('')
+  const [hits, setHits] = useState(null) // null: no search; else the ids of the cards whose text matches
 
   useEffect(() => {
     const load = () => window.ivstudio.settings.get().then(setSettings)
@@ -1281,6 +1314,23 @@ export default function Settings({ info, recheck, notify, go, setup }) {
     return () => window.removeEventListener('iv:settings', load)
   }, [])
 
+  // "Find a setting": searches the cards' own words (labels, hints, buttons), hides the cards that don't match
+  useEffect(() => {
+    const q = query.trim().toLowerCase()
+    const cards = [...(document.querySelector('.settings-v2')?.querySelectorAll('.set-card') || [])]
+    if (!q) {
+      for (const c of cards) c.classList.remove('set-hidden')
+      return setHits(null)
+    }
+    const found = new Set()
+    for (const c of cards) {
+      const match = c.textContent.toLowerCase().includes(q)
+      c.classList.toggle('set-hidden', !match)
+      if (match) found.add(c.dataset.set)
+    }
+    setHits(found)
+  }, [query, settings])
+
   // the index follows the card at the top of the page
   const ready = !!settings
   useEffect(() => {
@@ -1288,7 +1338,7 @@ export default function Settings({ info, recheck, notify, go, setup }) {
     const sc = root && scroller(root)
     if (!sc) return
     const on = () => {
-      const cards = [...root.querySelectorAll('.set-card')]
+      const cards = [...root.querySelectorAll('.set-card:not(.set-hidden)')]
       if (!cards.length) return
       const line = sc.getBoundingClientRect().top + sc.clientHeight * 0.3
       let cur = cards[0].dataset.set
@@ -1314,17 +1364,26 @@ export default function Settings({ info, recheck, notify, go, setup }) {
 
   return (
     <div className="settings settings-v2">
-      <Stage effect="dial" art="settings" title="Settings" kicker="Infinite Variance" />
+      <Stage effect="dial" art="settings" title="Settings" kicker="DD'S Techlit AI Solutions" />
       <SettingsTabs tab="settings" go={go} setup={setup} />
+      <div className="set-wizard-row">
+        <button className="btn btn-small" onClick={() => openSetupWizard()} title="Reopen the first-run wizard: Kimi, RunPod and OpenAI keys in one place">
+          Run the setup wizard
+        </button>
+      </div>
 
       <div className="set-layout">
         <nav className="set-nav" aria-label="Settings sections">
-          {shown.map(([id, label], i) => (
-            <button key={id} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined} onClick={() => jump(id)}>
-              <span className="mono">{String(i + 1).padStart(2, '0')}</span>
-              {label}
-            </button>
-          ))}
+          <input className="set-search" type="search" placeholder="Find a setting…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Find a setting" />
+          {shown
+            .filter(([id]) => !hits || hits.has(id))
+            .map(([id, label]) => (
+              <button key={id} className={active === id ? 'on' : ''} aria-current={active === id ? 'true' : undefined} onClick={() => jump(id)}>
+                <span className="mono">{String(n(id)).padStart(2, '0')}</span>
+                {label}
+              </button>
+            ))}
+          {hits && hits.size === 0 && <p className="small dim set-search-none">Nothing matches “{query.trim()}”.</p>}
         </nav>
 
         <div className="set-cards">
@@ -1341,7 +1400,7 @@ export default function Settings({ info, recheck, notify, go, setup }) {
           <CivitaiCard n={n('civitai')} {...common} />
           <AgentCard n={n('agents')} mcp={info?.mcp} {...common} />
           <PrivacyCard n={n('privacy')} notify={notify} />
-          <SetCard id="newsletter" n={n('newsletter')} title="The IV Newsletter" sub="Optional. Nothing is sent unless you join here.">
+          <SetCard id="newsletter" n={n('newsletter')} title="The Techlit Newsletter" sub="Optional. Nothing is sent unless you join here.">
             <NewsletterBox api={window.ivstudio.newsletter} title={false} />
           </SetCard>
           <UpdateSettings n={n('updates')} notify={notify} />

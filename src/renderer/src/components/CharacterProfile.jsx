@@ -127,7 +127,7 @@ export default function CharacterProfile({ c, face, hasLora, isRef, voices, offe
         <button
           className="link-btn mono danger"
           onClick={async () =>
-            (await ask({ title: `Delete “${c.name}”?`, message: `${c.name}'s bible and the pictures copied into IV Studio go. LoRA and RefMod files stay in ComfyUI, and shots already made with ${first} keep working.`, confirm: 'Delete', danger: true })) && remove()
+            (await ask({ title: `Delete “${c.name}”?`, message: `${c.name}'s bible and the pictures copied into Techlit Studio go. LoRA and RefMod files stay in ComfyUI, and shots already made with ${first} keep working.`, confirm: 'Delete', danger: true })) && remove()
           }
         >
           Delete character
@@ -178,7 +178,7 @@ function Pictures({ c, save, refresh, notify, Turnaround, face }) {
               className="bible-pic-x"
               aria-label="Remove this picture"
               onClick={async () => {
-                if (!(await ask({ title: 'Remove this picture?', message: `It comes out of ${c.name}'s bible; its copy in IV Studio's data folder goes too.`, confirm: 'Remove', danger: true }))) return
+                if (!(await ask({ title: 'Remove this picture?', message: `It comes out of ${c.name}'s bible; its copy in Techlit Studio's data folder goes too.`, confirm: 'Remove', danger: true }))) return
                 try {
                   await C.removePicture({ id: c.id, pictureId: p.id })
                   await refresh()

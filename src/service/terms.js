@@ -1,4 +1,4 @@
-// IV Studio's terms for MiniMax H3 (TERMS.md). MiniMax's H3 licence (section V.2) asks that everyone who uses a product
+// Techlit Studio's terms for MiniMax H3 (TERMS.md). MiniMax's H3 licence (section V.2) asks that everyone who uses a product
 // built on H3 is told its use restrictions apply and agrees to terms at least as protective. So before the first H3
 // render (or H3 training) the person reads and accepts the notice once; accepting is saved in settings as
 // h3Terms: { version, at }. A new TERMS_VERSION asks again.
@@ -13,10 +13,10 @@ export const ABUSE_EMAIL = 'abuse@infinitevariance.ai'
 export const TERMS_URL = 'https://github.com/hollisorg/iv-studio/blob/main/TERMS.md'
 export const SAFEGUARDS_URL = 'https://github.com/hollisorg/iv-studio/blob/main/docs/SAFEGUARDS.md'
 export const H3_LICENSE_URL = 'https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE'
-export const REPORT_URL = `mailto:${ABUSE_EMAIL}?subject=${encodeURIComponent('IV Studio misuse report')}`
+export const REPORT_URL = `mailto:${ABUSE_EMAIL}?subject=${encodeURIComponent('Techlit Studio misuse report')}`
 
 export const H3_TERMS_NEEDED =
-  'MiniMax H3 needs your OK first: open IV Studio and agree to the terms for MiniMax H3 (Settings › About › Terms of use). It takes a moment and is asked only once.'
+  'MiniMax H3 needs your OK first: open Techlit Studio and agree to the terms for MiniMax H3 (Settings › About › Terms of use). It takes a moment and is asked only once.'
 export const H3_TERMS_DECLINED = 'Not rendered: MiniMax H3 can only be used after agreeing to its terms (Settings › About › Terms of use).'
 
 // The plain-words rules the notice shows; TERMS.md has them in full. Kept here so the window, the MCP server and the test
@@ -30,7 +30,7 @@ export const H3_RULES = [
   'Say it’s AI: anything you post publicly must clearly say it was made with AI.',
   'Respect other people’s rights: no copying their work, characters, music, likeness or private information without permission.',
   'No malware, no military use, and no high-risk automated decisions about people (jobs, credit, housing, health, policing and so on).',
-  'Don’t switch off, work around or weaken IV Studio’s safeguards or MiniMax’s.',
+  'Don’t switch off, work around or weaken Techlit Studio’s safeguards or MiniMax’s.',
   'Don’t use H3 or what it makes to train or improve other AI models (H3 LoRAs and characters are fine).'
 ]
 

@@ -50,7 +50,7 @@ const RULES = [
     test: /no space left|enospc|disk (is )?full|not enough (disk )?space|there is not enough space on the disk/i,
     say: () => ({
       title: 'The drive is full',
-      why: 'There was no room to save the render. Free some space on the drive ComfyUI saves to, or move IV Studio’s data to a bigger drive.',
+      why: 'There was no room to save the render. Free some space on the drive ComfyUI saves to, or move Techlit Studio’s data to a bigger drive.',
       fixes: [{ id: 'free-space', label: 'Open storage settings' }]
     })
   },
@@ -104,7 +104,7 @@ const RULES = [
     test: /prompt_outputs_failed_validation|failed validation|invalid prompt|required input is missing|value .* (smaller|bigger) than (min|max)|return type mismatch/i,
     say: () => ({
       title: 'ComfyUI turned the render down before it started',
-      why: 'A setting in this render isn’t one this ComfyUI accepts. That usually means ComfyUI or a node pack is older or newer than IV Studio expects.',
+      why: 'A setting in this render isn’t one this ComfyUI accepts. That usually means ComfyUI or a node pack is older or newer than Techlit Studio expects.',
       fixes: [{ id: 'open-setup', label: 'Check for updates in Setup' }]
     })
   },

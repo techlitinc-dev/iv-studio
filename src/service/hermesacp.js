@@ -1,11 +1,11 @@
-// Hermes in IV Studio's chat (agentchat.js), through Hermes's own Agent Client Protocol server (`hermes-acp`, JSON-RPC
+// Hermes in Techlit Studio's chat (agentchat.js), through Hermes's own Agent Client Protocol server (`hermes-acp`, JSON-RPC
 // over stdio, one message a line). Claude Code and Codex are run once per message with flags; Hermes is spoken to the
-// way an editor speaks to it: initialize, a session (new, or resumed by id) given IV Studio's MCP server, then the
+// way an editor speaks to it: initialize, a session (new, or resumed by id) given Techlit Studio's MCP server, then the
 // message. Its streamed updates become the chat's events (parseLine's shapes: session, say, step, stepError, usage,
 // end), so the chat panel shows Hermes like the others.
 //
-// The chat only offers IV Studio's tools. Hermes keeps its own tools (they come from the person's Hermes config), so the
-// first message tells it to use IV Studio's, and anything Hermes asks the person's approval for (a shell command, a
+// The chat only offers Techlit Studio's tools. Hermes keeps its own tools (they come from the person's Hermes config), so the
+// first message tells it to use Techlit Studio's, and anything Hermes asks the person's approval for (a shell command, a
 // file edit) is declined here and shown as a declined step: nothing runs that nobody approved.
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
@@ -34,7 +34,7 @@ export function findHermes(env = process.env, home = os.homedir(), platform = pr
   return [path.join(home, '.local', 'bin', 'hermes-acp'), path.join(home, '.hermes', 'bin', 'hermes-acp')].find(exists) || onPath('hermes-acp', env, home) || null
 }
 
-// A Hermes tool title as IV Studio's tool name: an MCP tool is mcp__<server>[_<hash>]__<tool>, and only the tool counts.
+// A Hermes tool title as Techlit Studio's tool name: an MCP tool is mcp__<server>[_<hash>]__<tool>, and only the tool counts.
 export function hermesTool(title = '') {
   const t = String(title).trim()
   const m = /^mcp__.*?__([a-z0-9_]+)/i.exec(t)
@@ -49,7 +49,7 @@ export function modelOption(configOptions = []) {
   return (configOptions || []).find((o) => o && (o.category === 'model' || o.id === 'model') && Array.isArray(o.options)) || null
 }
 
-// One message's turn with Hermes. server: IV Studio's MCP server ({ command, args, env }). session: Hermes's session
+// One message's turn with Hermes. server: Techlit Studio's MCP server ({ command, args, env }). session: Hermes's session
 // id to continue, or null. text: the message (the first one carries the chat's instructions). model: a "provider:model"
 // value from Hermes's list, or '' for the person's Hermes default. emit(e) gets the chat's events. Returns
 // { child, done } where done resolves { ok, error, session }.
@@ -74,7 +74,7 @@ export function acpErrorText(error) {
   return `${head.replace(/[.:\s]+$/, '')}: ${short}`
 }
 
-// server: IV Studio's MCP server for the chat, or null for a plain answer (the prompt writer). images: [{ data, mimeType }]
+// server: Techlit Studio's MCP server for the chat, or null for a plain answer (the prompt writer). images: [{ data, mimeType }]
 // sent with the text when Hermes says its model takes pictures (promptCapabilities.image); otherwise left out.
 export function hermesTurn({ exe, cwd, server, session = null, text, images = [], model = '', emit = () => {}, env = process.env, spawnFn = startExe }) {
   const child = spawnFn(exe, [], { cwd, env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
@@ -144,15 +144,15 @@ export function hermesTurn({ exe, cwd, server, session = null, text, images = []
   }
   const onRequest = (m) => {
     if (m.method === 'session/request_permission') {
-      // nothing outside IV Studio's own Allow cards runs from the chat
+      // nothing outside Techlit Studio's own Allow cards runs from the chat
       const opts = m.params?.options || []
       const no = opts.find((o) => /reject/.test(o.kind || '')) || null
       const what = m.params?.toolCall?.title || 'something'
       flushWords()
       emit({ type: 'step', tool: hermesTool(what), id: `perm-${m.id}` })
-      emit({ type: 'stepError', id: `perm-${m.id}`, text: `Hermes asked to run this outside IV Studio; IV Studio's chat declines anything that isn't an IV Studio tool.` })
+      emit({ type: 'stepError', id: `perm-${m.id}`, text: `Hermes asked to run this outside Techlit Studio; Techlit Studio's chat declines anything that isn't an Techlit Studio tool.` })
       send({ jsonrpc: '2.0', id: m.id, result: { outcome: no ? { outcome: 'selected', optionId: no.optionId } : { outcome: 'cancelled' } } })
-    } else send({ jsonrpc: '2.0', id: m.id, error: { code: -32601, message: `IV Studio doesn't offer ${m.method}` } })
+    } else send({ jsonrpc: '2.0', id: m.id, error: { code: -32601, message: `Techlit Studio doesn't offer ${m.method}` } })
   }
   child.stdout.on('data', (d) => {
     buf += d
@@ -231,4 +231,4 @@ export function hermesTurn({ exe, cwd, server, session = null, text, images = []
   }
 }
 
-export const HERMES_NOTE = `\n\nYou're Hermes here, inside IV Studio's chat. Use IV Studio's tools (the iv-studio MCP server) for everything; don't use your shell, files, browser or other tools in this chat, and don't load other skills for IV Studio work.`
+export const HERMES_NOTE = `\n\nYou're Hermes here, inside Techlit Studio's chat. Use Techlit Studio's tools (the iv-studio MCP server) for everything; don't use your shell, files, browser or other tools in this chat, and don't load other skills for Techlit Studio work.`

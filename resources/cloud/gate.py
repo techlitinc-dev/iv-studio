@@ -13,8 +13,10 @@ by itself nor has a volume IV Studio can write to directly:
   /iv/upload   takes a LoRA or RefMod in chunks (RunPod's proxy refuses bodies over 100 MB)
                into /workspace/models, checked against its SHA-256 before it is kept
   /iv/files    lists the model files on the volume ({path: size})
+  /iv/delete   DELETE ?path= removes one model file from the volume (the storage manager's Remove)
   /iv/fetch    POST {"ids": [...], "hf": "<Hugging Face token or empty>"}: downloads those models (models.json
                and cloud.json ids, ivcloud.py) onto the volume in the background, each checked against its SHA-256
+  /iv/health   also says how long until the pod idles off (idleLimit, idleLeft), so Techlit Studio can count down
 
 On both platforms /iv/voice... runs IV Studio's voice engine beside ComfyUI (voicehost.py); a ComfyUI prompt
 stops it first, so a render gets the whole GPU.
@@ -136,6 +138,25 @@ async def upload(req):
     return web.json_response({"saved": dest.relative_to(MODELS).as_posix(), "sha256": h.hexdigest()})
 
 
+def delete_target(rel):
+    """The model file a delete removes, or None when the path is no file inside the models folder."""
+    rel = rel.replace("\\", "/").lstrip("/")
+    if not rel or ".." in rel.split("/"):
+        return None
+    dest = (MODELS / rel).resolve()
+    return dest if dest.is_file() and dest.is_relative_to(MODELS.resolve()) else None
+
+
+async def delete(req):
+    """DELETE ?path= removes one file from the volume's models folder (the storage manager's Remove)."""
+    dest = delete_target(req.query.get("path", ""))
+    if dest is None:
+        return web.json_response({"error": "only files inside the models folder can be removed"}, status=400)
+    rel = dest.relative_to(MODELS.resolve()).as_posix()
+    dest.unlink()
+    return web.json_response({"removed": rel})
+
+
 def run_fetch(models, token):
     """In a thread: the models onto the volume, reporting through `fetching` (and /iv/health)."""
     global last_seen
@@ -174,7 +195,8 @@ async def fetch(req):
 async def handle(req):
     global last_seen
     if req.path == "/iv/health":  # says only that the gate is up, and on RunPod how far the boot got; no token needed
-        return web.json_response({"gate": "ok", **({"platform": "runpod", **stage(), **({"fetch": fetching} if fetching else {})} if RUNPOD else {})})
+        idle = {"idleLimit": IDLE, "idleLeft": max(0, round(IDLE - (time.time() - last_seen)))} if RUNPOD else {}
+        return web.json_response({"gate": "ok", **({"platform": "runpod", **stage(), **idle, **({"fetch": fetching} if fetching else {})} if RUNPOD else {})})
     if not allowed(req):
         return web.Response(status=401, text="IV Studio token required")
     last_seen = time.time()
@@ -189,6 +211,8 @@ async def handle(req):
         req.app["voice"].stop()
     if RUNPOD and req.path == "/iv/files":
         return web.json_response(await asyncio.to_thread(ivcloud.listing, MODELS))
+    if RUNPOD and req.path == "/iv/delete" and req.method == "DELETE":
+        return await delete(req)
     if RUNPOD and req.path == "/iv/fetch":
         return await fetch(req)
     session = req.app["session"]

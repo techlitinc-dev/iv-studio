@@ -1,5 +1,5 @@
 // Character training on RunPod without RunPod: a mock of RunPod's REST API, and the real runpod_train.py run on
-// this computer with a stand-in trainer. Drives IV Studio's own code: the training volume and pod, waiting for the
+// this computer with a stand-in trainer. Drives Techlit Studio's own code: the training volume and pod, waiting for the
 // pod, uploading the set, starting, following the log to the end, listing and downloading checkpoints, Train more
 // finding the last saved state, stopping, and the pod's token and path guards.
 //   node test/training-runpod.mjs [python]
@@ -14,7 +14,7 @@ import { FIZGIG, Trainings, trainScript } from '../src/service/training.js'
 const RES = path.resolve('resources')
 const PY =
   process.argv[2] ||
-  [path.join(process.env.USERPROFILE || '', 'Fizgig', 'venv', 'Scripts', 'python.exe'), path.join(process.env.APPDATA || '', 'IV Studio', 'voiceengine', 'venv', 'Scripts', 'python.exe')].find((p) => fs.existsSync(p)) ||
+  [path.join(process.env.USERPROFILE || '', 'Fizgig', 'venv', 'Scripts', 'python.exe'), path.join(process.env.APPDATA || '', 'Techlit Studio', 'voiceengine', 'venv', 'Scripts', 'python.exe')].find((p) => fs.existsSync(p)) ||
   (process.platform === 'win32' ? 'python' : 'python3')
 let n = 0
 const ok = (cond, name) => {

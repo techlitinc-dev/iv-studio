@@ -1,6 +1,6 @@
-// The person's own Claude Code or Codex making something inside IV Studio (the Dashboard's "Let Claude Code make it").
+// The person's own Claude Code or Codex making something inside Techlit Studio (the Dashboard's "Let Claude Code make it").
 // The agent runs headless on the person's existing login, in an
-// empty folder, with no tools but IV Studio's own MCP server, which in an agent run refuses anything that deletes,
+// empty folder, with no tools but Techlit Studio's own MCP server, which in an agent run refuses anything that deletes,
 // installs, trains or spends (agentGuard). One run at a time; its jobs are cancelled on Stop.
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
@@ -21,27 +21,27 @@ export const AGENT_BLOCKED = new Set([
   'cancel_generation', 'cancel_image', 'cancel_music', 'cancel_edit_export'
 ])
 
-// Why an agent run can't make this call, or null when it can. settings: IV Studio's settings now; started: the job
+// Why an agent run can't make this call, or null when it can. settings: Techlit Studio's settings now; started: the job
 // ids this run has started.
 export function agentGuard(name, args = {}, { settings = {}, started = new Set() } = {}) {
-  if (settings.target === 'cloud') return 'IV Studio is set to render on the cloud. An agent run only renders on this PC (free), so it stops here: switch Cloud to This PC to use it.'
-  if (AGENT_BLOCKED.has(name)) return `${name} isn't available in an agent run started from IV Studio's Dashboard: it deletes, installs, trains, changes Settings or stops other work. Leave it to the person.`
+  if (settings.target === 'cloud') return 'Techlit Studio is set to render on the cloud. An agent run only renders on this PC (free), so it stops here: switch Cloud to This PC to use it.'
+  if (AGENT_BLOCKED.has(name)) return `${name} isn't available in an agent run started from Techlit Studio's Dashboard: it deletes, installs, trains, changes Settings or stops other work. Leave it to the person.`
   if (args.engine === 'seedance' || args.way === 'seedance') return 'Seedance costs money, and an agent run from the Dashboard never spends: use engine h3 (free, on this PC).'
   if (Number(args.confirm_cost) > 0) return 'An agent run from the Dashboard never spends money: leave anything with a cost to the person.'
   if (name === 'cancel_job' && !started.has(args.jobId)) return 'An agent run can only cancel jobs it started itself.'
   return null
 }
 
-// The job a tool result started, if any: an IV Studio job record ({ id, status, kind }).
+// The job a tool result started, if any: an Techlit Studio job record ({ id, status, kind }).
 export function startedJobId(name, result) {
   if (!result || typeof result !== 'object' || name === 'get_job' || name.startsWith('list_') || name.startsWith('cancel_')) return null
   const job = result.job && typeof result.job === 'object' ? result.job : result
   return typeof job.id === 'string' && typeof job.status === 'string' && typeof job.kind === 'string' ? job.id : null
 }
 
-export const agentPrompt = () => `You are working inside IV Studio, the person's video app, on their behalf. They typed an idea on IV Studio's Dashboard and pressed "make it" for you; they are watching a progress panel and cannot answer questions, so make sensible choices yourself.
+export const agentPrompt = () => `You are working inside Techlit Studio, the person's video app, on their behalf. They typed an idea on Techlit Studio's Dashboard and pressed "make it" for you; they are watching a progress panel and cannot answer questions, so make sensible choices yourself.
 
-Your only tools are IV Studio's (the iv-studio MCP server). Make the idea as H3 preview takes on this PC:
+Your only tools are Techlit Studio's (the iv-studio MCP server). Make the idea as H3 preview takes on this PC:
 1. check_setup. If ComfyUI or a model is missing, stop and say in one sentence what the person needs to do.
 2. get_guide once, then list_characters. Use a character only if the idea names one that exists; otherwise character "none".
 3. Write the H3 prompt (write_prompt helps), run check_prompt and fix what it reports.
@@ -98,7 +98,7 @@ export function claudeArgs({ mcpConfigFile, promptFile, model = '', persist = fa
 // --color, so the sandbox is a config value and the folder is the process's own working folder. tool_timeout_sec
 // leaves room for the person to answer an Allow card.
 // default_tools_approval_mode: newer Codex refuses every MCP call it would ask about when approvals are off
-// (issue #44); IV Studio asks for itself (chatAsk, agentGuard).
+// (issue #44); Techlit Studio asks for itself (chatAsk, agentGuard).
 export function codexChatArgs({ mcp, model = '', resume = null }) {
   const key = `mcp_servers.${SERVER}`
   return [
@@ -122,7 +122,7 @@ export function codexChatArgs({ mcp, model = '', resume = null }) {
 }
 
 // In a chat, the calls that wait for the person's Allow: why, in plain words, or null when it can go ahead.
-// settings: IV Studio's settings now.
+// settings: Techlit Studio's settings now.
 const CHAT_INSTALLS = new Set(['install_node_packs', 'update_comfy', 'undo_comfy_update', 'install_ready_character', 'download_lora', 'setup_voices', 'shinobi_setup'])
 const CHAT_SETTINGS = new Set(['set_workflow_model', 'set_lora_family'])
 const CHAT_TRAINING = new Set(['start_training', 'create_character_training', 'make_training_clips'])
@@ -140,7 +140,7 @@ export function chatAsk(name, args = {}, { settings = {} } = {}) {
   if (CHAT_INSTALLS.has(name)) return 'This installs, downloads or updates something on your computer.'
   if (CHAT_SETTINGS.has(name)) return 'This changes a setting.'
   if (CHAT_TRAINING.has(name)) return 'This starts character training, which takes hours and can cost money on a cloud GPU.'
-  if (settings.target === 'cloud' && !CHAT_READS.test(name)) return 'IV Studio is set to render on the cloud, so this may cost money.'
+  if (settings.target === 'cloud' && !CHAT_READS.test(name)) return 'Techlit Studio is set to render on the cloud, so this may cost money.'
   return null
 }
 
@@ -168,8 +168,8 @@ export function codexArgs({ mcp, dir, model = '' }) {
 
 const LABELS = {
   check_setup: 'Checked your setup',
-  get_guide: "Read IV Studio's guide",
-  get_menu: 'Looked at what IV Studio makes',
+  get_guide: "Read Techlit Studio's guide",
+  get_menu: 'Looked at what Techlit Studio makes',
   list_characters: 'Looked at your characters',
   write_prompt: 'Wrote the prompt',
   check_prompt: 'Checked the prompt',

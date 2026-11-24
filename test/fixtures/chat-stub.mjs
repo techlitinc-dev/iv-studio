@@ -1,6 +1,6 @@
 // A stand-in for Claude Code in a chat turn (src/service/agentchat.js tests and test copies): prints Claude Code's
 // stream-json for one message.
-//   message with "delete": asks like IV Studio's MCP server does (an ask file in the chat's ask folder, read from the
+//   message with "delete": asks like Techlit Studio's MCP server does (an ask file in the chat's ask folder, read from the
 //                          --mcp-config file) and waits for the answer
 //   "render":              "starts" a render (its id into the chat's jobs file) and watches it
 //   "slow":                waits 60 s (for Stop)
@@ -18,7 +18,7 @@ const jobsFile = mcp.env.IV_STUDIO_AGENT_JOBS
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const out = (o) => process.stdout.write(`${JSON.stringify(o)}\n`)
 const say = (text) => out({ type: 'assistant', message: { content: [{ type: 'text', text }] } })
-const use = (id, name, input = {}) => out({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: `mcp__iv-studio__${name}`, input }] } })
+const use = (id, name, input = {}) => out({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: `mcp__techlit-studio__${name}`, input }] } })
 const result = (id, text, isError = false) => out({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, is_error: isError, content: [{ type: 'text', text }] }] } })
 
 let input = ''
@@ -111,7 +111,7 @@ if (/delete/i.test(message)) {
     last = `It asks: ${d.why}`
   }
 } else if (/show me/i.test(message)) {
-  // Show me where: like IV Studio's MCP server's show_in_app, a show file in the chat's ask folder
+  // Show me where: like Techlit Studio's MCP server's show_in_app, a show file in the chat's ask folder
   const place = { where: 'music', spot: 'Make it', say: 'Press Make it when your style and lyrics are ready.' }
   use('t1', 'show_in_app', place)
   fs.mkdirSync(askDir, { recursive: true })

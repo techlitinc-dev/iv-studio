@@ -35,7 +35,7 @@ try {
   ok((await comfyState(at(comfyPort))) === 'up', 'a ComfyUI that answers is up')
   ok((await comfyState(at(busyPort), 800)) === 'busy', 'one that takes the connection but doesn’t answer is busy')
   ok((await comfyState(at(closedPort))) === 'down', 'a closed port is down')
-  ok((await comfyUp(at(busyPort), 800)) === true, 'busy counts as up, so IV Studio never starts a second ComfyUI over it')
+  ok((await comfyUp(at(busyPort), 800)) === true, 'busy counts as up, so Techlit Studio never starts a second ComfyUI over it')
 
   const slow = new Comfy(at(busyPort))
   let err = await slow.systemStats({ timeout: 800 }).catch((e) => e)

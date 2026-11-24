@@ -15,7 +15,7 @@ export default function ChatWindow() {
     notify.t = setTimeout(() => setToast(null), 7000)
   }
   useEffect(() => {
-    document.title = 'IV Studio · Chat'
+    document.title = 'Techlit Studio · Chat'
     document.documentElement.classList.add('chat-window')
     // Settings → Accessibility (text size, contrast, motion) here too
     window.ivstudio.settings.get().then(applyA11y, () => {})

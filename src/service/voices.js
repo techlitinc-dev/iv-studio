@@ -1,5 +1,5 @@
 // Voices: a voice for each character, and lines spoken in it for H3 to lip-sync.
-// IV Studio keeps every voice itself, as a short reference recording plus the words in it (the data
+// Techlit Studio keeps every voice itself, as a short reference recording plus the words in it (the data
 // folder's voices/<id>/), so a voice belongs to the person, not to an engine. The speaking is done by IV
 // Studio's own voice engine (./voiceengine.js): VoxCPM2 (Apache-2.0) designs, clones and speaks, and Whisper
 // (MIT) reads the words in a recording. Voices made earlier with VoiceStudio keep working as they are.
@@ -41,7 +41,7 @@ const WAV_SECONDS = (buf) => {
 export class Voices {
   // comfy: this PC's ComfyUI. When its queue is empty, it is asked to unload its models before the voice
   // model loads; VoxCPM2 next to a full GPU loads several times slower.
-  // cloud: () => the voice engine on the person's own cloud (cloudvoice.js) while IV Studio renders there, else
+  // cloud: () => the voice engine on the person's own cloud (cloudvoice.js) while Techlit Studio renders there, else
   // null. It has the same calls as the engine on this PC.
   constructor({ dataDir, resourcesDir, ffmpeg, onLog, comfy = null, cloud = null }) {
     this.dir = path.join(dataDir, 'voices')

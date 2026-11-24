@@ -4,7 +4,7 @@ import { ask } from './Confirm'
 import LivePip from './LivePip'
 
 // The render queue at the foot of the sidebar: what ComfyUI is rendering and what waits, from any page, so the
-// person can explore the app while things render. Each of IV Studio's items opens its page and can be cancelled;
+// person can explore the app while things render. Each of Techlit Studio's items opens its page and can be cancelled;
 // anyone else's work on the same ComfyUI shows as "Other ComfyUI work".
 const KIND = {
   previews: 'Previews',
@@ -97,7 +97,7 @@ export default function RenderQueue({ remote, notify, open }) {
         const pct = item.progress?.max ? Math.round((item.progress.value / item.progress.max) * 100) : null
         return (
           <div key={item.promptId} className={`render-queue-item ${item.state}`}>
-            <button className="render-queue-open" disabled={!item.ours} onClick={() => open(item)} title={item.ours ? 'Open it' : 'Not started by IV Studio'}>
+            <button className="render-queue-open" disabled={!item.ours} onClick={() => open(item)} title={item.ours ? 'Open it' : 'Not started by Techlit Studio'}>
               <span className="render-queue-name">{item.ours ? item.name || kindLabel(item.kind) : 'Other ComfyUI work'}</span>
               <span className="render-queue-state dim">
                 {item.ours && item.name ? `${kindLabel(item.kind)} · ` : ''}

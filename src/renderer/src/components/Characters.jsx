@@ -183,7 +183,7 @@ export function CharacterList({ openCharacter, openShot, notify, characters, set
         <section className="cast-section">
           <div className="cast-head">
             <h2>Ready-made</h2>
-            <p className="dim small">IV Studio's own invented characters. Download one and they join your characters.</p>
+            <p className="dim small">Techlit Studio's own invented characters. Download one and they join your characters.</p>
           </div>
           <div className="cast-grid">
             {offered.map((r) => (
@@ -383,7 +383,7 @@ function NewCharacter({ onClose, fromPhotos, onLora, onRefMod, onDesign }) {
     ['photos', 'From photos', 'Pictures of them from a few sides. Seedance uses them as references, and H3 their face until they have a LoRA.', true],
     ['lora', 'From a LoRA you have', 'An H3 LoRA in ComfyUI or from Civitai, with its trigger word. Add photos after for Seedance.', false],
     ['refmod', 'From a RefMod', 'A RefMod you already made. Add photos after for Seedance.', false],
-    ['design', 'From a description', 'Describe who they are; IV Studio designs their face, then you can train their LoRA.', true]
+    ['design', 'From a description', 'Describe who they are; Techlit Studio designs their face, then you can train their LoRA.', true]
   ]
   async function pick(way) {
     if (way === 'lora') return onLora()
@@ -536,7 +536,7 @@ function Likeness({ t, act, trainingId, pick }) {
     return (
       <div className="char-likeness">
         <p className="small">
-          <span className="pink">Rank by likeness.</span> IV Studio can score every still and clip against the picked face and keep the closest, the way Tess's set was chosen. It uses InsightFace's face models (289 MB, downloaded once from InsightFace's release{st.installed ? '' : ', with Shinobi’s engine, about 440 MB'}). {st.faceLicence}
+          <span className="pink">Rank by likeness.</span> Techlit Studio can score every still and clip against the picked face and keep the closest, the way Tess's set was chosen. It uses InsightFace's face models (289 MB, downloaded once from InsightFace's release{st.installed ? '' : ', with Shinobi’s engine, about 440 MB'}). {st.faceLicence}
         </p>
         <button className="btn btn-small" onClick={() => act('Downloading the face models', () => window.ivstudio.shinobi.faceModels()).then(() => window.ivstudio.shinobi.status().then(setSt))}>
           {progress != null && progress < 1 ? `Downloading… ${Math.round(progress * 100)}%` : 'Download the face models'}
@@ -727,7 +727,7 @@ function Clips({ t, job, act, save, trainingId, meta, notify, next }) {
       <section className="block create-step">
         <StepHead n={2} title="Talking clips" />
         <p className="small dim">
-          Clips teach how they move and talk. IV Studio renders them with H3 on this PC from two of your stills{voice ? ' and the voice' : ''}: eight 5-second clips, about a minute each. Edit the lines if you like.
+          Clips teach how they move and talk. Techlit Studio renders them with H3 on this PC from two of your stills{voice ? ' and the voice' : ''}: eight 5-second clips, about a minute each. Edit the lines if you like.
         </p>
         {!t.clips.some((c) => c.source === 'generated') && (
           <>
@@ -900,10 +900,10 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
       kicker: free ? 'On this PC, free' : `Uses your ${PLACES[where].name} account`,
       title: extra ? `Train ${t.name} ${extra} more epochs?` : `Train ${t.name}?`,
       message: free
-        ? 'It trains on your graphics card. Don’t render while it trains; it keeps going if you close IV Studio.'
+        ? 'It trains on your graphics card. Don’t render while it trains; it keeps going if you close Techlit Studio.'
         : where === 'runpod'
           ? `RunPod bills by the second. The first run also downloads the H3 training files into your volume (about 42 GB, 10 to 20 minutes of GPU). The pod removes itself half an hour after training ends${opts.budget ? `, and training stops at your $${opts.budget} cap` : ''}.`
-          : `Modal bills by the second and stops the GPU when training ends${opts.budget ? `, or at your $${opts.budget} cap (even if IV Studio is closed)` : ''}.`,
+          : `Modal bills by the second and stops the GPU when training ends${opts.budget ? `, or at your $${opts.budget} cap (even if Techlit Studio is closed)` : ''}.`,
       details: [
         ['Recipe', extra ? `carries on from epoch ${t.train.epochs}, same recipe` : `${PRESET_TEXT[opts.preset || 'standard'][0]} · rank ${est.rank} · ${est.epochs} epochs · ${opts.learn === 'look' ? 'look only' : 'look and voice'}${opts.detail === 'fine' ? ' · fine detail' : ''}${opts.mode === 'whole' ? ' · whole look' : ''}`],
         ['Where', free ? 'This PC' : `${PLACES[where].name} · ${gpus.find((g) => g.id === gpu)?.label || gpu}`],
@@ -1157,7 +1157,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
                   onChange={(e) => (setCustomBudget(e.target.value), set({ budget: Number(e.target.value) > 0 ? Number(e.target.value) : null }))}
                 />
               </div>
-              <p className="dim small train-row-hint">Training stops itself at the cap, even if IV Studio is closed, and keeps the checkpoints saved so far.</p>
+              <p className="dim small train-row-hint">Training stops itself at the cap, even if Techlit Studio is closed, and keeps the checkpoints saved so far.</p>
             </div>
           </div>
         </div>}
@@ -1196,7 +1196,7 @@ function Train({ t, act, meta, log, go, trainingId, next, pcCanTrain }) {
           )}
           {t.train.budgetHit && <p className="small pink">It reached your spending cap and stopped; the checkpoints saved by then are ready to test.</p>}
           {t.train.error && <p className="small pink">{t.train.error}</p>}
-          {st === 'training' && <p className="small dim">It keeps training {t.train.where === 'local' ? 'on this PC' : `on ${PLACES[t.train.where || 'modal'].name}`} if you close IV Studio; come back here to see how far it got.</p>}
+          {st === 'training' && <p className="small dim">It keeps training {t.train.where === 'local' ? 'on this PC' : `on ${PLACES[t.train.where || 'modal'].name}`} if you close Techlit Studio; come back here to see how far it got.</p>}
           {running && (
             <button className="link-btn mono" onClick={async () => (await ask({ title: 'Stop training?', message: 'Billing stops at once. The epochs saved so far stay in your Modal storage.', confirm: 'Stop training', danger: true })) && act('Stopping', () => T.stop(trainingId))}>
               Stop training

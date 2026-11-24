@@ -1,4 +1,4 @@
-// IV Studio updates itself from GitHub Releases (latest.yml is published next to the installer), the same
+// Techlit Studio updates itself from GitHub Releases (latest.yml is published next to the installer), the same
 // way IV Downloader does: it checks on launch and every six hours, downloads a new version in the
 // background, and installs it when the person clicks "Restart to update" or quits the app.
 // IV_STUDIO_UPDATE_FEED (a URL with a latest.yml) points a test copy at a local feed; such a copy never
@@ -13,9 +13,9 @@ import { initPortableUpdater } from './portableupdater'
 const { autoUpdater } = electronUpdater
 const SIX_HOURS = 6 * 60 * 60 * 1000
 const TEST_FEED = process.env.IV_STUDIO_UPDATE_FEED
-// macOS's own updater installs only into an app signed with an Apple Developer ID, so a Mac copy uses IV Studio's
+// macOS's own updater installs only into an app signed with an Apple Developer ID, so a Mac copy uses Techlit Studio's
 // own (macupdater.js): the same download in the background and one-click install, swapping the app bundle itself.
-// The portable copy (a "data" folder beside IV Studio.exe, see paths.js) has its own too (portableupdater.js): the
+// The portable copy (a "data" folder beside Techlit Studio.exe, see paths.js) has its own too (portableupdater.js): the
 // installer would put a second copy in Program Files, so it downloads the new portable zip into its data folder and
 // swaps the program files in place, keeping the data folder.
 export const PORTABLE = dataLocation().source === 'portable'
@@ -82,7 +82,7 @@ export function initUpdater(onChange) {
 
   return {
     check,
-    // Silent install, then IV Studio opens again on the new version.
+    // Silent install, then Techlit Studio opens again on the new version.
     install: () => {
       if (MANUAL) {
         if (state.status !== 'available') return false

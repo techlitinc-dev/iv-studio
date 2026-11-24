@@ -1,7 +1,7 @@
 import { isHarness } from '../service/harness.js'
-// IV Studio MCP server (stdio). Same service, data folder and job records as the studio window, so an agent
+// Techlit Studio MCP server (stdio). Same service, data folder and job records as the studio window, so an agent
 // and a person see the same projects and results. Run with the app's own binary:
-//   ELECTRON_RUN_AS_NODE=1 "IV Studio.exe" <resources>/app.asar/out/main/mcp.js
+//   ELECTRON_RUN_AS_NODE=1 "Techlit Studio.exe" <resources>/app.asar/out/main/mcp.js
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
@@ -33,6 +33,7 @@ import { menuMessage, START_MENU } from '../service/startmenu'
 import { Edits, editLength, FORMATS, LOUDNESS } from '../service/edits'
 import { EditGen, GEN_KINDS } from '../service/editgen'
 import { Productions } from '../service/productions'
+import { Features } from '../service/feature'
 import { Reels } from '../service/reel'
 import { MusicVideos, MV_ASPECTS, MV_CAST, MV_REF_KINDS, MV_REFS, MV_SCENE_REFS } from '../service/musicvideo'
 import { Keyframes, KF_ASPECTS, KF_JOINS, KF_SOUNDS } from '../service/keyframes'
@@ -82,11 +83,11 @@ import { KINDS as REBUILD_KINDS, Rebuilds, ROUTES as REBUILD_ROUTES, WHERE as RE
 import { faceOf, MODELS as BIBLE_MODELS, ROLES, showFor } from '../service/bible'
 
 // Settings in BASE; what's made in DATA (BASE\incognito while the app is in Incognito; see contentDir).
-// The same data folder the app uses (paths.js): IV_STUDIO_DATA, the portable "data" folder beside IV Studio.exe,
+// The same data folder the app uses (paths.js): IV_STUDIO_DATA, the portable "data" folder beside Techlit Studio.exe,
 // the folder it was moved to in Settings, or the default.
 const LOCATION = dataLocation()
 if (LOCATION.missing) {
-  console.error(`IV Studio's data folder was moved to ${LOCATION.dir}, which isn't there. Connect its drive, or open IV Studio to choose.`)
+  console.error(`Techlit Studio's data folder was moved to ${LOCATION.dir}, which isn't there. Connect its drive, or open Techlit Studio to choose.`)
   process.exit(1)
 }
 const BASE = LOCATION.dir
@@ -113,7 +114,7 @@ const studio = new Studio({ dataDir: DATA, resourcesDir: resourcesDir(), comfyUr
 // step pictures follow the window's Live preview switch
 studio.livePreview = () => !!readSettings(BASE).livePreview
 studio.previewSize = () => savedPreviewMp(readSettings(BASE))
-const server = new McpServer({ name: 'iv-studio', version: '0.1.0' }, { instructions: INSTRUCTIONS })
+const server = new McpServer({ name: 'techlit-studio', version: '0.1.0' }, { instructions: INSTRUCTIONS })
 // Codex runs only tools marked read-only when its approvals are off (issue #44): mark every tool that only looks
 const registerTool = server.registerTool.bind(server)
 server.registerTool = (name, config, cb) =>
@@ -130,9 +131,9 @@ const ok = (value) => {
   return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }], structuredContent: structured }
 }
 const fail = (err) => ({ isError: true, content: [{ type: 'text', text: err.message }] })
-// Started from IV Studio's Dashboard ("Let Claude Code make it", agentrun.js): no deleting, installing, training,
+// Started from Techlit Studio's Dashboard ("Let Claude Code make it", agentrun.js): no deleting, installing, training,
 // Settings changes or spending, and the jobs it starts are written down so Stop can cancel them.
-// A chat inside IV Studio (IV_STUDIO_AGENT_RUN=chat, agentchat.js) has every tool, but anything that deletes, costs
+// A chat inside Techlit Studio (IV_STUDIO_AGENT_RUN=chat, agentchat.js) has every tool, but anything that deletes, costs
 // money, installs or changes Settings (chatAsk) waits for the person's Allow: an ask file in IV_STUDIO_AGENT_ASK, which
 // the app shows as a card, and the answer file it writes back.
 const AGENT_CHAT = process.env.IV_STUDIO_AGENT_RUN === 'chat'
@@ -170,9 +171,9 @@ async function askPerson(name, args, why) {
     for (const f of [askFile, answerFile]) fs.rmSync(f, { force: true })
   }
 }
-// In a chat: the steps with a price IV Studio knows before they run (Seedance on Comfy.org credits). The app's spend
+// In a chat: the steps with a price Techlit Studio knows before they run (Seedance on Comfy.org credits). The app's spend
 // desk (spending.js) says whether the person's spending limit covers it; if not, the Allow card shows the price. Either
-// way the step then runs on IV Studio's own price as its confirm_cost, with the key the app lends, and is recorded.
+// way the step then runs on Techlit Studio's own price as its confirm_cost, with the key the app lends, and is recorded.
 const spendDesk = AGENT_CHAT ? spendDeskClient() : null
 let chatKey = null
 async function chatPrice(name, args) {
@@ -245,7 +246,7 @@ const tool = (name, description, shape, fn) =>
       const s = readSettings(BASE)
       // the folders the person picked in Settings, as they are now
       studio.comfy.folders = comfyFolders(s, INCOGNITO)
-      if (!!s.incognito !== INCOGNITO) throw new Error(`IV Studio switched Incognito ${INCOGNITO ? 'off' : 'on'} since this MCP server started. Restart the server (reconnect the iv-studio MCP) to work in the ${INCOGNITO ? 'normal' : 'Incognito'} data.`)
+      if (!!s.incognito !== INCOGNITO) throw new Error(`Techlit Studio switched Incognito ${INCOGNITO ? 'off' : 'on'} since this MCP server started. Restart the server (reconnect the iv-studio MCP) to work in the ${INCOGNITO ? 'normal' : 'Incognito'} data.`)
       let spend = null
       if (AGENT_CHAT) {
         const paid = await chatPaid(name, args, s)
@@ -324,7 +325,7 @@ const finish = {
   rerollSeed: z.number().int().optional(),
   enhancer: z.enum(['dlss', 'seedvr2']).default('dlss').describe('dlss: DLSS 5 in the finish (noise reduction, upscale2x, fps). seedvr2: the finish skips DLSS and SeedVR2 then restores detail to enhanceResolution (24 fps); follow the enhanceJob of the finish job with get_job'),
   enhanceResolution: z.union([z.literal(1080), z.literal(1440), z.literal(2160)]).default(1080).describe('seedvr2: the short side'),
-  dlssStrength: z.number().min(0).max(2).optional().describe("DLSS 5's strength (its noise reduction), 0-2; 0.8 is IV Studio's tested default. Higher adds contrast and skin texture; lower stays closest to the take"),
+  dlssStrength: z.number().min(0).max(2).optional().describe("DLSS 5's strength (its noise reduction), 0-2; 0.8 is Techlit Studio's tested default. Higher adds contrast and skin texture; lower stays closest to the take"),
   dlssStyle: z.enum(['Default', 'Natural', 'Cinematic']).optional().describe("DLSS 5's look"),
   continueFinish: z.enum(['full', 'single']).optional().describe('A continue shot hunted with continueFull: full (default) refines the take at megapixels and joins the source back on; single finishes in one DLSS pass at preview size')
 }
@@ -334,42 +335,99 @@ const finish = {
 server.registerTool(
   'get_guide',
   {
-    description: 'How to use IV Studio: rendering shots, writing H3 prompts, sequences, timeline edits, models, characters, and the house rules. Read it once before your first render or edit. topic "h3-prompts" returns MiniMax\'s own H3 prompt-writing guide (every mode, camera moves, speakers, sound): read it before writing an H3 prompt yourself. topic "directing" returns the directing method (reference map, staging and eyelines, action timeline, reviewing a take): follow it when you direct a scene.',
+    description: 'How to use Techlit Studio: rendering shots, writing H3 prompts, sequences, timeline edits, models, characters, and the house rules. Read it once before your first render or edit. topic "h3-prompts" returns MiniMax\'s own H3 prompt-writing guide (every mode, camera moves, speakers, sound): read it before writing an H3 prompt yourself. topic "directing" returns the directing method (reference map, staging and eyelines, action timeline, reviewing a take): follow it when you direct a scene.',
     inputSchema: { topic: z.enum(['iv-studio', 'h3-prompts', 'directing']).optional().describe('iv-studio (default), h3-prompts or directing') }
   },
   async ({ topic = 'iv-studio' }) => {
-    if (topic === 'directing') return { content: [{ type: 'text', text: `${DIRECTING_SOURCE}. In IV Studio, the shot brief is a prompt plus its references; review_take does the review step on a rendered take.\n\n${DIRECTING}` }] }
+    if (topic === 'directing') return { content: [{ type: 'text', text: `${DIRECTING_SOURCE}. In Techlit Studio, the shot brief is a prompt plus its references; review_take does the review step on a rendered take.\n\n${DIRECTING}` }] }
     if (topic !== 'h3-prompts') return { content: [{ type: 'text', text: readGuide(resourcesDir()) }] }
     const guide = await loadGuide()
     if (!guide) throw new Error("MiniMax's H3 prompt guide couldn't be downloaded from GitHub. Check the internet connection and try again.")
-    return { content: [{ type: 'text', text: `${GUIDE_SOURCE}. IV Studio's own notes (get_guide) still apply: {char} for the character, no face or voice for a LoRA character.\n\n${guide.base}\n\n${guide.ref}` }] }
+    return { content: [{ type: 'text', text: `${GUIDE_SOURCE}. Techlit Studio's own notes (get_guide) still apply: {char} for the character, no face or voice for a LoRA character.\n\n${guide.base}\n\n${guide.ref}` }] }
   }
 )
 // The start menu: offered when a chat opens without a request (get_menu), and each entry as an MCP prompt, which
 // clients like Claude Code list as slash commands.
-server.registerTool('get_menu', { description: 'The start menu: what the person can make with IV Studio. Offer it as one multiple-choice question when a chat starts and they have not said what they want; each choice comes with what to do.', inputSchema: {} }, () => ({
+server.registerTool('get_menu', { description: 'The start menu: what the person can make with Techlit Studio. Offer it as one multiple-choice question when a chat starts and they have not said what they want; each choice comes with what to do.', inputSchema: {} }, () => ({
   content: [{ type: 'text', text: JSON.stringify({ ask: 'What would you like to make?', choices: START_MENU.map(({ id, title, blurb, brief }) => ({ id, title, blurb, then: brief })), slashCommands: 'Also listed as prompts (slash commands) in apps that show MCP prompts.' }, null, 2) }]
 }))
 for (const entry of START_MENU)
   server.registerPrompt(entry.id, { title: entry.title, description: entry.blurb, argsSchema: Object.fromEntries(Object.entries(entry.args).map(([k, d]) => [k, z.string().optional().describe(d)])) }, (args) => ({
     messages: [{ role: 'user', content: { type: 'text', text: menuMessage(entry, args) } }]
   }))
-server.registerPrompt('start', { title: 'Start here', description: 'Choose what to make with IV Studio from a short menu.' }, () => ({
-  messages: [{ role: 'user', content: { type: 'text', text: `I'd like to make something with IV Studio. Show me the start menu (get_menu) as one multiple-choice question, then help me with what I pick.` } }]
+server.registerPrompt('start', { title: 'Start here', description: 'Choose what to make with Techlit Studio from a short menu.' }, () => ({
+  messages: [{ role: 'user', content: { type: 'text', text: `I'd like to make something with Techlit Studio. Show me the start menu (get_menu) as one multiple-choice question, then help me with what I pick.` } }]
 }))
 tool('check_setup', 'Report ComfyUI, GPU, node packs, models and characters, with fixes for anything missing.', {}, () => studio.checkSetup())
-tool('install_node_packs', "Install the ComfyUI node packs check_setup reports missing into this PC's ComfyUI: IV Studio's own pack is copied, the others downloaded at the versions IV Studio is tested with (GitHub commit or Comfy Registry release) and given their requirements with ComfyUI's Python. Folders already in custom_nodes are left alone. ComfyUI must be running; restart it afterwards to load them.", {}, () => studio.installNodePacks({ folder: readSettings(BASE).comfyFolder || null }))
+tool('install_node_packs', "Install the ComfyUI node packs check_setup reports missing into this PC's ComfyUI: Techlit Studio's own pack is copied, the others downloaded at the versions Techlit Studio is tested with (GitHub commit or Comfy Registry release) and given their requirements with ComfyUI's Python. Folders already in custom_nodes are left alone. ComfyUI must be running; restart it afterwards to load them.", {}, () => studio.installNodePacks({ folder: readSettings(BASE).comfyFolder || null }))
 tool('check_comfy_updates', "What updating this PC's ComfyUI would change, through ComfyUI-Manager: ComfyUI's version against its newest stable release, the installed custom node packs that have updates (Manager included), Manager's version and update policy, and the last update (for undo_comfy_update). Changes nothing, but Manager fetches every pack's remote first, so it takes a minute or two. manager.present false: ComfyUI-Manager isn't installed.", {}, () => studio.comfyUpdates({ launcher: launcherFor(readSettings(BASE)) }))
 tool('update_comfy', "Update this PC's ComfyUI through ComfyUI-Manager: saves a Manager snapshot, updates every custom node pack (ComfyUI-Manager included) to its newest version and ComfyUI to its newest stable release (or nightly, if Manager is set to that; the ComfyUI Desktop app updates ComfyUI itself), then restarts ComfyUI and waits for it. Refuses while ComfyUI is rendering or has jobs queued. Takes several minutes. Returns the snapshot, ComfyUI's version before and after and each pack's result; undo_comfy_update puts it all back. It changes the person's ComfyUI install: run it only when they ask.", {}, () => {
   const s = readSettings(BASE)
   return studio.updateComfy({ folder: s.comfyFolder || null, launcher: launcherFor(s) })
 })
-tool('undo_comfy_update', "Undo the last update_comfy (or the Setup screen's Update everything): restores the snapshot it saved and restarts ComfyUI. Afterwards it switches back on any pack ComfyUI-Manager's restore switched off (plain folders a snapshot can't track, IV Studio's own pack among them) and restarts again; reenabled lists them. If ComfyUI isn't running, the snapshot is set to restore at its next start (startNeeded: true): start ComfyUI, then call this again to finish.", {}, () => studio.undoComfyUpdate({ folder: readSettings(BASE).comfyFolder || null }))
+tool('undo_comfy_update', "Undo the last update_comfy (or the Setup screen's Update everything): restores the snapshot it saved and restarts ComfyUI. Afterwards it switches back on any pack ComfyUI-Manager's restore switched off (plain folders a snapshot can't track, Techlit Studio's own pack among them) and restarts again; reenabled lists them. If ComfyUI isn't running, the snapshot is set to restore at its next start (startNeeded: true): start ComfyUI, then call this again to finish.", {}, () => studio.undoComfyUpdate({ folder: readSettings(BASE).comfyFolder || null }))
 tool('list_characters', 'Characters (bibles): name, who they are, their H3 LoRA or RefMod, pictures, and per model (h3, seedance) what that model uses to show them (LoRA, RefMod, pictures or words). get_character has the whole bible.', {}, async () => {
   const loras = await studio.loraNames().catch(() => null)
   return studio.characters().map((c) => ({ ...c, models: whatModelsUse(c, loras?.length ? loras : null) }))
 })
-tool('list_projects', 'Projects in the IV Studio library, newest first.', {}, () => studio.listProjects())
+tool('list_projects', 'Projects in the Techlit Studio library, newest first.', {}, () => studio.listProjects())
+
+// ---------- Feature films: a long film in acts, made from Projects as sequences (the app's Features page) ----------
+tool('list_features', 'Feature films: long films built from acts and sequences, newest first.', {}, () => featureFilms.list())
+tool(
+  'create_feature',
+  'Start a feature film: a long film (up to 8 hours) in three acts, told by sequences (ordinary Projects) that share its story. Then add sequences with attach_sequence and generate everything with generate_feature. The trailer is a Sizzle promo (the sizzle tools) and songs are Music songs (the music tools), linked on the feature.',
+  {
+    name: z.string().optional().describe('The film’s title'),
+    logline: z.string().optional().describe('One line: who wants what, and what stands in the way'),
+    targetMinutes: z.number().min(2).max(480).optional().describe('How long the finished film runs (default 120; more than 3 hours is fine)'),
+    aspect: z.enum(['16:9', '9:16', '1:1', '4:3', '3:4', '3:2']).optional(),
+    story: z.string().optional().describe('The treatment: what happens in the film, act by act. Every sequence’s script is written from its own logline plus this story.')
+  },
+  (opts) => ok(featureFilms.create(opts))
+)
+tool(
+  'get_feature',
+  'A feature film with its acts, sequences, trailer and songs, plus progress: shots planned, filmed and finished, and finished footage per act.',
+  { featureId: z.string().describe('From list_features') },
+  ({ featureId }) => ok({ ...featureFilms.get(featureId), stats: featureFilms.stats(featureId) })
+)
+tool(
+  'attach_sequence',
+  'Add a Project as a sequence of a feature film’s act, in order. The sequence is an ordinary Project: it keeps the script, storyboard, shots and rough-cut pipeline, and its cut joins the master assembly. Make the Project first with the projects tools (or pass an existing one).',
+  {
+    featureId: z.string(),
+    productionId: z.string().describe('The Project (list_projects)'),
+    actId: z.string().describe('One of the feature’s act ids (get_feature)'),
+    title: z.string().optional().describe('Its name in the feature (default: the Project’s name)'),
+    logline: z.string().optional().describe('What happens in this sequence; its script is written from this plus the feature’s story')
+  },
+  ({ featureId, productionId, actId, title, logline }) => ok(featureFilms.attach(featureId, productionId, { actId, title, logline }))
+)
+tool(
+  'generate_feature',
+  'Write everything for a feature film automatically, in running order: every sequence without a script gets one written from its logline and the feature’s story, then every scene is broken into shots and each shot gets its H3 prompt. Resumable: sequences that already have a script and shots are skipped (pass redo to force). Rendering is separate: film each sequence’s shots like any Project’s, on RunPod or locally.',
+  { featureId: z.string(), redo: z.boolean().optional(), sequence: z.string().optional().describe('One sequence id (get_feature): write only this sequence, for reviewing one at a time') },
+  ({ featureId, redo, sequence }) => ok(featureFilms.auto(featureId, { redo, sequence }))
+)
+tool(
+  'plan_feature',
+  'The AI plans a whole feature film from its story: the act structure, the sequences each act needs (created as Projects, in order), and the cast (names, roles, looks — written into every sequence so all scripts use the same people). Nothing is filmed; use generate_feature next to write every script and shot. Only for a feature with no sequences yet (pass redo to re-plan).',
+  { featureId: z.string(), redo: z.boolean().optional() },
+  ({ featureId, redo }) => ok(featureFilms.planAll(featureId, { redo }))
+)
+tool(
+  'explore_feature',
+  'The whole story of a feature film as one tree (the story explorer): feature → acts → sequences → scenes → shots, each shot with its status (written, filmed, finished) and the project id its renders live under. Use it to see the entire film at a glance, find what is written or filmed, and plan what to render next.',
+  { featureId: z.string() },
+  ({ featureId }) => ok(featureFilms.explore(featureId))
+)
+tool(
+  'feature_master_cut',
+  'Assemble a feature film: one master edit with every sequence’s cut on the first video track, in running order. Rebuilds the assembly each call; sequences without a cut are skipped and reported.',
+  { featureId: z.string() },
+  ({ featureId }) => ok(featureFilms.masterCut(featureId))
+)
 tool('plan_render', 'Validate a request and resolve size, frames, duration, seeds and the finished size, without rendering.', { ...request, finish: z.object(finish).partial().optional() }, ({ finish: f, ...r }) => {
   const req = applySaved(r, readSettings(BASE))
   return studio.planRender(req, applyFinishSpeed(f || {}, req.speed))
@@ -381,10 +439,10 @@ const checkRequest = (r) => {
   return lintPrompt(r.prompt || '', { mode: r.mode, seconds: r.seconds, media: r.media || [], character: ch ? { name: ch.name, trigger: ch.trigger } : null, voiceLine: r.voiceLine })
 }
 // Overnight batches (batches.js): many variations of one idea queued at once on this PC, ranked as they finish, with
-// a morning report in IV Studio's chat when all are done
+// a morning report in Techlit Studio's chat when all are done
 const batches = new Batches({ dir: path.join(DATA, 'batches') })
 const BATCH_REQUEST = z.object(request)
-tool('start_batch', `Queue a batch of shots to render on this PC (H3, free) while the person is away, like "make 10 variations of this idea, three takes each, overnight". Write each variation as its own full H3 prompt (vary what they asked to vary: the action, the light, the camera, the place). All go in one project named name; each is checked by the prompt checker first, and nothing is queued if one has an error. Returns at once. IV Studio keeps the PC awake while it runs, ranks each shot's takes as they finish, and when all are done leaves a report in this chat with the best takes; the person needs nothing more from you tonight. At most ${MAX_BATCH} shots.`, {
+tool('start_batch', `Queue a batch of shots to render on this PC (H3, free) while the person is away, like "make 10 variations of this idea, three takes each, overnight". Write each variation as its own full H3 prompt (vary what they asked to vary: the action, the light, the camera, the place). All go in one project named name; each is checked by the prompt checker first, and nothing is queued if one has an error. Returns at once. Techlit Studio keeps the PC awake while it runs, ranks each shot's takes as they finish, and when all are done leaves a report in this chat with the best takes; the person needs nothing more from you tonight. At most ${MAX_BATCH} shots.`, {
   name: z.string().min(1).max(80).describe('The batch and its project, e.g. "Fox at dawn: 10 variations"'),
   shots: z.array(z.object({ prompt: z.string().min(1), label: z.string().max(80).optional().describe('A few words on what this variation tries'), seconds: z.number().min(1).max(15).optional(), aspect: z.enum(Object.keys(ASPECTS)).optional(), character: z.string().optional() })).min(1).max(MAX_BATCH),
   takes: z.number().int().min(1).max(3).default(3),
@@ -405,14 +463,14 @@ tool('start_batch', `Queue a batch of shots to render on this PC (H3, free) whil
     jobs.push({ jobId: job.id, prompt: r.prompt, label: shots[i].label || null })
   }
   const b = batches.create({ name, chatId: process.env.IV_STUDIO_CHAT_ID || null, projectId, takes, jobs })
-  return { batch: b.id, project: projectId, queued: jobs.length, takes, note: 'Queued. IV Studio keeps the PC awake, ranks the takes and reports here when every shot is done.' }
+  return { batch: b.id, project: projectId, queued: jobs.length, takes, note: 'Queued. Techlit Studio keeps the PC awake, ranks the takes and reports here when every shot is done.' }
 })
 tool('get_batch', 'Where an overnight batch stands: each shot\'s status, and the report once it is done.', { batchId: z.string() }, ({ batchId }) => {
   const b = batches.get(batchId)
   const jobs = Object.fromEntries(b.jobs.map((j) => [j.jobId, (() => { try { return studio.getJob(j.jobId, { refresh: false }) } catch { return null } })()]))
   return { name: b.name, status: b.status, state: batchState(b, jobs), shots: b.jobs.map((j, i) => ({ shot: i + 1, label: j.label, status: jobs[j.jobId]?.status || 'gone' })), ...(b.status === 'reported' ? { report: batchReport(b, jobs) } : {}) }
 })
-tool('make_dailies', "An overnight batch's dailies: one reel of every take (the best of each shot first), each after a title card with its shot, take, seed and checks (words heard, likeness, cuts away mid-shot, first and last frames held, freezes), and notes.md saying what to look at first. Into Videos\IV Studio\Dailies. The app makes them by itself when a batch finishes; this makes them again, or for an older batch. Returns the folder, the reel and the notes.", { batchId: z.string() }, async ({ batchId }) => {
+tool('make_dailies', "An overnight batch's dailies: one reel of every take (the best of each shot first), each after a title card with its shot, take, seed and checks (words heard, likeness, cuts away mid-shot, first and last frames held, freezes), and notes.md saying what to look at first. Into Videos\Techlit Studio\Dailies. The app makes them by itself when a batch finishes; this makes them again, or for an older batch. Returns the folder, the reel and the notes.", { batchId: z.string() }, async ({ batchId }) => {
   const b = batches.get(batchId)
   const jobs = {}
   for (const j of b.jobs) {
@@ -513,7 +571,7 @@ tool('write_prompt', "Write a MiniMax H3 prompt from a plain-words idea, using t
   sequence: z.boolean().default(false).describe('Write it as one shot of a continuous sequence (join rules)'),
   previous: z.string().optional().describe('sequence: the prompt of the previous shot'),
   engine: z.enum(['local', 'claude', 'codex', 'hermes', 'contextir']).optional().describe('Defaults to the choice in Settings → Prompt writer'),
-  target: z.enum(['h3', 'ltx', 'seedance']).default('h3').describe('ltx: an LTX 2.5 prompt, one plain present-tense paragraph. seedance: a Seedance 2.5 prompt from IV Studio\'s Seedance guide, with references named @image1, @video1, @audio1 (a character\'s face comes after your pictures)'),
+  target: z.enum(['h3', 'ltx', 'seedance']).default('h3').describe('ltx: an LTX 2.5 prompt, one plain present-tense paragraph. seedance: a Seedance 2.5 prompt from Techlit Studio\'s Seedance guide, with references named @image1, @video1, @audio1 (a character\'s face comes after your pictures)'),
   voiceLine: z.string().optional().describe('seedance: a voice recording that goes along as @audio')
 }, ({ engine, target, ...request }) => {
   if (target === 'seedance' || target === 'ltx') request = { ...request, engine: target }
@@ -570,7 +628,7 @@ tool('get_job', AGENT_RUN ? 'Status, progress and outputs of a job. While it is 
   }
   return job
 })
-tool('cancel_job', 'Cancel an IV Studio job (removes it from the queue or interrupts it if running); never touches other work.', { jobId: z.string() }, ({ jobId }) => studio.cancelJob(jobId))
+tool('cancel_job', 'Cancel an Techlit Studio job (removes it from the queue or interrupts it if running); never touches other work.', { jobId: z.string() }, ({ jobId }) => studio.cancelJob(jobId))
 tool('get_outputs', 'Playable outputs (paths and URLs) with the settings that made them, for a job or a whole project.', { jobId: z.string().optional(), projectId: z.string().optional() }, async ({ jobId, projectId }) => {
   if (jobId) {
     const j = await studio.refreshJob(jobId)
@@ -586,7 +644,7 @@ tool('delete_project', "Delete a shot (project) and its run history. Its videos 
 tool('delete_sequence', 'Delete a sequence and its record of versions. Rendered video files stay on disk. Ask the person first.', { sequenceId: z.string() }, ({ sequenceId }) => studio.deleteSequence(sequenceId))
 
 // ---------- renders library ----------
-tool('list_renders', 'Every IV Studio render (shot finals and previews, sequence versions and finals), newest first. Pass a key to add_media to put one on a timeline.', { limit: z.number().int().min(1).max(500).default(50) }, ({ limit }) =>
+tool('list_renders', 'Every Techlit Studio render (shot finals and previews, sequence versions and finals), newest first. Pass a key to add_media to put one on a timeline.', { limit: z.number().int().min(1).max(500).default(50) }, ({ limit }) =>
   studio.library().slice(0, limit).map(({ key, label, group, at, file }) => ({ key, label, group, at, path: file.path || null, url: file.url || null }))
 )
 
@@ -623,7 +681,7 @@ function describe(e) {
   return { id: e.id, name: e.name, settings: e.settings, seconds: +editLength(e).toFixed(3), media: Object.values(e.media).map(({ id, name, kind, duration, width, height, hasAudio, path: p }) => ({ id, name, kind, duration, width, height, hasAudio, path: p })), tracks, trackList: list.map(({ id, kind, label, hidden, locked, muted, solo }) => ({ id, kind, label, hidden: !!hidden, locked: !!locked, muted: !!muted, solo: !!solo })), markers: e.markers || [], exports: e.exports || [] }
 }
 
-const LIVE = 'If the edit is open in the IV Studio window, it reloads there and the person can undo your change with Ctrl+Z.'
+const LIVE = 'If the edit is open in the Techlit Studio window, it reloads there and the person can undo your change with Ctrl+Z.'
 const LIVE_FILM = 'The person sees it on the Projects page.'
 tool('list_edits', 'Edits (timelines in the Edit page), newest first.', {}, () => edits.list())
 tool('get_edit', 'An edit: its media (with ids), each track\'s clips in order (clip ids, start/end on the timeline, in/out in the media, fades, volume), settings, markers and past exports. Tracks: a higher V track is drawn over a lower one (V2 over V1); T1 holds titles; A tracks are sound; add_track adds more. trackList gives each track\'s state: hidden tracks are left out of the picture, muted ones out of the sound (and when any track is soloed, only soloed tracks are heard), and locked tracks can\'t be changed. Video clips play their own sound too unless muted.', { editId: z.string() }, ({ editId }) => describe(edits.get(editId)))
@@ -642,7 +700,7 @@ tool('set_edit_settings', `Rename an edit or change its export format (${Object.
   return describe(edits.save(editId, { name, settings: { ...e.settings, ...(format && { format }), ...(fps && { fps }), ...(loudness && { loudness }) } }))
 })
 tool('delete_edit', 'Delete an edit (the timeline only: its media files and exported videos stay). Ask the person first.', { editId: z.string() }, ({ editId }) => edits.remove(editId))
-tool('add_media', `Add files to an edit's media bin: local video, picture or audio paths, and/or IV Studio renders by key (list_renders; cloud renders download to Videos\\IV Studio). Returns the new media ids. With append, each also goes on the end of V1 (video, pictures) or A1 (sound), in the order given. ${LIVE}`, {
+tool('add_media', `Add files to an edit's media bin: local video, picture or audio paths, and/or Techlit Studio renders by key (list_renders; cloud renders download to Videos\\Techlit Studio). Returns the new media ids. With append, each also goes on the end of V1 (video, pictures) or A1 (sound), in the order given. ${LIVE}`, {
   editId: z.string(),
   files: z.array(z.string()).optional().describe('Absolute paths on this PC'),
   renders: z.array(z.string()).optional().describe('Keys from list_renders'),
@@ -744,6 +802,8 @@ tool('grab_frame', 'A picture of one moment, to check an edit or a render by eye
 // ---------- Projects: a short film from script to rough cut (the app's Projects page; "films" here, because
 // list_projects already means shots) ----------
 const films = new Productions({ dataDir: DATA, studio: () => studio, voices: () => voices, images: () => images, previs: () => previs, catalog: () => catalog, edits, localCopy: (f) => studio.localCopy(f, VIDEOS()), model: () => readSettings(BASE).ollamaModel || undefined, writer: () => writerOf(readSettings(BASE)) })
+// Feature films (feature.js): acts and sequences over the productions above, with a trailer (a Sizzle) and songs (Music)
+const featureFilms = new Features({ dataDir: DATA, productions: () => films, edits: () => edits, writer: () => writerOf(readSettings(BASE)) })
 const stageSchema = z
   .object({
     people: z.array(z.object({ name: z.string(), x: z.number(), y: z.number(), facing: z.number().describe('degrees on the floor: 0 into the room (away from a camera at the front), 90 to the room\'s right, 180 toward the front'), to: z.object({ x: z.number(), y: z.number() }).nullable().optional().describe('where they walk to'), lookAt: z.string().nullable().optional() })).max(4),
@@ -775,6 +835,13 @@ tool('update_film', `Change a film's brief or assets: name, logline, aspect, tar
 }, ({ filmId, ...patch }) => films.update(filmId, patch))
 tool('set_film_script', `Replace a film's script (screenplay text, see create_film). Scenes are read from it; scenes that didn't change keep their shots, changed ones are marked stale. Speakers who share a first name with a character preset join the cast, and the scene headings add locations. ${LIVE_FILM}`, { filmId: z.string(), script: z.string().min(1) }, ({ filmId, script }) => films.setScript(filmId, script))
 tool('write_film_script', `Draft a film's script with the writer chosen in Settings → Prompt writer from its idea (idea, else the film's logline), its cast and its target length. It replaces the script, so ask before writing over one the person wrote. Takes a minute or two. ${LIVE_FILM}`, { filmId: z.string(), idea: z.string().optional() }, ({ filmId, idea }) => films.writeScript(filmId, { idea }))
+tool(
+  'write_film_details',
+  'Writes the details around a film\'s shots with the chosen writer (Hermes): a visual character description for every cast member who lacks one, and an establishing-shot prompt for every place that lacks one. Break the film down first so the cast and places exist. After it, add_establishing_shots can put those place prompts at the head of their scenes.',
+  { filmId: z.string() },
+  async ({ filmId }) => ok({ characters: (await films.writeCastPrompts(filmId)).written, places: (await films.writeEnvironmentPrompts(filmId)).written })
+)
+tool('add_establishing_shots', 'Gives every scene that lacks one an establishing shot at its head, from the place prompts write_film_details wrote. Idempotent.', { filmId: z.string() }, ({ filmId }) => films.addEstablishingShots(filmId))
 tool('sketch_film_shots', "Draw a storyboard still for each shot without one (or shotIds, or every shot with redo), on this PC's picture models: about 15-30 s a shot, free. A shot's character face and its place's picture are kept when an editing model is set up. get_film shows each shot's sketch once drawn.", { filmId: z.string(), shotIds: z.array(z.string()).optional(), redo: z.boolean().default(false) }, async ({ filmId, ...opts }) => {
   if (readSettings(BASE).target !== 'cloud') await voices.release()
   return { items: await films.sketch(filmId, opts) }
@@ -889,7 +956,7 @@ tool('speak_film_line', 'Say a shot\'s line in its character\'s voice; the shot 
   const { sh } = films.find(films.get(filmId), shotId)
   return { file: sh.voiceLine.file, duration: sh.voiceLine.duration, heard: sh.voiceLine.heard ?? null }
 })
-tool('render_film_shot', 'Hunt previews for one shot (3 by default; an ordinary IV Studio shot, so it also shows in Shots). A shot with a storyboard sketch opens exactly on it (fromSketch: false films from the prompt alone). When its place has a picture (sketching draws one for every place without a photo), it films in Reference mode: the sketch is the first frame, the place picture keeps the room the same however the camera moves, and other cast characters on screen come from their face pictures (room: false uses Frames mode, the sketch alone). Every line is said before any shot renders; a shot with no line is told nobody speaks. A line its character has a voice for is said in that voice first, so the shot lip-syncs to it (voice: false skips that). Poll get_film or get_job; when its status is pick, show the person the takes and finish_film_shot the one they choose.', { filmId: z.string(), shotId: z.string(), previews: z.number().int().min(1).max(3).default(3), seed: z.number().int().optional(), voice: z.boolean().default(true), fromSketch: z.boolean().default(true).describe("Open on the shot's storyboard sketch when it has one"), room: z.boolean().default(true).describe("With a picture of the place, keep the room the same (Reference mode)"), previs: z.boolean().default(true).describe("A staged shot whose camera arcs films from its previs (<Video 1>); other moves film from the staging words") }, async ({ filmId, shotId, ...opts }) => {
+tool('render_film_shot', 'Hunt previews for one shot (3 by default; an ordinary Techlit Studio shot, so it also shows in Shots). A shot with a storyboard sketch opens exactly on it (fromSketch: false films from the prompt alone). When its place has a picture (sketching draws one for every place without a photo), it films in Reference mode: the sketch is the first frame, the place picture keeps the room the same however the camera moves, and other cast characters on screen come from their face pictures (room: false uses Frames mode, the sketch alone). Every line is said before any shot renders; a shot with no line is told nobody speaks. A line its character has a voice for is said in that voice first, so the shot lip-syncs to it (voice: false skips that). Poll get_film or get_job; when its status is pick, show the person the takes and finish_film_shot the one they choose.', { filmId: z.string(), shotId: z.string(), previews: z.number().int().min(1).max(3).default(3), seed: z.number().int().optional(), voice: z.boolean().default(true), fromSketch: z.boolean().default(true).describe("Open on the shot's storyboard sketch when it has one"), room: z.boolean().default(true).describe("With a picture of the place, keep the room the same (Reference mode)"), previs: z.boolean().default(true).describe("A staged shot whose camera arcs films from its previs (<Video 1>); other moves film from the staging words") }, async ({ filmId, shotId, ...opts }) => {
   if (readSettings(BASE).target !== 'cloud') await voices.release()
   return films.render(filmId, shotId, opts)
 })
@@ -953,7 +1020,7 @@ tool('reframe', `Put a video or picture in a new frame shape (9:16, 1:1, 4:5 or 
 const cutouts = new Cutouts({ dataDir: DATA, studio: () => studio, edits })
 // ---------- Clip effects and Workflows -> Effects: Freefield's apps (freefield.js) on this PC's ComfyUI ----------
 const clipfx = new FreefieldApps({ resourcesDir: resourcesDir(), dataDir: DATA, studio: () => studio })
-tool('effects_list', `The video and photo effects IV Studio can run: ${offeredFx().map((k) => [k, CLIP_FX[k]]).map(([k, v]) => `${k} (${v.label.toLowerCase()}; takes a ${v.media})`).join(', ')}. Give fx to get one effect's inputs (ids, types, options with their values, limits, defaults) and whether this ComfyUI can run it (missing node packs or models).`, { fx: z.enum(offeredFx()).optional() }, async ({ fx }) => (fx ? { ...clipfx.meta(fx), status: await clipfx.status(fx) } : { items: offeredFx().map((k) => ({ fx: k, ...CLIP_FX[k] })), status: await clipfx.statusAll() }))
+tool('effects_list', `The video and photo effects Techlit Studio can run: ${offeredFx().map((k) => [k, CLIP_FX[k]]).map(([k, v]) => `${k} (${v.label.toLowerCase()}; takes a ${v.media})`).join(', ')}. Give fx to get one effect's inputs (ids, types, options with their values, limits, defaults) and whether this ComfyUI can run it (missing node packs or models).`, { fx: z.enum(offeredFx()).optional() }, async ({ fx }) => (fx ? { ...clipfx.meta(fx), status: await clipfx.status(fx) } : { items: offeredFx().map((k) => ({ fx: k, ...CLIP_FX[k] })), status: await clipfx.statusAll() }))
 tool('run_effect', 'Run one effect on this PC (free, local; a few minutes) and wait for it. file: a video (dub, cleanplate, night, water, hdr, removebg, smooth) or a picture (effects, morph, transitions; transitions also takes last). values: the effect’s own inputs by id (effects_list fx=...), select inputs by their option value. Returns the result files (the first is the main video; a matte or a warp guide may follow). Put a result on an edit with add_media.', {
   fx: z.enum(offeredFx()),
   file: z.string().describe('Absolute path of the clip or picture'),
@@ -1016,7 +1083,7 @@ const mvWriter = (request) => {
 }
 const castShape = z.array(z.object({ character: z.string().describe('A character id from list_characters'), part: z.string().optional().describe('Their part: lead singer, drums, dancer...'), singer: z.boolean().optional().describe('The one who sings (one at most)') })).max(MV_CAST)
 tool('list_music_videos', 'The music videos (Workflows → Music video): id, name, song, length and scene count.', {}, () => musicVideos.list())
-tool('create_music_video', "Start a music video from a song: IV Studio reads its beat, bars and parts and plans scenes of 2 to 15 s on its bar lines, covering the whole song. Then: set the cast and idea (set_music_video), write the scenes' prompts (write_music_video_prompts, or set them yourself), hunt takes (render_music_video), finish the picked take of each scene (finish_music_video_scene), and put it together (assemble_music_video). Each scene sings or plays along to its own stretch of the song (the song is its voice line), so the singer's mouth follows the words; everyone else's mouth stays closed. Renders run on this PC's ComfyUI, free.", {
+tool('create_music_video', "Start a music video from a song: Techlit Studio reads its beat, bars and parts and plans scenes of 2 to 15 s on its bar lines, covering the whole song. Then: set the cast and idea (set_music_video), write the scenes' prompts (write_music_video_prompts, or set them yourself), hunt takes (render_music_video), finish the picked take of each scene (finish_music_video_scene), and put it together (assemble_music_video). Each scene sings or plays along to its own stretch of the song (the song is its voice line), so the singer's mouth follows the words; everyone else's mouth stays closed. Renders run on this PC's ComfyUI, free.", {
   song: z.string().describe('A sound file on this PC (a song from list_music has a file)'),
   name: z.string().optional(),
   idea: z.string().optional().describe('A sentence or two about the whole video; the writer uses it for every scene'),
@@ -1189,7 +1256,7 @@ tool('check_animal_cam', 'The checklist for an Animal Cam clip, with what to cha
 tool('render_animal_cam', 'Hunt takes on this PC (free). A checklist miss stops it unless anyway is true. Returns the job; poll get_job.', { id: z.string(), anyway: z.boolean().default(false), seed: z.number().int().optional(), speed: z.string().optional() }, ({ id, ...opts }) => animalCams.hunt(id, opts))
 tool('finish_animal_cam', 'Finish the picked take (candidate 1-3). Returns the job; poll get_job.', { id: z.string(), candidate: z.number().int().min(1).default(1), speed: z.string().optional() }, ({ id, candidate, speed }) => animalCams.finish(id, { candidate, speed }))
 tool('assemble_animal_cam', 'Put the finished clip in a new vertical edit (as a phone-style 1080x1920 file unless phone is off). Export it with export_edit.', { id: z.string(), name: z.string().optional() }, ({ id, name }) => animalCams.assemble(id, { name }))
-tool('export_edit', `Render the whole edit to one MP4 (H.264 + AAC) in Videos\\IV Studio\\Edits, or outDir. Returns at once; follow with get_edit_export. The export runs inside this MCP server, so it stops if the server stops.`, {
+tool('export_edit', `Render the whole edit to one MP4 (H.264 + AAC) in Videos\\Techlit Studio\\Edits, or outDir. Returns at once; follow with get_edit_export. The export runs inside this MCP server, so it stops if the server stops.`, {
   editId: z.string(),
   outDir: z.string().optional()
 }, ({ editId, outDir }) => {
@@ -1204,7 +1271,7 @@ tool('export_edit', `Render the whole edit to one MP4 (H.264 + AAC) in Videos\\I
     .catch((err) => Object.assign(st, { state: /cancel/i.test(err.message) ? 'cancelled' : 'failed', error: err.message }))
   return st
 })
-tool('export_edit_for_editors', "Hand an edit to a real editor: writes the timeline as FCP 7 XML (Premiere Pro and DaVinci Resolve import it), FCPXML 1.10 (Resolve, Final Cut Pro) and a CMX3600 EDL of V1, with every file it uses copied into a Media folder beside them and the folder zipped to send (zip false to skip). Carries every track, clip timing and trims, pictures, clip volume, hidden, muted and locked tracks, markers, and titles (as markers, and as text in the FCPXML). Fades and title styling don't carry over. Into Videos\IV Studio\Edits, or outDir.", { editId: z.string(), outDir: z.string().optional(), zip: z.boolean().optional() }, ({ editId, outDir, zip }) =>
+tool('export_edit_for_editors', "Hand an edit to a real editor: writes the timeline as FCP 7 XML (Premiere Pro and DaVinci Resolve import it), FCPXML 1.10 (Resolve, Final Cut Pro) and a CMX3600 EDL of V1, with every file it uses copied into a Media folder beside them and the folder zipped to send (zip false to skip). Carries every track, clip timing and trims, pictures, clip volume, hidden, muted and locked tracks, markers, and titles (as markers, and as text in the FCPXML). Fades and title styling don't carry over. Into Videos\Techlit Studio\Edits, or outDir.", { editId: z.string(), outDir: z.string().optional(), zip: z.boolean().optional() }, ({ editId, outDir, zip }) =>
   exportInterchange(edits.get(editId), outDir || path.join(VIDEOS(), 'Edits'), { zip: zip !== false })
 )
 tool('get_edit_export', 'Progress of an export started with export_edit (state running, done, failed or cancelled; file when done).', { editId: z.string() }, ({ editId }) => {
@@ -1239,11 +1306,11 @@ async function picturesOf(result, max = 4) {
   }
   return out
 }
-tool('shinobi_status', "Is Shinobi (IV Studio's agent-driven editor) set up on this PC, which browser it renders with, and its projects folder.", {}, () => ({ ...shinobi.status(), projects: shinobi.status().installed ? shinobi.projects() : [] }))
-tool('shinobi_setup', "Install Shinobi's engine into IV Studio's folder (about 440 MB, under a minute; nothing else on the PC changes). Ask the person first.", {}, () => shinobi.install())
+tool('shinobi_status', "Is Shinobi (Techlit Studio's agent-driven editor) set up on this PC, which browser it renders with, and its projects folder.", {}, () => ({ ...shinobi.status(), projects: shinobi.status().installed ? shinobi.projects() : [] }))
+tool('shinobi_setup', "Install Shinobi's engine into Techlit Studio's folder (about 440 MB, under a minute; nothing else on the PC changes). Ask the person first.", {}, () => shinobi.install())
 tool('shinobi_tools', 'Every Shinobi tool with its parameters: media inspection, timeline authoring, beat analysis, captions, effects, 3D, rendering and review. Call them with the shinobi tool. Start with read_guide (agent, timeline, effects).', {}, () => shinobi.tools())
 server.registerTool('shinobi', {
-  description: "Call one Shinobi tool (see shinobi_tools) with its arguments. Projects live in IV Studio's Shinobi workspace and show on the Shinobi page. Typical flow: create_project, import_media (any IV Studio render path or file), preview_source, save_timeline (with the revision from get_project), preview_timeline, start_render, get_render. Preview pictures come back as images. Never call paid or hosted model tools without the person's OK.",
+  description: "Call one Shinobi tool (see shinobi_tools) with its arguments. Projects live in Techlit Studio's Shinobi workspace and show on the Shinobi page. Typical flow: create_project, import_media (any Techlit Studio render path or file), preview_source, save_timeline (with the revision from get_project), preview_timeline, start_render, get_render. Preview pictures come back as images. Never call paid or hosted model tools without the person's OK.",
   inputSchema: { tool: z.string(), arguments: z.record(z.any()).default({}) }
 }, async ({ tool: name, arguments: args }) => {
   try {
@@ -1253,7 +1320,7 @@ server.registerTool('shinobi', {
     return fail(err)
   }
 })
-tool('shinobi_project', "A Shinobi project as IV Studio sees it: media with file paths, the saved edit's length and shape, renders with their video files, and the person's brief.", { projectId: z.string() }, ({ projectId }) => {
+tool('shinobi_project', "A Shinobi project as Techlit Studio sees it: media with file paths, the saved edit's length and shape, renders with their video files, and the person's brief.", { projectId: z.string() }, ({ projectId }) => {
   const p = shinobi.project(projectId)
   const brief = path.join(p.dir, 'iv-brief.md')
   return { ...p, brief: fs.existsSync(brief) ? fs.readFileSync(brief, 'utf8') : '' }
@@ -1372,7 +1439,7 @@ tool('estimate_training', 'Steps, minutes and dollars of a training run (Modal, 
       seed: z.number().int().min(0).optional(),
       captionDropout: z.union([z.literal(0), z.literal(0.05), z.literal(0.1)]).optional(),
       cleanEnd: z.union([z.literal(60), z.literal(8)]).optional().describe('60: likeness and style (default). 8: weighted to movement'),
-      budget: z.number().min(0.5).max(500).optional().describe('Dollars: training stops itself there (even with IV Studio closed); the checkpoints saved so far stay')
+      budget: z.number().min(0.5).max(500).optional().describe('Dollars: training stops itself there (even with Techlit Studio closed); the checkpoints saved so far stay')
     })
     .optional(),
   more: z.number().int().min(5).max(120).optional().describe('Train more: this many extra epochs on the last finished or stopped run, from its last saved state (same recipe)'),
@@ -1392,7 +1459,7 @@ tool('start_training', "Train the character LoRA: on this PC (options.where loca
       seed: z.number().int().min(0).optional(),
       captionDropout: z.union([z.literal(0), z.literal(0.05), z.literal(0.1)]).optional(),
       cleanEnd: z.union([z.literal(60), z.literal(8)]).optional().describe('60: likeness and style (default). 8: weighted to movement'),
-      budget: z.number().min(0.5).max(500).optional().describe('Dollars: training stops itself there (even with IV Studio closed); the checkpoints saved so far stay')
+      budget: z.number().min(0.5).max(500).optional().describe('Dollars: training stops itself there (even with Techlit Studio closed); the checkpoints saved so far stay')
     })
     .optional(),
   more: z.number().int().min(5).max(120).optional().describe('Train more: this many extra epochs on the last finished or stopped run, from its last saved state (same recipe)'),
@@ -1589,7 +1656,7 @@ tool('get_character', "One character's whole bible: who they are, their look and
   const loras = await studio.loraNames().catch(() => null)
   return { ...c, models: whatModelsUse(c, loras?.length ? loras : null) }
 })
-tool('add_character_pictures', "Add pictures of a character to their bible (copied into IV Studio's data folder). role sets the role of all of them (face, three-quarter, profile, full body, expression, outfit, other); left out, the first picture of a character without a face picture is their face. Seedance uses them as references; H3 uses the face picture when the character has no H3 LoRA. Only invented characters, or real people who agreed to it.", {
+tool('add_character_pictures', "Add pictures of a character to their bible (copied into Techlit Studio's data folder). role sets the role of all of them (face, three-quarter, profile, full body, expression, outfit, other); left out, the first picture of a character without a face picture is their face. Seedance uses them as references; H3 uses the face picture when the character has no H3 LoRA. Only invented characters, or real people who agreed to it.", {
   id: z.string(),
   files: z.array(z.string()).min(1).max(30).describe('Image file paths (PNG, JPEG, WebP)'),
   role: z.enum(ROLES).optional()
@@ -1604,7 +1671,7 @@ tool('make_refmod_character', "Make a character from pictures as a RefMod (no tr
   who: z.string().optional().describe('A few words on who they are, e.g. "a woman in her thirties"'),
   consent: z.boolean().describe('True only when the person confirmed these are their own pictures, an invented person, or someone who agreed')
 }, (args) => refmodMaker.make(args))
-// ---------- Audio: voices and spoken lines (IV Studio's own engine: VoxCPM2 and Whisper) ----------
+// ---------- Audio: voices and spoken lines (Techlit Studio's own engine: VoxCPM2 and Whisper) ----------
 const voices = new Voices({ dataDir: DATA, resourcesDir: resourcesDir(), ffmpeg: edits.ffmpeg, comfy: studio.comfy })
 // Take ranking (ranking.js): the same scores the window shows, saved on the job
 const ranker = new Ranker({ studio: () => studio, voices: () => voices, shinobi: () => shinobi, ffmpeg: edits.ffmpeg, dataDir: DATA })
@@ -1627,10 +1694,10 @@ tool('review_take', "Review one take against its prompt, as a director would: th
 process.on('exit', () => voices.release())
 studio.beforeRender = () => voices.release()
 // Seedance and other partner nodes run on the key in this server's environment (the app keeps its own sealed); in
-// IV Studio's chat, the key the app lends for a paid step (chatPaid)
+// Techlit Studio's chat, the key the app lends for a paid step (chatPaid)
 studio.partnerKey = () => process.env.COMFY_ORG_API_KEY || chatKey || null
-tool('voice_status', `Whether IV Studio's voice engine is set up (${VOICE_ENGINES.map((e) => `${e.label}: ${e.note}`).join(' ')} Whisper large-v3 turbo, MIT, reads the words in recordings). installed false: ask the person to press Set up voices on Audio > Voices, or run setup_voices with their OK.`, {}, () => voices.status())
-tool('setup_voices', "Set up IV Studio's voice engine once: a Python environment with PyTorch and VoxCPM, plus the VoxCPM2 and Whisper models, about 12 GB of free downloads into IV Studio's data folder (roughly 5-15 minutes). Ask the person first. Returns when done.", {}, () => voices.setup())
+tool('voice_status', `Whether Techlit Studio's voice engine is set up (${VOICE_ENGINES.map((e) => `${e.label}: ${e.note}`).join(' ')} Whisper large-v3 turbo, MIT, reads the words in recordings). installed false: ask the person to press Set up voices on Audio > Voices, or run setup_voices with their OK.`, {}, () => voices.status())
+tool('setup_voices', "Set up Techlit Studio's voice engine once: a Python environment with PyTorch and VoxCPM, plus the VoxCPM2 and Whisper models, about 12 GB of free downloads into Techlit Studio's data folder (roughly 5-15 minutes). Ask the person first. Returns when done.", {}, () => voices.setup())
 tool('list_voices', 'Every saved voice: id, name, kind (designed, clone, ready), engine, seed, reference recording and its words, and which characters use it.', {}, async () => {
   await catalog.attachVoices().catch(() => {})
   const chars = studio.characters()
@@ -1669,7 +1736,7 @@ tool('speak_line', `Say a line in a voice (or a character's voice) and get a WAV
 })
 tool('list_lines', 'Lines spoken so far, newest first (optionally for one voice): text, file, duration, seed.', { voiceId: z.string().optional() }, ({ voiceId }) => ({ items: voices.lines(voiceId) }))
 tool('delete_line', 'Delete a spoken line and its file.', { id: z.string() }, ({ id }) => voices.deleteLine(id))
-tool('release_voice_engine', 'Stop the voice engine so its GPU memory goes back to ComfyUI (IV Studio also does this before a render, and ten minutes after the last line).', {}, async () => (await voices.release(), { released: true }))
+tool('release_voice_engine', 'Stop the voice engine so its GPU memory goes back to ComfyUI (Techlit Studio also does this before a render, and ten minutes after the last line).', {}, async () => (await voices.release(), { released: true }))
 
 // ---------- Audio: music (MiniMax Music 3 and ACE-Step 1.5 on this PC's ComfyUI) ----------
 const music = new Music({ studio, dataDir: DATA, probe: (f) => edits.probe(f), decode: monoDecoder((a) => edits.run(a)) })
@@ -1700,7 +1767,7 @@ tool('remix_music', `Remix a song on this PC (free, local, ACE-Step 1.5 Turbo, s
   language: z.string().optional()
 }, async (args) => (readSettings(BASE).target === 'cloud' || (await voices.release()), music.remix(Object.fromEntries(Object.entries(args).filter(([, v]) => v !== undefined)))))
 tool('read_song', "A song's length, tempo (BPM) and a guess at its key, read on this PC. Give a sound file or a songId.", { source: z.string().optional(), songId: z.string().optional() }, (args) => music.analyse(args))
-tool('list_music', 'Every song made in IV Studio, newest first, with status, file (once finished), length, engine, style, lyrics, seed, and remix (the song and strength it came from) for remixes.', {}, () => music.list())
+tool('list_music', 'Every song made in Techlit Studio, newest first, with status, file (once finished), length, engine, style, lyrics, seed, and remix (the song and strength it came from) for remixes.', {}, () => music.list())
 tool('get_music', 'One song, brought up to date: status (queued, running, success, error), progress, and its file once finished.', { songId: z.string() }, ({ songId }) => music.get(songId))
 
 // ---------- Audio: sounds (Stable Audio 3 on this PC's ComfyUI) ----------
@@ -1715,19 +1782,19 @@ tool('make_sound', `Make a sound effect, ambience, one-shot or short music loop 
   name: z.string().optional(),
   seed: z.number().int().min(0).optional()
 }, async (args) => (readSettings(BASE).target === 'cloud' || (await voices.release()), sounds.create(Object.fromEntries(Object.entries(args).filter(([, v]) => v !== undefined)))))
-tool('list_sounds', 'Every sound made in IV Studio, newest first: status, kind, description, length, seed and its takes (files) once finished.', {}, async () => ({ items: await sounds.list() }))
+tool('list_sounds', 'Every sound made in Techlit Studio, newest first: status, kind, description, length, seed and its takes (files) once finished.', {}, async () => ({ items: await sounds.list() }))
 tool('get_sound', 'One sound, brought up to date: status, progress, and its takes (files) once finished.', { soundId: z.string() }, ({ soundId }) => sounds.get(soundId))
 tool('delete_sound', 'Delete a sound and its files (a sound still being made is stopped).', { soundId: z.string() }, ({ soundId }) => sounds.delete(soundId))
 tool('cancel_music', 'Stop a song that is still being made. Never touches other ComfyUI work.', { songId: z.string() }, ({ songId }) => music.cancel(songId))
 tool('rename_music', 'Rename a song.', { songId: z.string(), name: z.string().min(1) }, ({ songId, name }) => music.rename(songId, name))
-tool('delete_music', "Delete a song and its file in IV Studio's music folder (ComfyUI's own output copy stays). Ask the person first.", { songId: z.string() }, ({ songId }) => music.delete(songId))
+tool('delete_music', "Delete a song and its file in Techlit Studio's music folder (ComfyUI's own output copy stays). Ask the person first.", { songId: z.string() }, ({ songId }) => music.delete(songId))
 
 // ---------- Create -> Image: pictures from the person's own image models on this PC ----------
 const images = new Images({ studio, dataDir: DATA })
 remake.images = images
 remake.faces = shinobi
 remake.voice = new RemakeVoice({ remake, voices: () => voices, shinobi: () => shinobi, ffmpeg: edits.ffmpeg, resourcesDir: resourcesDir() })
-tool('list_samplers', "The samplers and schedulers this ComfyUI offers for a shot's previews (generate_previews sampler and scheduler). IV Studio's tested defaults are er_sde and beta; the 2 MP finish keeps its own refine settings.", {}, async () => {
+tool('list_samplers', "The samplers and schedulers this ComfyUI offers for a shot's previews (generate_previews sampler and scheduler). Techlit Studio's tested defaults are er_sde and beta; the 2 MP finish keeps its own refine settings.", {}, async () => {
   const [k, b] = await Promise.all([studio.comfy.objectInfo('KSamplerSelect'), studio.comfy.objectInfo('BasicScheduler')])
   return { samplers: comboOptions(k, 'KSamplerSelect', 'sampler_name') || [], schedulers: comboOptions(b, 'BasicScheduler', 'scheduler') || [], defaults: { sampler: 'er_sde', scheduler: 'beta' } }
 })
@@ -1770,8 +1837,8 @@ async function agreed(pricePromise, confirm) {
   return { approvedUsd: confirm, unknownOk: p.unknown.length > 0 }
 }
 // The Comfy.org account: this server reads COMFY_ORG_API_KEY from its environment (the app keeps its own key encrypted).
-tool('comfy_balance', "The person's Comfy.org credit balance: what ComfyUI's paid partner nodes (Seedance, Kling, Veo and others) spend. Returns credits and dollars (211 credits = $1). Needs COMFY_ORG_API_KEY in this server's environment; the IV Studio window shows the same balance in its title bar.", {}, async () => {
-  if (!process.env.COMFY_ORG_API_KEY) throw new Error('This server has no COMFY_ORG_API_KEY in its environment. The person can see their balance in the IV Studio window (title bar, or Settings → Comfy account), or add the key to this server’s environment.')
+tool('comfy_balance', "The person's Comfy.org credit balance: what ComfyUI's paid partner nodes (Seedance, Kling, Veo and others) spend. Returns credits and dollars (211 credits = $1). Needs COMFY_ORG_API_KEY in this server's environment; the Techlit Studio window shows the same balance in its title bar.", {}, async () => {
+  if (!process.env.COMFY_ORG_API_KEY) throw new Error('This server has no COMFY_ORG_API_KEY in its environment. The person can see their balance in the Techlit Studio window (title bar, or Settings → Comfy account), or add the key to this server’s environment.')
   const b = await getBalance(process.env.COMFY_ORG_API_KEY)
   return { credits: b.credits, usd: Math.round(b.usd * 100) / 100, newCustomer: b.newCustomer, checkedAt: b.at }
 })
@@ -1789,25 +1856,25 @@ tool('free_memory', "Clear the GPU and RAM now: ComfyUI unloads its models (betw
   const q = await studio.comfy.queue().catch(() => null)
   return { comfyui: 'asked to unload', voiceEngine: 'stopped', ollama, renderRunning: !!q?.queue_running?.length }
 })
-// "Show me where" from IV Studio's own chat: the app goes to a page and lights up one part of it, as a tour does
+// "Show me where" from Techlit Studio's own chat: the app goes to a page and lights up one part of it, as a tour does
 // (tours.js). The server writes a show file into the chat's folder; the app's chat (agentchat.js) passes it on.
-tool('list_places', "Places in IV Studio you can show the person with show_in_app: each page's parts, as where (the page), spot (the part) and what's there. Use it to answer \"where do I...\" questions.", {}, () => ({ items: placesToShow() }))
-tool('show_in_app', "Take the person to a place in IV Studio and light it up, the way a page's tour does, with your words beside it (say: one or two short sentences on what to do there). where and spot come from list_places. Works in IV Studio's own chat.", { where: z.enum(Object.keys(TOUR_PAGES)), spot: z.string().optional(), say: z.string().max(300).optional() }, ({ where, spot: asked, say }) => {
+tool('list_places', "Places in Techlit Studio you can show the person with show_in_app: each page's parts, as where (the page), spot (the part) and what's there. Use it to answer \"where do I...\" questions.", {}, () => ({ items: placesToShow() }))
+tool('show_in_app', "Take the person to a place in Techlit Studio and light it up, the way a page's tour does, with your words beside it (say: one or two short sentences on what to do there). where and spot come from list_places. Works in Techlit Studio's own chat.", { where: z.enum(Object.keys(TOUR_PAGES)), spot: z.string().optional(), say: z.string().max(300).optional() }, ({ where, spot: asked, say }) => {
   // the spot as listed, else one that matches loosely (any case, or the words inside it); none: the page's first part
   const steps = TOURS[where].steps.filter((s) => s.at)
   const want = String(asked || '').trim().toLowerCase()
   const step = !want ? steps[0] : steps.find((s) => s.title.toLowerCase() === want) || steps.find((s) => s.title.toLowerCase().includes(want) || want.includes(s.title.toLowerCase()))
   if (!step) throw new Error(`There's no "${asked}" on ${TOURS[where].title}. Its spots: ${steps.map((s) => `"${s.title}"`).join(', ')}. Or leave spot out to show the page.`)
   const spot = step.title
-  if (!AGENT_CHAT || !AGENT_ASK) throw new Error("show_in_app works in IV Studio's own chat, where the app can move. Tell the person the page and what to click instead.")
+  if (!AGENT_CHAT || !AGENT_ASK) throw new Error("show_in_app works in Techlit Studio's own chat, where the app can move. Tell the person the page and what to click instead.")
   fs.mkdirSync(AGENT_ASK, { recursive: true })
   const file = path.join(AGENT_ASK, `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}.show.json`)
   fs.writeFileSync(`${file}.tmp`, JSON.stringify({ where, spot, say: say || null }))
   fs.renameSync(`${file}.tmp`, file)
   return { shown: true, page: TOURS[where].title, spot }
 })
-// Recipes (recipes.js): one-click buttons on the Dashboard that send a saved request to IV Studio's chat
-tool('save_recipe', "Save something that worked as a recipe: a button on IV Studio's Dashboard that asks the chat for it again with one click. Only when the person asks (\"save this as a recipe\"). name: the button's few words. instruction: the request in full, as the person would type it, written so it works on its own another day: say \"my latest finished shot\" or \"the open edit\", never ids, and include the settings that made it work (length, shape, style, speed). The same name replaces an older recipe.", {
+// Recipes (recipes.js): one-click buttons on the Dashboard that send a saved request to Techlit Studio's chat
+tool('save_recipe', "Save something that worked as a recipe: a button on Techlit Studio's Dashboard that asks the chat for it again with one click. Only when the person asks (\"save this as a recipe\"). name: the button's few words. instruction: the request in full, as the person would type it, written so it works on its own another day: say \"my latest finished shot\" or \"the open edit\", never ids, and include the settings that made it work (length, shape, style, speed). The same name replaces an older recipe.", {
   name: z.string().min(1).max(60),
   instruction: z.string().min(10).max(2000),
   note: z.string().max(200).optional().describe('One line under the button: what it makes')
@@ -1847,12 +1914,12 @@ tool('picture_tool', 'Run a one-step tool on a picture on this PC (free, local);
   seed: z.number().int().min(0).optional(),
   name: z.string().optional()
 }, async (args) => (readSettings(BASE).target === 'cloud' || (await voices.release()), images.tool(Object.fromEntries(Object.entries(args).filter(([, v]) => v !== undefined)))))
-tool('list_activity', "What agents have done in IV Studio: every step that changed something, spent money or failed, newest first, from the chat inside IV Studio, Dashboard ideas and outside agents (Claude Desktop, Codex, Claude Code, Hermes). Each has who did it, the step, what it was about, the ids it touched (jobId, projectId, editId…), whether it worked and any spend. Looking things up isn't logged. Use it to answer \"what did you do\" or \"what changed\".", { days: z.number().int().min(1).max(30).default(2), who: z.enum(['chat', 'idea', 'outside']).optional().describe('Only the chat, Dashboard ideas, or outside agents'), problems: z.boolean().default(false).describe('Only failed steps'), limit: z.number().int().min(1).max(300).default(60) }, ({ days, who: kind, problems, limit }) => ({ items: readActivity(DATA, { days, who: kind || null, problems, limit }) }))
-tool('last_frame', "Save the exact last frame of a video (a finished version's file from get_job, or any local video) as a picture in IV Studio's Library (Images). Returns the picture set; files[0] is the PNG. Use it as the first frame of a new shot (generate_previews mode frames, media picture) or edit it with make_image mode edit. To carry the motion on instead, use generate_previews mode continue with the video as its media.", { file: z.string().describe('Absolute path to the video'), name: z.string().optional() }, ({ file, name }) => images.lastFrame({ file, name }))
-tool('list_images', 'Every picture set made in IV Studio, newest first, with status, files (once finished), model, prompt and seed.', {}, () => images.list())
+tool('list_activity', "What agents have done in Techlit Studio: every step that changed something, spent money or failed, newest first, from the chat inside Techlit Studio, Dashboard ideas and outside agents (Claude Desktop, Codex, Claude Code, Hermes). Each has who did it, the step, what it was about, the ids it touched (jobId, projectId, editId…), whether it worked and any spend. Looking things up isn't logged. Use it to answer \"what did you do\" or \"what changed\".", { days: z.number().int().min(1).max(30).default(2), who: z.enum(['chat', 'idea', 'outside']).optional().describe('Only the chat, Dashboard ideas, or outside agents'), problems: z.boolean().default(false).describe('Only failed steps'), limit: z.number().int().min(1).max(300).default(60) }, ({ days, who: kind, problems, limit }) => ({ items: readActivity(DATA, { days, who: kind || null, problems, limit }) }))
+tool('last_frame', "Save the exact last frame of a video (a finished version's file from get_job, or any local video) as a picture in Techlit Studio's Library (Images). Returns the picture set; files[0] is the PNG. Use it as the first frame of a new shot (generate_previews mode frames, media picture) or edit it with make_image mode edit. To carry the motion on instead, use generate_previews mode continue with the video as its media.", { file: z.string().describe('Absolute path to the video'), name: z.string().optional() }, ({ file, name }) => images.lastFrame({ file, name }))
+tool('list_images', 'Every picture set made in Techlit Studio, newest first, with status, files (once finished), model, prompt and seed.', {}, () => images.list())
 tool('get_image', 'One picture set, brought up to date: status (queued, running, success, error), progress, and its files once finished.', { imageId: z.string() }, ({ imageId }) => images.get(imageId))
 tool('cancel_image', 'Stop a picture set that is still being made. Never touches other ComfyUI work.', { imageId: z.string() }, ({ imageId }) => images.cancel(imageId))
-tool('delete_image', "Delete a picture set and its files in IV Studio's images folder (ComfyUI's own output copies stay). Ask the person first.", { imageId: z.string() }, ({ imageId }) => images.delete(imageId))
+tool('delete_image', "Delete a picture set and its files in Techlit Studio's images folder (ComfyUI's own output copies stay). Ask the person first.", { imageId: z.string() }, ({ imageId }) => images.delete(imageId))
 
 // ---------- Website sizzle: a web address in, a promo film out ----------
 const sizzles = new Sizzles({ dataDir: DATA, studio, music, voices, trainings, shinobi })
@@ -1924,7 +1991,7 @@ tool('sizzle_to_shinobi', "Website sizzle, step 4: put every piece (shots, pictu
   const r = await sizzles.toShinobi(sizzleId)
   return { ...sizzleSummary(r), shinobi: r.shinobi, brief: r.brief }
 })
-sizzleTool('sizzle_first_cut', "Website sizzle, step 5: IV Studio cuts the film itself from the approved storyboard and saves it as the Shinobi project's timeline: cuts on the music's beat, the site's screens with slow push-ins, two-tone titles in the site's colours (Barlow Condensed), and an end card on the logo, the main button's words and the web address, ending where the music ends. Returns a frame from every scene to look at. render: true renders it too (about 2-3 min; get_sizzle shows the film when it's done). Then refine it with the shinobi tools if anything needs work; cutting again replaces the timeline.", { sizzleId: z.string(), render: z.boolean().default(false).describe('Render the film as well') }, async ({ sizzleId, render }) => {
+sizzleTool('sizzle_first_cut', "Website sizzle, step 5: Techlit Studio cuts the film itself from the approved storyboard and saves it as the Shinobi project's timeline: cuts on the music's beat, the site's screens with slow push-ins, two-tone titles in the site's colours (Barlow Condensed), and an end card on the logo, the main button's words and the web address, ending where the music ends. Returns a frame from every scene to look at. render: true renders it too (about 2-3 min; get_sizzle shows the film when it's done). Then refine it with the shinobi tools if anything needs work; cutting again replaces the timeline.", { sizzleId: z.string(), render: z.boolean().default(false).describe('Render the film as well') }, async ({ sizzleId, render }) => {
   const r = await sizzles.firstCut(sizzleId, { render })
   const f = SIZZLE_FORMATS[r.format]
   const frames = (r.cut.previews || []).filter((x) => fs.existsSync(x))
@@ -2030,7 +2097,7 @@ tool('make_rebuild_shots', "Rebuild, step 5: render the H3 shots from the approv
   await rebuilds.makeShots(rebuildId)
   return rebuildSummary(await rebuilds.refresh(rebuildId))
 })
-tool('rebuild_first_cut', "Rebuild, step 6: put every shot back in its slot in an IV Studio Edit: new takes retimed into their slots (V1, their own sound muted), kept shots as the original footage, stills with a slow push, the captions as titles (T1) and, on A1, the new voice track when the swap has a voice (rebuild_voice), else the original sound as a guide. Returns the edit's id (get_edit, edit_timeline and export_edit work on it), what's still original and warnings: pass them on (a guide sound has to be replaced before they publish; shots not remade where the new voice talks).", { rebuildId: z.string() }, ({ rebuildId }) => rebuilds.firstCut(rebuildId))
+tool('rebuild_first_cut', "Rebuild, step 6: put every shot back in its slot in an Techlit Studio Edit: new takes retimed into their slots (V1, their own sound muted), kept shots as the original footage, stills with a slow push, the captions as titles (T1) and, on A1, the new voice track when the swap has a voice (rebuild_voice), else the original sound as a guide. Returns the edit's id (get_edit, edit_timeline and export_edit work on it), what's still original and warnings: pass them on (a guide sound has to be replaced before they publish; shots not remade where the new voice talks).", { rebuildId: z.string() }, ({ rebuildId }) => rebuilds.firstCut(rebuildId))
 tool('get_rebuild', "A rebuild, brought up to date: its shots with their readings, routes and H3 lengths, the plan and approvals, each H3 shot's frames and take (previews, pick, finish, final file), and the edit. Call it to move rendering along.", { rebuildId: z.string() }, async ({ rebuildId }) => rebuildSummary(await rebuilds.refresh(rebuildId)))
 tool('list_rebuilds', 'Rebuilds, newest first: name, status (reading, planning, approved, frames, rendering, ready, editing), shots and length.', {}, () => ({ items: rebuilds.list() }))
 tool('delete_rebuild', 'Delete a rebuild and its frames, takes and cut pieces (renders in Shots and the Edit stay). Ask the person first.', { rebuildId: z.string() }, ({ rebuildId }) => rebuilds.remove(rebuildId))
@@ -2041,7 +2108,7 @@ tool('delete_rebuild', 'Delete a rebuild and its frames, takes and cut pieces (r
 const civitai = new Civitai({ dataDir: DATA, comfy: new Comfy(readSettings(BASE).comfyUrl), key: () => process.env.CIVITAI_API_KEY || null, mature: () => !!readSettings(BASE).civitaiMature })
 const FAMILY_IDS = LORA_FAMILIES.map((f) => f.id)
 const FAMILY_HELP = LORA_FAMILIES.map((f) => `${f.id} (${f.label}: ${f.uses})`).join('; ')
-tool('search_loras', `Search Civitai for LoRAs for one of IV Studio's model families (styles, looks, motion, speed): ${FAMILY_HELP}; or all. Defaults to MiniMax H3. Returns cards: name, file size, downloads, trigger words, preview clip URLs and whether it's installed. tag: ${LORA_TAGS.filter(([t]) => t).map(([t]) => t).join(', ')}. Real-person LoRAs are never returned; mature ones only if the person turned them on in the app.`, {
+tool('search_loras', `Search Civitai for LoRAs for one of Techlit Studio's model families (styles, looks, motion, speed): ${FAMILY_HELP}; or all. Defaults to MiniMax H3. Returns cards: name, file size, downloads, trigger words, preview clip URLs and whether it's installed. tag: ${LORA_TAGS.filter(([t]) => t).map(([t]) => t).join(', ')}. Real-person LoRAs are never returned; mature ones only if the person turned them on in the app.`, {
   query: z.string().optional(),
   tag: z.string().optional(),
   sort: z.enum(LORA_SORTS).default(LORA_SORTS[0]),
@@ -2065,15 +2132,15 @@ tool('download_recommended_lora', "Download one Recommended LoRA (recommended_lo
 const turnarounds = new Turnarounds({ dataDir: DATA, studio: () => studio })
 tool('make_turnaround', "A turnaround sheet: five views of a character turning around, from their face picture (characterId) or any picture of them, with matlod's Turnaround LoRA and the H3 Contact Sheet nodes (turnaround_status says if both are here). size is per view: 512 (about a minute on a 4090), 768 or 1024. strength defaults to 1.3, which turns front, three-quarter, profile; 1 barely turns. Each sheet gets a new seed unless one is given; some seeds roll the camera sideways instead of turning, so look at the views and make another if it tilts. Waits for the render and returns the five view files and a strip.", { characterId: z.string().optional(), picture: z.string().optional(), size: z.number().int().optional(), seed: z.number().int().optional(), strength: z.number().min(0.5).max(1.6).optional() }, ({ characterId, picture, size, seed, strength }) => turnarounds.make({ characterId, picture, size, seed, strength }))
 tool('turnaround_status', 'Whether turnaround sheets can be made here: the H3 Contact Sheet nodes (install_node_packs, then restart ComfyUI) and the Turnaround LoRA (download_recommended_lora rec-turnaround). Also lists the sheets made, for a character when characterId is given.', { characterId: z.string().optional() }, async ({ characterId }) => ({ ...(await turnarounds.status()), sheets: turnarounds.list(characterId || null) }))
-tool('list_my_loras', `The LoRAs ComfyUI can load, with what IV Studio knows about each: its model family (${FAMILY_IDS.join(', ')}, or null when unknown), Civitai name, trigger words, preview, and the person’s favourite and default strength. family narrows the list; h3Only is the old switch for family h3.`, { family: z.enum([...FAMILY_IDS, 'all']).optional(), h3Only: z.boolean().optional() }, async ({ family, h3Only }) => {
+tool('list_my_loras', `The LoRAs ComfyUI can load, with what Techlit Studio knows about each: its model family (${FAMILY_IDS.join(', ')}, or null when unknown), Civitai name, trigger words, preview, and the person’s favourite and default strength. family narrows the list; h3Only is the old switch for family h3.`, { family: z.enum([...FAMILY_IDS, 'all']).optional(), h3Only: z.boolean().optional() }, async ({ family, h3Only }) => {
   const want = family || (h3Only === false ? 'all' : 'h3')
   return { items: (await civitai.yours()).filter((x) => want === 'all' || x.family === want) }
 })
-tool('set_lora_family', `Say which model family an installed LoRA is for, when IV Studio guessed wrong or couldn't tell (family null puts it back to the guess). One of: ${FAMILY_IDS.join(', ')}.`, { name: z.string(), family: z.enum(FAMILY_IDS).nullable() }, ({ name, family }) => civitai.setPrefs(name, { family }))
+tool('set_lora_family', `Say which model family an installed LoRA is for, when Techlit Studio guessed wrong or couldn't tell (family null puts it back to the guess). One of: ${FAMILY_IDS.join(', ')}.`, { name: z.string(), family: z.enum(FAMILY_IDS).nullable() }, ({ name, family }) => civitai.setPrefs(name, { family }))
 tool('identify_lora', 'Find an installed LoRA on Civitai by its file’s SHA-256 (name from list_my_loras): its Civitai name, base model, trigger words and a preview. Takes a few seconds per GB.', { name: z.string() }, ({ name }) => civitai.identify(name))
 
 const catalog = new CharacterCatalog({ studio, voices, resourcesDir: resourcesDir() })
-tool('list_ready_characters', "IV Studio's ready-made characters (Tess, Theo…): who they are, their face picture's path, and whether they're downloaded and usable.", {}, () => catalog.list())
+tool('list_ready_characters', "Techlit Studio's ready-made characters (Tess, Theo…): who they are, their face picture's path, and whether they're downloaded and usable.", {}, () => catalog.list())
 tool('install_ready_character', 'Download a ready-made character (its LoRA, about 150 MB, into ComfyUI) and add it as a character preset.', { id: z.string() }, async ({ id }) => (await catalog.install(id)).find((c) => c.id === id))
 tool('delete_character', 'Remove a character preset (the LoRA file stays). Ask the person first.', { id: z.string() }, ({ id }) => {
   const list = studio.characters()
@@ -2082,6 +2149,6 @@ tool('delete_character', 'Remove a character preset (the LoRA file stays). Ask t
 })
 
 server.connect(new StdioServerTransport()).catch((err) => {
-  console.error('IV Studio MCP server failed to start:', err)
+  console.error('Techlit Studio MCP server failed to start:', err)
   process.exit(1)
 })

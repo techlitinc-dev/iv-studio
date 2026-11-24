@@ -436,3 +436,28 @@ await (async (name, fn) => (await fn(), n++, console.log('ok  ' + name)))('an LT
 })
 
 console.log(`${n} checks passed`)
+
+// Hermes's written details: establishing shots from place prompts, idempotently.
+{
+  const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-est-'))
+  const prods2 = new Productions({ dataDir: dir2, edits: null, localCopy: async (f) => f })
+  const p2 = prods2.create({ name: 'Est' })
+  p2.locations = [{ id: 'l1', name: 'Kitchen Table', description: 'a small yellow-lit kitchen', prompt: 'integrated_multimodal_description:\n[Shot 1] Live-action, cinematic. Wide shot of a small kitchen at night…' }]
+  p2.scenes = [{ id: 'sc1', heading: 'INT. KITCHEN TABLE - NIGHT', location: 'Kitchen Table', elements: [], shots: [{ id: 'a', action: 'She reads.', seconds: 6 }] }]
+  prods2.write(p2)
+  const r1 = prods2.addEstablishingShots(p2.id)
+  ok('addEstablishingShots prepends one written shot per scene', () => assert.equal(r1.added, 1))
+  const after = prods2.get(p2.id)
+  const est = after.scenes[0].shots[0]
+  assert.equal(est.established, true)
+  assert.match(est.action, /Wide establishing shot of Kitchen Table: a small yellow-lit kitchen\./)
+  assert.match(est.camera, /Wide/)
+  assert.equal(after.scenes[0].shots.length, 2)
+  ok('a second run adds nothing', () => assert.deepEqual(prods2.addEstablishingShots(p2.id), { added: 0 }))
+  ok('a scene without a written place prompt is left alone', () => {
+    const p3 = prods2.get(p2.id)
+    p3.scenes.push({ id: 'sc2', heading: 'EXT. ROOF - NIGHT', location: 'Roof', elements: [], shots: [] })
+    prods2.write(p3)
+    assert.equal(prods2.addEstablishingShots(p2.id).added, 0)
+  })
+}

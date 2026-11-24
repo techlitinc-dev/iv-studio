@@ -1,8 +1,8 @@
 // ChatGPT Images through the person's own Codex (OpenAI's Codex, signed in with ChatGPT): Codex's built-in image tool
-// makes the picture on their ChatGPT plan, with no ComfyUI and no GPU here, and no per-picture charge from IV Studio.
+// makes the picture on their ChatGPT plan, with no ComfyUI and no GPU here, and no per-picture charge from Techlit Studio.
 // Codex runs read-only (it can't change anything on this PC) and without the person's own config (no MCP servers or
 // plugins), with its input closed (otherwise it waits for more). It keeps each picture it makes in its own folder,
-// <Codex home>/generated_images/<run id>/, where IV Studio collects it; the run id comes from Codex's event stream.
+// <Codex home>/generated_images/<run id>/, where Techlit Studio collects it; the run id comes from Codex's event stream.
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'

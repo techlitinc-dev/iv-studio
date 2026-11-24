@@ -1,6 +1,6 @@
 // The person's Comfy.org account: the credits their partner (API) node runs spend. The balance comes from the same
 // call ComfyUI's own window makes when it has only an API key: GET api.comfy.org/customers/balance with X-API-KEY.
-// The key is the one IV Studio already keeps (encrypted) for the paid prompt writer; nothing else is sent.
+// The key is the one Techlit Studio already keeps (encrypted) for the paid prompt writer; nothing else is sent.
 import { CREDITS_PER_USD } from './pricing.js'
 
 export const COMFY_API = 'https://api.comfy.org'

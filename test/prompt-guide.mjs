@@ -156,7 +156,7 @@ await ok('reference with audio: its definition, marker and the task types', () =
   assert.match(t, /\n<Audio 1>: reference - her timbre\n/)
   assert.match(t, /\[reference generation \+ audio reference\] She speaks\./)
 })
-await ok('the system prompt carries the guide after IV Studio rules, and the frames rule fits the pictures', () => {
+await ok('the system prompt carries the guide after Techlit Studio rules, and the frames rule fits the pictures', () => {
   const guide = { base: 'BASE GUIDE TEXT', ref: 'REF GUIDE TEXT' }
   const pics = [
     { kind: 'picture', file: 'a.png' },
@@ -182,7 +182,7 @@ await ok('the system prompt carries the guide after IV Studio rules, and the fra
       guide
     }).includes('REF GUIDE TEXT')
   )
-  assert.ok(!systemPrompt({ mode: 'text', seconds: 5 }).includes('MINIMAX'), 'no guide: IV Studio rules only')
+  assert.ok(!systemPrompt({ mode: 'text', seconds: 5 }).includes('MINIMAX'), 'no guide: Techlit Studio rules only')
 })
 await ok('the guide downloads once, pinned, and a changed file is refused', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ivs-guide-'))

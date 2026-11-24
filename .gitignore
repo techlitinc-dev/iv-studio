@@ -4,3 +4,6 @@ dist/
 *.log
 __pycache__/
 test/.data/
+
+# local secrets - never commit
+kimi api key.txt

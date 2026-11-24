@@ -1,9 +1,9 @@
-// IV Studio's own updater for the portable Windows copy (the zip with a "data" folder beside IV Studio.exe). The
+// Techlit Studio's own updater for the portable Windows copy (the zip with a "data" folder beside Techlit Studio.exe). The
 // installer can't update it (it would put a second copy in Program Files), so the portable copy reads
-// latest-portable.yml from the newest release, downloads IV-Studio-Portable-win-x64.zip into data\updates, checks it
-// against the feed's SHA-512 and size, unpacks it with Windows' own tar, checks the new IV Studio.exe and its
-// version, and after IV Studio quits a small PowerShell script swaps the program files in place (never the data
-// folder) and opens IV Studio again. The old files are kept aside until the new ones are in, and put back if not.
+// latest-portable.yml from the newest release, downloads Techlit-Studio-Portable-win-x64.zip into data\updates, checks it
+// against the feed's SHA-512 and size, unpacks it with Windows' own tar, checks the new Techlit Studio.exe and its
+// version, and after Techlit Studio quits a small PowerShell script swaps the program files in place (never the data
+// folder) and opens Techlit Studio again. The old files are kept aside until the new ones are in, and put back if not.
 // Nothing here needs Electron, so it's tested on any OS (test/portable-update.mjs); the unpacking and the version
 // read take stand-ins there.
 import fs from 'node:fs'
@@ -12,7 +12,7 @@ import { PORTABLE_FOLDER } from './paths.js'
 export { checkFile, download, newer, parseFeed } from './macupdate.js'
 
 export const RELEASES = 'https://github.com/hollisorg/iv-studio/releases'
-export const PORTABLE_ZIP = 'IV-Studio-Portable-win-x64.zip'
+export const PORTABLE_ZIP = 'Techlit-Studio-Portable-win-x64.zip'
 export const PORTABLE_FEED = 'latest-portable.yml'
 export const UPDATES_FOLDER = 'updates'
 
@@ -33,14 +33,14 @@ export function feedText({ version, sha512, size, releaseDate = new Date().toISO
   return [`version: ${version}`, 'files:', `  - url: ${PORTABLE_ZIP}`, `    sha512: ${sha512}`, `    size: ${size}`, `path: ${PORTABLE_ZIP}`, `sha512: ${sha512}`, `releaseDate: '${releaseDate}'`, ''].join('\n')
 }
 
-// Why this copy can't replace itself, or null when it can: the folder IV Studio.exe is in has to be writable.
+// Why this copy can't replace itself, or null when it can: the folder Techlit Studio.exe is in has to be writable.
 export function cannotReplace(appDir, { access = fs.accessSync } = {}) {
-  if (!appDir) return 'IV Studio isn’t running from a folder.'
+  if (!appDir) return 'Techlit Studio isn’t running from a folder.'
   try {
     access(appDir, fs.constants.W_OK)
-    access(path.join(appDir, 'IV Studio.exe'), fs.constants.W_OK)
+    access(path.join(appDir, 'Techlit Studio.exe'), fs.constants.W_OK)
   } catch {
-    return `IV Studio can’t change ${appDir}. Download the new portable zip and unzip it over this folder, or move the folder somewhere you can write to.`
+    return `Techlit Studio can’t change ${appDir}. Download the new portable zip and unzip it over this folder, or move the folder somewhere you can write to.`
   }
   return null
 }
@@ -49,14 +49,14 @@ export function cannotReplace(appDir, { access = fs.accessSync } = {}) {
 // the test passes a stand-in.
 export const asarVersion = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'resources', 'app.asar', 'package.json'), 'utf8')).version
 
-// Unpack the zip into dir and check it: IV Studio.exe and resources\app.asar are there, and the version is the
+// Unpack the zip into dir and check it: Techlit Studio.exe and resources\app.asar are there, and the version is the
 // feed's. unzip(zip, dir) -> { code, stderr } is Windows' tar (stood in by the test).
 export async function stage(zip, dir, { version, unzip, readVersion = asarVersion }) {
   fs.rmSync(dir, { recursive: true, force: true })
   fs.mkdirSync(dir, { recursive: true })
   const r = await unzip(zip, dir)
   if (r.code !== 0) throw new Error(`Couldn’t unpack the update: ${String(r.stderr || '').trim().split('\n')[0]}`)
-  if (!fs.existsSync(path.join(dir, 'IV Studio.exe'))) throw new Error('The update has no IV Studio.exe.')
+  if (!fs.existsSync(path.join(dir, 'Techlit Studio.exe'))) throw new Error('The update has no Techlit Studio.exe.')
   if (!fs.existsSync(path.join(dir, 'resources', 'app.asar'))) throw new Error('The update has no app.asar.')
   let got = null
   try {
@@ -71,7 +71,7 @@ export async function stage(zip, dir, { version, unzip, readVersion = asarVersio
 }
 
 // Old program files set aside by an earlier update and still there (one was in use when it finished): removed
-// when IV Studio next opens. The data folder's updates\ folder only.
+// when Techlit Studio next opens. The data folder's updates\ folder only.
 export function cleanUpOld(appDir) {
   const dir = path.join(appDir, PORTABLE_FOLDER, UPDATES_FOLDER)
   let left = 0
@@ -88,24 +88,24 @@ export function cleanUpOld(appDir) {
 
 const ps = (s) => `'${String(s).replace(/'/g, "''")}'`
 
-// The PowerShell script that swaps the program files once IV Studio (pid) has quit. Every item in the app folder
+// The PowerShell script that swaps the program files once Techlit Studio (pid) has quit. Every item in the app folder
 // except data moves into data\updates\old-<stamp> (a rename on the same drive, which Windows allows even for an
 // .exe another process still has open, such as an agent's MCP server), the new items move in, and the old ones are
 // deleted (or left for cleanUpOld when something still holds them). If anything fails, the moved items go back.
-// Then IV Studio opens again.
+// Then Techlit Studio opens again.
 // Windows paths whatever OS builds it (the test runs on Linux and macOS too).
 export function installScript({ pid, appDir, staged, log, relaunch = true, stamp = Date.now() }) {
   const old = path.win32.join(appDir, PORTABLE_FOLDER, UPDATES_FOLDER, `old-${stamp}`)
-  const exe = path.win32.join(appDir, 'IV Studio.exe')
+  const exe = path.win32.join(appDir, 'Techlit Studio.exe')
   return [
-    '# IV Studio portable update',
+    '# Techlit Studio portable update',
     `$app = ${ps(appDir)}`,
     `$new = ${ps(staged)}`,
     `$old = ${ps(old)}`,
     `$log = ${ps(log)}`,
     `$keep = ${ps(PORTABLE_FOLDER)}`,
     'function Say($m) { Add-Content -LiteralPath $log -Value ("{0} {1}" -f (Get-Date -Format o), $m) }',
-    `Say "waiting for IV Studio (pid ${pid}) to quit"`,
+    `Say "waiting for Techlit Studio (pid ${pid}) to quit"`,
     '$n = 0',
     `while (Get-Process -Id ${pid} -ErrorAction SilentlyContinue) { $n++; if ($n -gt 600) { Say "it didn't quit"; exit 1 }; Start-Sleep -Milliseconds 200 }`,
     'Start-Sleep -Milliseconds 500',

@@ -1,4 +1,4 @@
-// GitHub #22: every model family in Create → Image can be set up from IV Studio. Its downloads (models.json
+// GitHub #22: every model family in Create → Image can be set up from Techlit Studio. Its downloads (models.json
 // pictureFamilies) hold a model the family reads, a text encoder and a VAE it accepts, and a family's own folder of
 // fine-tunes counts as present (acceptPath), as Create → Image reads it.
 //   node test/picture-setup.mjs

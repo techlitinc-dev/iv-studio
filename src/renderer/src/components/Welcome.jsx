@@ -146,7 +146,7 @@ export default function Welcome({ onClose, go, notify, first }) {
     } catch (e) {
       notify?.(e.message)
     }
-    // the answer to "Help improve IV Studio?" is saved here, once they've seen the question
+    // the answer to "Help improve Techlit Studio?" is saved here, once they've seen the question
     if (countWas.current === null || (countWas.current === 'on') !== count) await window.ivstudio.usage.set(count).catch(() => {})
     window.dispatchEvent(new CustomEvent('iv:settings'))
     onClose()
@@ -273,7 +273,7 @@ export default function Welcome({ onClose, go, notify, first }) {
   const canNext = step !== 'pc' || scanned
 
   const titles = {
-    hello: ['Welcome to IV Studio', 'One question first'],
+    hello: ['Welcome to Techlit Studio', 'One question first'],
     you: ['Make it yours', 'Your name, your helper and your colour'],
     pc: scanned ? ['Your PC', 'What this computer can do'] : ['Checking your PC', 'Nothing leaves this computer'],
     way: ['Your way of working', 'Where things render, and the defaults'],
@@ -282,7 +282,7 @@ export default function Welcome({ onClose, go, notify, first }) {
   }
 
   return createPortal(
-    <div className="welcome" role="dialog" aria-modal="true" aria-label="Welcome to IV Studio">
+    <div className="welcome" role="dialog" aria-modal="true" aria-label="Welcome to Techlit Studio">
       <div className="welcome-panel">
         <button className="welcome-skip link-btn mono" onClick={skip} title="Close the wizard (Esc). Open it again from Settings → Check my PC.">
           {step === 'done' ? 'Done' : first ? 'Skip for now' : 'Close'} ×
@@ -367,8 +367,8 @@ export default function Welcome({ onClose, go, notify, first }) {
 }
 
 const LEVELS = [
-  ['new', 'New to it', 'I haven’t made AI video or pictures before.', 'Everyday words, fewer choices, and IV Studio picks the settings.'],
-  ['some', 'Tried a little', 'I’ve used an app or two.', 'The usual choices, with what IV Studio suggests already picked.'],
+  ['new', 'New to it', 'I haven’t made AI video or pictures before.', 'Everyday words, fewer choices, and Techlit Studio picks the settings.'],
+  ['some', 'Tried a little', 'I’ve used an app or two.', 'The usual choices, with what Techlit Studio suggests already picked.'],
   ['lots', 'Know it well', 'LoRAs, seeds and samplers are old friends.', 'Every setting, from the first step.']
 ]
 
@@ -376,7 +376,7 @@ function Hello({ level, knows }) {
   return (
     <section className="block create-step wel-first">
       <h2 className="wel-first-q">How much do you know about making AI video and pictures?</h2>
-      <p className="wel-first-sub dim">There’s no wrong answer. IV Studio sets itself up to match, and you can change it later.</p>
+      <p className="wel-first-sub dim">There’s no wrong answer. Techlit Studio sets itself up to match, and you can change it later.</p>
       <div className="wel-ways wel-levels wel-levels-big">
         {LEVELS.map(([id, title, desc, more], i) => (
           <button key={id} className={`wel-way ${level === id ? 'on' : ''}`} style={{ '--i': i }} onClick={() => knows(id)} aria-pressed={level === id}>
@@ -406,7 +406,7 @@ function MakeItYours({ isNew, names, setNames, agents, simple, words, hc, contra
         <StepHead
           n={stepN('you')}
           title={isNew ? 'You and your helper' : 'You and your agent'}
-          sub={isNew ? 'IV Studio can work with an AI helper that makes things for you when you ask in plain words. Give it a name if you like; you can skip this.' : 'Name your agent and tell it yours. It answers to its name in the chat, on the Dashboard and in the activity log.'}
+          sub={isNew ? 'Techlit Studio can work with an AI helper that makes things for you when you ask in plain words. Give it a name if you like; you can skip this.' : 'Name your agent and tell it yours. It answers to its name in the chat, on the Dashboard and in the activity log.'}
         />
         <div className="wel-names-row">
           <label>
@@ -433,13 +433,13 @@ function MakeItYours({ isNew, names, setNames, agents, simple, words, hc, contra
         ) : (
           <p className="dim small">
             {isNew
-              ? 'The helper runs on an app such as Claude or ChatGPT, on your own plan. You don’t need one to start: a few steps on, IV Studio shows how to add one, or add it later in Settings.'
+              ? 'The helper runs on an app such as Claude or ChatGPT, on your own plan. You don’t need one to start: a few steps on, Techlit Studio shows how to add one, or add it later in Settings.'
               : 'No Claude, ChatGPT or Hermes on this PC yet. The “Your way” step can install Claude or ChatGPT; the name is kept for when you do.'}
           </p>
         )}
       </section>
       <section className="block create-step">
-        <StepHead title="Pick a colour" sub="For buttons, highlights and the artwork. Red is IV Studio’s own." />
+        <StepHead title="Pick a colour" sub="For buttons, highlights and the artwork. Red is Techlit Studio’s own." />
         <AccentPicker value={accent} onPick={tint} />
       </section>
       <section className="block create-step">
@@ -522,7 +522,7 @@ function Scan({ rows, shown, error, retry }) {
         </ul>
       )}
       <h3 className="wel-while mono small" data-optional>
-        While it looks: what IV Studio does
+        While it looks: what Techlit Studio does
       </h3>
       <div className="wel-what" data-optional>
         {WHAT.map(([t, d], i) => (
@@ -688,12 +688,12 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, a
       <section className="block create-step wel-agents">
         <StepHead
           title={isNew ? 'Add a helper (optional)' : 'Do you use Claude or ChatGPT?'}
-          sub={isNew ? 'Claude and ChatGPT are AI helpers you sign in to with your own plan. With one, you can ask for a video in plain words and it does the steps for you. Not sure? Skip it; everything works without.' : 'If you have either, IV Studio can use it on your own plan to write your prompts and to make a whole idea for you from the Dashboard.'}
+          sub={isNew ? 'Claude and ChatGPT are AI helpers you sign in to with your own plan. With one, you can ask for a video in plain words and it does the steps for you. Not sure? Skip it; everything works without.' : 'If you have either, Techlit Studio can use it on your own plan to write your prompts and to make a whole idea for you from the Dashboard.'}
         />
         <AgentRows setup={agents} notify={notify} />
         <p className="dim small wel-agents-skip">Don’t use either? That’s fine: skip this. The Local writer works without them, and you can add them any time in Settings → Agents.</p>
       </section>
-      <Fold isNew={isNew} title="Defaults for your shots" sub="Set to suit this PC. Every shot can still change them." newSub="IV Studio picked these to suit this PC. Open this only if you want to change them.">
+      <Fold isNew={isNew} title="Defaults for your shots" sub="Set to suit this PC. Every shot can still change them." newSub="Techlit Studio picked these to suit this PC. Open this only if you want to change them.">
         <div className="wel-segs">
           <Seg label="Speed" value={prefs.speed} onChange={(v) => set(prefsForSpeed(v))} options={SPEED_IDS.map((id) => [id, `${SPEEDS[id].label}${rec.prefs.speed === id ? ' · suits this PC' : ''}`])} />
           {SPEEDS[prefs.speed] && <p className="dim small wel-speed">{SPEEDS[prefs.speed].say} {SPEEDS[prefs.speed].trade}</p>}
@@ -756,7 +756,7 @@ function FindComfy({ installs, startComfy, comfyStarting, rescan, notify }) {
       {at ? (
         <>
           <p>
-            ComfyUI is running at <span className="mono">{at.replace(/^http:\/\//, '')}</span>, not at the address IV Studio had saved.
+            ComfyUI is running at <span className="mono">{at.replace(/^http:\/\//, '')}</span>, not at the address Techlit Studio had saved.
           </p>
           <button className="btn btn-primary" onClick={() => use(at)} disabled={busy}>
             Use it
@@ -764,7 +764,7 @@ function FindComfy({ installs, startComfy, comfyStarting, rescan, notify }) {
         </>
       ) : (
         <>
-          <p>{installs.comfyFound ? 'ComfyUI isn’t answering, so IV Studio can’t see which models you already have, or download into it. If it’s still starting up, wait for it to finish loading, then check again.' : 'No ComfyUI found on this PC.'}</p>
+          <p>{installs.comfyFound ? 'ComfyUI isn’t answering, so Techlit Studio can’t see which models you already have, or download into it. If it’s still starting up, wait for it to finish loading, then check again.' : 'No ComfyUI found on this PC.'}</p>
           <div className="wel-find-btns">
             {installs.comfyFound && (
               <button className="btn btn-primary" onClick={startComfy} disabled={comfyStarting || busy}>
@@ -796,7 +796,7 @@ function Get({ isNew, rec, way, pick, setPick, packs, setPacks, installs, scan, 
     return (
       <section className="block create-step">
         <StepHead n={stepN('get')} title="Nothing to download here" sub="In the cloud, the models live on your cloud storage." />
-        <p className="wel-lede">The Cloud page sets up RunPod, Modal or Comfy Cloud and fetches the models there the first time. This PC only needs IV Studio.</p>
+        <p className="wel-lede">The Cloud page sets up RunPod, Modal or Comfy Cloud and fetches the models there the first time. This PC only needs Techlit Studio.</p>
       </section>
     )
   const groups = rec.downloads
@@ -808,8 +808,8 @@ function Get({ isNew, rec, way, pick, setPick, packs, setPacks, installs, scan, 
   const allHere = installs.modelsKnown && groups.every((g) => g.have || !g.recommended) && !groups.some((g) => g.recommended)
   return (
     <section className="block create-step">
-      <StepHead n={stepN('get')} title="What to download" sub={isNew ? 'IV Studio picked what you need. Press the button and it downloads in the background while you start.' : 'The ones for how you’ll work are ticked. Each is checked against its published fingerprint.'} />
-      {!isNew && <p className="wel-lede" data-optional>IV Studio uses the ComfyUI already on this PC, wherever it is (the Desktop app, or a portable ComfyUI on another drive), or gets one for you. These download into that ComfyUI’s models folder, so they go on its drive.</p>}
+      <StepHead n={stepN('get')} title="What to download" sub={isNew ? 'Techlit Studio picked what you need. Press the button and it downloads in the background while you start.' : 'The ones for how you’ll work are ticked. Each is checked against its published fingerprint.'} />
+      {!isNew && <p className="wel-lede" data-optional>Techlit Studio uses the ComfyUI already on this PC, wherever it is (the Desktop app, or a portable ComfyUI on another drive), or gets one for you. These download into that ComfyUI’s models folder, so they go on its drive.</p>}
       {!installs.modelsKnown && <FindComfy installs={installs} startComfy={startComfy} comfyStarting={comfyStarting} rescan={rescan} notify={notify} />}
       {allHere && (
         <div className="wel-allhere" data-optional>
@@ -817,7 +817,7 @@ function Get({ isNew, rec, way, pick, setPick, packs, setPacks, installs, scan, 
           <p>Everything this way of working needs is already on this PC. Tick anything extra you’d like.</p>
         </div>
       )}
-      {isNew && <p className="wel-lede">{chosen.length ? `${chosen.length === 1 ? 'One download' : `${chosen.length} downloads`}, ${gbs(bytes)} in all. You can keep using IV Studio while they come in.` : 'Nothing more to download for now.'}</p>}
+      {isNew && <p className="wel-lede">{chosen.length ? `${chosen.length === 1 ? 'One download' : `${chosen.length} downloads`}, ${gbs(bytes)} in all. You can keep using Techlit Studio while they come in.` : 'Nothing more to download for now.'}</p>}
       <details className="wel-dl-fold" open={!isNew}>
         <summary className="mono small">{isNew ? 'See or change the list' : 'The list'}</summary>
       <ul className="wel-downloads" data-fit>
@@ -834,7 +834,7 @@ function Get({ isNew, rec, way, pick, setPick, packs, setPacks, installs, scan, 
       </ul>
       <label className="wel-packs">
         <input type="checkbox" checked={packs} disabled={!installs.modelsKnown || !!started} onChange={(e) => setPacks(e.target.checked)} />
-        <span>Also add the ComfyUI node packs IV Studio uses (pinned versions; existing ones are left alone)</span>
+        <span>Also add the ComfyUI node packs Techlit Studio uses (pinned versions; existing ones are left alone)</span>
       </label>
       </details>
       <div className="wel-get-foot">
@@ -903,14 +903,14 @@ function Done({ rec, way, prefs, writer, started, onTour, count, setCount }) {
         <WelcomeTerms />
         <UsageAsk on={count} onChange={setCount} />
       </section>
-      {/* The IV Newsletter, once: gone after Join or Not now (src/service/newsletter.js) */}
+      {/* The Techlit Newsletter, once: gone after Join or Not now (src/service/newsletter.js) */}
       <NewsletterSection />
     </>
   )
 }
 
 // MiniMax H3's terms (terms.js): read and agreed here, or at the first H3 render
-// The IV Newsletter on the last page, once: hidden for good after Join or Not now (src/service/newsletter.js).
+// The Techlit Newsletter on the last page, once: hidden for good after Join or Not now (src/service/newsletter.js).
 function NewsletterSection() {
   const api = window.ivstudio?.newsletter
   const [show, setShow] = useState(false)
@@ -922,7 +922,7 @@ function NewsletterSection() {
   if (!show) return null
   return (
     <section className="block create-step">
-      <StepHead title="The IV Newsletter" sub="Optional. One email a week, only if you join." />
+      <StepHead title="The Techlit Newsletter" sub="Optional. One email a week, only if you join." />
       <NewsletterBox api={api} variant="card" title={false} onClose={() => setShow(false)} />
     </section>
   )
@@ -940,7 +940,7 @@ function WelcomeTerms() {
         <strong>The rules for MiniMax H3</strong>
         <p className="small dim">
           {terms.accepted
-            ? 'You’ve agreed to IV Studio’s terms for H3. They’re in Settings › About whenever you want them.'
+            ? 'You’ve agreed to Techlit Studio’s terms for H3. They’re in Settings › About whenever you want them.'
             : 'Shots are made with MiniMax H3. Before the first one, read its rules (real people only with consent, nothing involving minors, say it’s AI when you post it) and agree once.'}
         </p>
       </div>

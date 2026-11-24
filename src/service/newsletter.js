@@ -1,4 +1,4 @@
-// The IV Newsletter signup, main-process side. Shared by every IV app (standing rule in IVAI AGENTS.md); the source
+// The Techlit Newsletter signup, main-process side. Shared by every IV app (standing rule in IVAI AGENTS.md); the source
 // of truth is IVAI docs/newsletter/apps/newsletter-main.js, copied into each app unchanged.
 //
 // Opt-in only: nothing is sent until the person types an address and clicks Join. The request goes to the

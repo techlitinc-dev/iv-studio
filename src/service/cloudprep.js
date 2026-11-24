@@ -164,7 +164,7 @@ export function planFor(graph, { catalog, have }) {
       if (!have.has(e.file)) download.set(e.id, e)
       continue
     }
-    // not a cloud model: a LoRA from this PC (other folders hold only what IV Studio puts there)
+    // not a cloud model: a LoRA from this PC (other folders hold only what Techlit Studio puts there)
     const remote = `loras/${f.value}`
     const known = [...have].some((h) => h.endsWith(`/${f.value}`))
     if (!known) upload.set(remote, { name: f.value, kind: 'loras', remote })
@@ -259,7 +259,7 @@ export class CloudPrep {
   async prepareNow(graph) {
     let { download, upload } = planFor(graph, { catalog: this.catalog, have: this.have() })
     if (!download.length && !upload.length) return { downloaded: [], uploaded: [] }
-    // the volume may hold more than the ledger knows (another PC, an older IV Studio): ask it when it can say
+    // the volume may hold more than the ledger knows (another PC, an older Techlit Studio): ask it when it can say
     if (download.length && this.provider.list) {
       try {
         this.record(await this.provider.list())
@@ -272,7 +272,7 @@ export class CloudPrep {
     const files = []
     for (const u of upload) {
       const file = await this.localFile(u.kind, u.name)
-      if (!file) throw Object.assign(new Error(`${u.name} isn't in your cloud storage, and IV Studio can't find it on this PC to upload it.`), { code: 'missing_file' })
+      if (!file) throw Object.assign(new Error(`${u.name} isn't in your cloud storage, and Techlit Studio can't find it on this PC to upload it.`), { code: 'missing_file' })
       files.push({ ...u, file, size: fs.statSync(file).size })
     }
     if (download.length) {

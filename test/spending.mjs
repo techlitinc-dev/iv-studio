@@ -148,7 +148,7 @@ let out = await call('generate_previews', shot)
 check('server: under the limit, Seedance starts with no Allow card and no confirm_cost from the agent', !out.isError && asks().length === 0 && queued.length === 1, out.content?.[0]?.text)
 const sent = queued[0]
 check('server: the app’s key goes with it (never written to a file)', sent?.extra_data?.api_key_comfy_org === 'stand-in-key', JSON.stringify(sent?.extra_data || {}).slice(0, 200))
-check('server: it’s recorded at IV Studio’s own price', readLedger(ledgerDir).length === 1 && readLedger(ledgerDir)[0].credits === credits && readLedger(ledgerDir)[0].auto === true, JSON.stringify(readLedger(ledgerDir)))
+check('server: it’s recorded at Techlit Studio’s own price', readLedger(ledgerDir).length === 1 && readLedger(ledgerDir)[0].credits === credits && readLedger(ledgerDir)[0].auto === true, JSON.stringify(readLedger(ledgerDir)))
 check('server: no key in the data folder', !JSON.stringify(fs.readdirSync(data, { recursive: true }).map((f) => { try { return fs.readFileSync(path.join(data, f), 'utf8') } catch { return '' } })).includes('stand-in-key'))
 
 settings = { chatBudget: { on: true, daily: 5000, perStep: Math.max(1, credits - 1) } }

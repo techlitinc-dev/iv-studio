@@ -196,7 +196,7 @@ function state(s) {
   return null
 }
 
-// The models an engine still needs, each with a Download button that uses IV Studio's checked downloads.
+// The models an engine still needs, each with a Download button that uses Techlit Studio's checked downloads.
 function NeededModels({ engine, dl, onDone }) {
   const ids = engine.missing.map((m) => m.id)
   const busy = ids.some((id) => ACTIVE_DL.includes(dl[id]?.status))
@@ -241,7 +241,7 @@ function NeededModels({ engine, dl, onDone }) {
   )
 }
 
-function SongRow({ song, edits, notify, sendToCreate, openEdit, reuse, remixThis, reload }) {
+function SongRow({ song, edits, notify, sendToCreate, openEdit, reuse, remixThis, reload, openStoryMap }) {
   const [name, setName] = useState(song.name)
   useEffect(() => setName(song.name), [song.name])
   const done = song.status === 'success' && song.file
@@ -271,6 +271,7 @@ function SongRow({ song, edits, notify, sendToCreate, openEdit, reuse, remixThis
     ...(done ? edits.slice(0, 6).map((e) => ({ label: e.name, onClick: () => toEdit(e.id) })) : []),
     done && { divider: true, label: '' },
     { label: song.remix ? 'Remix again' : 'Make another like this', onClick: () => reuse(song) },
+    { label: 'View as a mindmap', onClick: () => openStoryMap('song', song.id) },
     done && { label: 'Remix this song', onClick: () => remixThis(song) },
     done && { label: 'Show file', onClick: () => window.ivstudio.files.reveal(song.file) },
     { label: 'Delete', danger: true, onClick: remove }
@@ -317,7 +318,7 @@ function SongRow({ song, edits, notify, sendToCreate, openEdit, reuse, remixThis
   )
 }
 
-export function MusicPage({ notify, sendToCreate, openEdit, go }) {
+export function MusicPage({ notify, sendToCreate, openEdit, go, openStoryMap }) {
   const [meta, setMeta] = useState(null)
   const [status, setStatus] = useState(null)
   const [engine, setEngine] = useState('minimax')
@@ -565,7 +566,7 @@ export function MusicPage({ notify, sendToCreate, openEdit, go }) {
           </div>
           <div className="track-list">
             {shown.map((s) => (
-              <SongRow key={s.id} song={s} edits={edits} notify={notify} sendToCreate={sendToCreate} openEdit={openEdit} reuse={reuse} remixThis={remixThis} reload={reload} />
+              <SongRow key={s.id} song={s} edits={edits} notify={notify} sendToCreate={sendToCreate} openEdit={openEdit} reuse={reuse} remixThis={remixThis} reload={reload} openStoryMap={openStoryMap} />
             ))}
             {shown.length === 0 && <p className="audio-empty dim">No songs match “{q}”.</p>}
           </div>

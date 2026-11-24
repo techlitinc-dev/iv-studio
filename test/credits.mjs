@@ -12,7 +12,7 @@ const items = CREDITS.flatMap((g) => g.items)
 const covered = new Set(items.flatMap((i) => i.covers || []))
 const urls = new Set(items.map((i) => i.url).filter(Boolean))
 
-ok('every model IV Studio downloads is credited', () => {
+ok('every model Techlit Studio downloads is credited', () => {
   const missing = manifest.models.map((m) => m.id).filter((id) => !covered.has(id))
   assert.deepEqual(missing, [], `add these to credits.js (covers): ${missing.join(', ')}`)
 })

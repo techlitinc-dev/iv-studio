@@ -160,7 +160,7 @@ try {
   })
 
   // ---------- Task 3: restart, record, undo ----------
-  await ok('restart: Manager restarts ComfyUI, IV Studio waits for it to go down and come back', async () => {
+  await ok('restart: Manager restarts ComfyUI, Techlit Studio waits for it to go down and come back', async () => {
     let answers = [true, false]
     const r = await restart(comfy, { up: async () => answers.shift() ?? false, wait: async () => ({ seconds: 1 }), every: 5 })
     assert.ok(state.calls.includes('POST /manager/reboot'))
@@ -209,7 +209,7 @@ try {
   await ok('Manager’s answers per pack, as a real ComfyUI gave them on 2026-11-06', () => {
     assert.equal(resultOf('x', 'skip').status, 'current')
     assert.equal(resultOf('comfyui', 'success-stable-v0.44.1').status, 'updated')
-    const plain = resultOf('ComfyUI-IV-Studio', 'Path not found: F:\\ComfyUI\\custom_nodes\\ComfyUI-IV-Studio')
+    const plain = resultOf('ComfyUI-Techlit-Studio', 'Path not found: F:\\ComfyUI\\custom_nodes\\ComfyUI-Techlit-Studio')
     assert.equal(plain.status, 'unmanaged')
     assert.equal(plain.ok, true, 'a plain folder Manager can’t update is not a failure')
     assert.equal(resultOf('y', 'Failed to update').ok, false)
@@ -217,17 +217,17 @@ try {
 
   await ok('Undo switches back on the packs Manager’s restore put in .disabled, and only those', () => {
     const cn = tmp()
-    for (const d of ['git-pack', 'ComfyUI-IV-Studio', '__pycache__', '.disabled']) fs.mkdirSync(path.join(cn, d))
+    for (const d of ['git-pack', 'ComfyUI-Techlit-Studio', '__pycache__', '.disabled']) fs.mkdirSync(path.join(cn, d))
     const enabled = packFolders(cn)
-    assert.deepEqual(enabled, ['ComfyUI-IV-Studio', 'git-pack'], 'switched-on folders only')
+    assert.deepEqual(enabled, ['ComfyUI-Techlit-Studio', 'git-pack'], 'switched-on folders only')
     // Manager's restore moves the plain folder (and a registry pack, as name@version) into .disabled
-    fs.renameSync(path.join(cn, 'ComfyUI-IV-Studio'), path.join(cn, '.disabled', 'ComfyUI-IV-Studio'))
+    fs.renameSync(path.join(cn, 'ComfyUI-Techlit-Studio'), path.join(cn, '.disabled', 'ComfyUI-Techlit-Studio'))
     fs.mkdirSync(path.join(cn, '.disabled', 'reg-pack@1_2_3'))
     fs.mkdirSync(path.join(cn, '.disabled', 'switched-off-by-me'))
     fs.mkdirSync(path.join(cn, '.disabled', 'git-pack'))
     const moved = reenable(cn, [...enabled, 'reg-pack'])
-    assert.deepEqual(moved.sort(), ['ComfyUI-IV-Studio', 'reg-pack'])
-    assert.ok(fs.existsSync(path.join(cn, 'ComfyUI-IV-Studio')) && fs.existsSync(path.join(cn, 'reg-pack')))
+    assert.deepEqual(moved.sort(), ['ComfyUI-Techlit-Studio', 'reg-pack'])
+    assert.ok(fs.existsSync(path.join(cn, 'ComfyUI-Techlit-Studio')) && fs.existsSync(path.join(cn, 'reg-pack')))
     assert.ok(fs.existsSync(path.join(cn, '.disabled', 'switched-off-by-me')), 'a pack that was off before stays off')
     assert.ok(fs.existsSync(path.join(cn, '.disabled', 'git-pack')), 'a name already in custom_nodes is not overwritten')
     assert.deepEqual(reenable(tmp(), ['x']), [], 'no .disabled folder: nothing to do')

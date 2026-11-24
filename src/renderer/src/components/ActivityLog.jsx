@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
-// What agents did in IV Studio (src/service/activity.js): the chat, Dashboard ideas, and Claude Desktop, Codex or any
-// other agent using IV Studio's MCP server from outside. Each step that changed something, spent or failed, newest
+// What agents did in Techlit Studio (src/service/activity.js): the chat, Dashboard ideas, and Claude Desktop, Codex or any
+// other agent using Techlit Studio's MCP server from outside. Each step that changed something, spent or failed, newest
 // first by day, with who took it, a link to what it touched, and Undo for a change to an edit.
 const WHO = [
   ['all', 'Everyone'],
@@ -86,7 +86,7 @@ export default function ActivityLog({ notify, openRef }) {
         <p className="small dim activity-empty">Loading…</p>
       ) : !items.length ? (
         <p className="small dim activity-empty">
-          {problems ? 'No failed steps in the last two weeks.' : 'Nothing yet. When an agent makes, changes or spends something in IV Studio, it shows here: the chat, Dashboard ideas, and Claude Desktop, ChatGPT or any agent using IV Studio from outside.'}
+          {problems ? 'No failed steps in the last two weeks.' : 'Nothing yet. When an agent makes, changes or spends something in Techlit Studio, it shows here: the chat, Dashboard ideas, and Claude Desktop, ChatGPT or any agent using Techlit Studio from outside.'}
         </p>
       ) : (
         <div className="activity-days">

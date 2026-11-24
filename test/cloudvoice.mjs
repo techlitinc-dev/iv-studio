@@ -13,7 +13,7 @@ import { RunPod } from '../src/service/runpod.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const RES = path.join(ROOT, 'resources')
-const PY = process.argv[2] || path.join(process.env.APPDATA || '', 'IV Studio', 'voiceengine', 'venv', 'Scripts', 'python.exe')
+const PY = process.argv[2] || path.join(process.env.APPDATA || '', 'Techlit Studio', 'voiceengine', 'venv', 'Scripts', 'python.exe')
 let pass = 0
 let fail = 0
 const ok = (cond, what) => (cond ? (pass++, console.log(`  ok   ${what}`)) : (fail++, console.log(`  FAIL ${what}`)))

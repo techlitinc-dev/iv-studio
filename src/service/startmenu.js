@@ -1,5 +1,5 @@
-// The start menu an agent offers when the person opens a chat with IV Studio: what they can make. Each entry is
-// also an MCP prompt (a slash command in clients that show prompts, like Claude Code's /mcp__iv-studio__...), and
+// The start menu an agent offers when the person opens a chat with Techlit Studio: what they can make. Each entry is
+// also an MCP prompt (a slash command in clients that show prompts, like Claude Code's /mcp__techlit-studio__...), and
 // get_menu returns the list for clients that don't. `brief` is what the agent is told when the person picks it.
 export const START_MENU = [
   {
@@ -47,7 +47,7 @@ export const START_MENU = [
   {
     id: 'edit_video',
     title: 'Cut my renders together',
-    blurb: "Put shots, music and titles on IV Studio's timeline and export a finished video.",
+    blurb: "Put shots, music and titles on Techlit Studio's timeline and export a finished video.",
     args: { goal: 'What the finished video is for (optional)' },
     brief: `Cut an edit. list_renders and list_edits, ask what the video is for and which renders to use, then build it with add_media and edit_timeline (titles, music, fades). Check frames with grab_frame, then export_edit. The person sees every change live in the Edit page.`
   },
@@ -74,21 +74,21 @@ export const START_MENU = [
   },
   {
     id: 'show_me_around',
-    title: 'Show me what IV Studio can do',
+    title: 'Show me what Techlit Studio can do',
     blurb: 'A quick tour of what is set up on this PC and what you could make first.',
     args: {},
     brief: `Give a short tour. Run check_setup, list_characters and list_renders, then say in a few plain lines what's ready, what's missing, and three things they could make right now, and offer the menu (get_menu) to start one.`
   }
 ]
 
-// What the agent is told to do when a chat starts with IV Studio and no request.
-export const MENU_RULE = `When a new chat starts with IV Studio and the person hasn't said what they want, offer the start menu: call get_menu and give the choices as one multiple-choice question (your app's question or options tool if it has one, otherwise a short numbered list), plus "something else". The same choices are slash commands in apps that show MCP prompts.`
+// What the agent is told to do when a chat starts with Techlit Studio and no request.
+export const MENU_RULE = `When a new chat starts with Techlit Studio and the person hasn't said what they want, offer the start menu: call get_menu and give the choices as one multiple-choice question (your app's question or options tool if it has one, otherwise a short numbered list), plus "something else". The same choices are slash commands in apps that show MCP prompts.`
 
 // The text an MCP prompt returns: the person's pick plus what they filled in, then the brief.
 export function menuMessage(entry, args = {}) {
   const given = Object.entries(args).filter(([, v]) => v && String(v).trim())
   return [
-    `I picked "${entry.title}" from IV Studio's menu.`,
+    `I picked "${entry.title}" from Techlit Studio's menu.`,
     given.length ? given.map(([k, v]) => `${k}: ${v}`).join('\n') : '',
     `\n(For the agent) ${entry.brief} If you haven't yet this chat, call get_guide first. Ask before anything that costs money or deletes.`
   ]

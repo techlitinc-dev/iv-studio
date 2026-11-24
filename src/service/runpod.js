@@ -1,8 +1,8 @@
 // Cloud mode on the user's own RunPod account, beside Modal (cloud.js). RunPod has no scale-to-zero web
-// server, so IV Studio runs ComfyUI in an on-demand pod instead: a network volume in one data center holds
+// server, so Techlit Studio runs ComfyUI in an on-demand pod instead: a network volume in one data center holds
 // ComfyUI, its node packs and the H3 models (installed by the first pod, kept for the next), and each wake
 // starts a pod from RunPod's official PyTorch image with this app version's resources/cloud folder packed
-// into an environment variable. The pod's gate (gate.py) asks for IV Studio's token, reports how far the boot
+// into an environment variable. The pod's gate (gate.py) asks for Techlit Studio's token, reports how far the boot
 // got at /iv/health and deletes the pod once it has been idle, so the GPU is billed only while it's up.
 // Everything goes through RunPod's REST API v2 with the user's API key (stored encrypted by the app).
 import { execFileSync } from 'node:child_process'
@@ -23,18 +23,21 @@ export const POD_PREFIX = 'iv-studio'
 const PORT = 8189
 const CHUNK = 64 * 1024 * 1024 // RunPod's proxy refuses request bodies over 100 MB
 
-// GPUs that hold MiniMax H3 comfortably, in the order IV Studio falls back through when the chosen one is out
+// GPUs that hold MiniMax H3 comfortably, in the order Techlit Studio falls back through when the chosen one is out
 // of stock in the volume's data center. Prices are RunPod's Secure Cloud list prices (2026-11-03, per hour,
 // billed by the second; the RTX 5090 checked 2026-11-06); the Cloud page shows the live ones from RunPod's
 // catalog when it can reach it. The 5090 is Blackwell: the pod's torch comes from the CUDA 12.8 index, which has it.
 export const GPUS = [
-  { id: 'NVIDIA L40S', label: 'L40S · 48 GB', perHour: 1.09, note: 'Recommended: fits H3 in memory, best value' },
-  { id: 'NVIDIA RTX 6000 Ada Generation', label: 'RTX 6000 Ada · 48 GB', perHour: 0.99, note: 'Same memory as the L40S, a little slower' },
-  { id: 'NVIDIA A100 80GB PCIe', label: 'A100 · 80 GB', perHour: 1.79, note: 'More memory headroom for long sequences' },
-  { id: 'NVIDIA H100 80GB HBM3', label: 'H100 · 80 GB', perHour: 3.99, note: 'About twice as fast, about four times the price' },
-  { id: 'NVIDIA GeForce RTX 5090', label: 'RTX 5090 · 32 GB', perHour: 1.19, note: 'The newest GeForce: more memory than the 4090; often short on stock' },
-  { id: 'NVIDIA GeForce RTX 4090', label: 'RTX 4090 · 24 GB', perHour: 0.89, note: 'The cheapest; the same card IV Studio is built on' }
+  { id: 'NVIDIA L40S', label: 'L40S · 48 GB', vram: 48, perHour: 1.09, note: 'Recommended: fits H3 in memory, best value' },
+  { id: 'NVIDIA RTX 6000 Ada Generation', label: 'RTX 6000 Ada · 48 GB', vram: 48, perHour: 0.99, note: 'Same memory as the L40S, a little slower' },
+  { id: 'NVIDIA A100 80GB PCIe', label: 'A100 · 80 GB', vram: 80, perHour: 1.79, note: 'More memory headroom for long sequences' },
+  { id: 'NVIDIA H100 80GB HBM3', label: 'H100 · 80 GB', vram: 80, perHour: 3.99, note: 'About twice as fast, about four times the price' },
+  { id: 'NVIDIA GeForce RTX 5090', label: 'RTX 5090 · 32 GB', vram: 32, perHour: 1.19, note: 'The newest GeForce: more memory than the 4090; often short on stock' },
+  { id: 'NVIDIA GeForce RTX 4090', label: 'RTX 4090 · 24 GB', vram: 24, perHour: 0.89, note: 'The cheapest; the same card Techlit Studio is built on' }
 ]
+// The least video memory H3 runs in (the 4090's 24 GB is the smallest curated card). The Cloud page's
+// graphics-card dropdown lists every catalog GPU at or above it, not only the curated six.
+export const MIN_VRAM_GB = 24
 
 export class RunPod {
   // key: () => the user's RunPod API key. fetchImpl and api are for tests.
@@ -90,11 +93,34 @@ export class RunPod {
     })
   }
 
+  // Every Secure Cloud pod GPU in RunPod's catalog with room for H3 (MIN_VRAM_GB or more), cheapest first:
+  // the graphics-card dropdown. Curated cards keep their label and note; the rest go by RunPod's name. A card
+  // without a secure price can't be shown (its fallback cap couldn't be worked out either).
+  async allGpus() {
+    const body = await this.req('/catalog/gpus?include=AVAILABILITY&product=POD&cloud=SECURE&minCudaVersion=12.8')
+    const curated = new Map(GPUS.map((g) => [g.id, g]))
+    return RunPod.list(body, 'gpus')
+      .filter((g) => (g.memory ?? 0) >= MIN_VRAM_GB && (g.price?.secure ?? curated.get(g.id)?.perHour) != null)
+      .map((g) => {
+        const c = curated.get(g.id)
+        return {
+          id: g.id,
+          label: c?.label || `${g.name || g.id.replace(/^NVIDIA /, '')} · ${g.memory} GB`,
+          vram: g.memory ?? c?.vram ?? null,
+          perHour: g.price?.secure ?? c?.perHour,
+          note: c?.note || null,
+          inStock: g.availability !== 'NONE',
+          dataCenters: (g.dataCenters || []).map((d) => d.id)
+        }
+      })
+      .sort((a, b) => a.perHour - b.perHour)
+  }
+
   // A data center that can hold a network volume and has the chosen GPU now (or, failing that, another of
   // ours), preferring the one with the most of our GPUs so later wakes have somewhere to fall back to.
   async pickDataCenter(gpu) {
     const dcs = RunPod.list(await this.req('/catalog/datacenters?include=GPU_AVAILABILITY'), 'dataCenters')
-    const ours = new Set(GPUS.map((g) => g.id))
+    const ours = new Set([...GPUS.map((g) => g.id), gpu])
     const scored = dcs
       .filter((d) => (d.networkVolumeTypes || []).length)
       .map((d) => {
@@ -116,8 +142,8 @@ export class RunPod {
     return this.req('/network-volumes', { method: 'POST', json: { name: VOLUME_NAME, size: VOLUME_GB, dataCenter } })
   }
 
-  // resources/cloud (+ models.json and IV Studio's node pack) as a base64 .tar.gz, so the pod runs exactly
-  // this version's files without IV Studio publishing anything. Windows' own tar writes it.
+  // resources/cloud (+ models.json and Techlit Studio's node pack) as a base64 .tar.gz, so the pod runs exactly
+  // this version's files without Techlit Studio publishing anything. Windows' own tar writes it.
   // only: just these files of resources/cloud (the training pod needs runpod_train.py alone)
   bundle(only = null) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-runpod-'))
@@ -159,7 +185,7 @@ export class RunPod {
 
   static url = (podId) => `https://${podId}-${PORT}.proxy.runpod.net`
 
-  // IV Studio's pods that are up or coming up.
+  // Techlit Studio's pods that are up or coming up.
   async pods() {
     const all = RunPod.list(await this.req('/pods'), 'pods', 'items', 'data')
     return all
@@ -167,14 +193,27 @@ export class RunPod {
       .map((p) => ({ id: p.id, status: p.status, gpu: p.gpu?.id, perHour: p.cost, startedAt: p.startedAt || p.createdAt, url: RunPod.url(p.id) }))
   }
 
-  // Starts a pod on the chosen GPU, or the first of ours that's free in the volume's data center.
-  async createPod({ gpu, volume, token, idleSeconds, hf = null }) {
-    const order = [gpu, ...GPUS.map((g) => g.id).filter((id) => id !== gpu)]
+  // Every pod on the account, Techlit Studio's or the person's own: the Cloud page lists the compatible ones.
+  async myPods() {
+    const all = RunPod.list(await this.req('/pods'), 'pods', 'items', 'data')
+    return all.map((p) => ({ id: p.id, name: p.name || p.id, status: p.status, gpu: p.gpu?.id || null, perHour: p.cost ?? null, startedAt: p.startedAt || p.createdAt || null, ours: String(p.name || '').startsWith(POD_PREFIX) }))
+  }
+
+  // Starts a pod on the chosen GPU, or the nearest-priced of ours that's free in the volume's data center.
+  // The fallback never costs much more than the chosen card: someone who picked a 4090 must not silently land
+  // on an H100 — if nothing within ~25% of the chosen price is free, ask them to try again instead.
+  // perHour: the catalog price of a chosen card outside the curated GPUS (the dropdown lists them all), so its
+  // fallback is capped the same way; with no known price an unknown card is tried alone, never substituted.
+  async createPod({ gpu, perHour = null, volume, token, idleSeconds, hf = null }) {
+    const chosen = GPUS.find((g) => g.id === gpu)
+    const price = chosen?.perHour ?? perHour
+    const cap = price != null ? price * 1.25 : 0
+    const order = [gpu, ...GPUS.filter((g) => g.id !== gpu && g.perHour <= cap).map((g) => g.id)]
     let last
     for (const id of order) {
       try {
         const pod = await this.req('/pods', { method: 'POST', json: this.podBody({ gpu: id, volume, token, idleSeconds, hf }) })
-        if (id !== gpu) this.onLog(`${GPUS.find((g) => g.id === gpu)?.label || gpu} was taken in ${volume.dataCenter}; started a ${GPUS.find((g) => g.id === id)?.label || id} instead.`)
+        if (id !== gpu) this.onLog(`${GPUS.find((g) => g.id === gpu)?.label || gpu} was taken in ${volume.dataCenter}; started a ${GPUS.find((g) => g.id === id)?.label || id} ($${GPUS.find((g) => g.id === id)?.perHour}/h) instead.`)
         return { id: pod.id, gpu: id, perHour: pod.cost, url: RunPod.url(pod.id) }
       } catch (err) {
         last = err
@@ -182,7 +221,7 @@ export class RunPod {
         if (!(err.status >= 400 && err.status < 500 && /capacity|available|no (gpu|machine|instance)|stock|resources/i.test(err.message))) throw err
       }
     }
-    throw new Error(`No H3-ready GPU is free in ${volume.dataCenter} right now. Try again in a few minutes. (${last?.message})`)
+    throw new Error(`No GPU within about $${price ?? '?'}/h of the ${chosen?.label || gpu} is free in ${volume.dataCenter} right now. Try again in a few minutes, or pick another GPU. (${last?.message})`)
   }
 
   // What the pod's gate says about the boot ({gate, stage, detail, percent}), or null while it's unreachable.
@@ -218,9 +257,11 @@ export class RunPod {
     }
   }
 
-  // Deletes IV Studio's pods now (Shut down GPU). The volume, and everything on it, stays.
-  async stopAll() {
-    const running = await this.pods()
+  // Deletes Techlit Studio's pods now (Shut down GPU). except: a pod to keep — setup shuts the old pods only
+  // once the new one exists, so a setup that finds no free GPU leaves the pod you had, not nothing.
+  // The volume, and everything on it, stays.
+  async stopAll(except = null) {
+    const running = (await this.pods()).filter((p) => p.id !== except)
     for (const p of running) {
       this.onLog(`Shutting down cloud GPU ${p.id}…`)
       await this.req(`/pods/${p.id}`, { method: 'DELETE' })
@@ -244,6 +285,17 @@ export class RunPod {
   async files(url, token) {
     const res = await this.fetch(`${url}/iv/files`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(120000) })
     if (!res.ok) throw new Error(`Listing your cloud storage failed (${res.status}).`)
+    return res.json()
+  }
+
+  // One model file off the volume, through the running pod's gate (the storage manager's Remove). A pod from
+  // before the gate had /iv/delete proxies the call to ComfyUI, which 404s — said in words.
+  async deleteFile(url, token, remotePath) {
+    const res = await this.fetch(`${url}/iv/delete?path=${encodeURIComponent(remotePath)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30000) })
+    if (!res.ok) {
+      const why = res.status === 404 ? 'This pod was set up before files could be removed; run Set up again to update it.' : (await res.text()).slice(0, 200)
+      throw new Error(`Removing ${remotePath} failed: ${why}`)
+    }
     return res.json()
   }
 
@@ -287,7 +339,7 @@ export class RunPod {
   }
 }
 
-// The node packs that ship inside IV Studio (its own, Viggle Remake's): models.json's node_packs with "bundled".
+// The node packs that ship inside Techlit Studio (its own, Viggle Remake's): models.json's node_packs with "bundled".
 export function bundledPacks(resourcesDir) {
   try {
     const m = JSON.parse(fs.readFileSync(path.join(resourcesDir, 'models.json'), 'utf8'))

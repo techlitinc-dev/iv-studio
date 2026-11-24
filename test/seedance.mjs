@@ -1,4 +1,4 @@
-// Seedance 2.5 as IV Studio's second engine (src/service/seedance.js, seedlint.js): plans for the four modes, the
+// Seedance 2.5 as Techlit Studio's second engine (src/service/seedance.js, seedlint.js): plans for the four modes, the
 // order references are attached in, the role lines written for a character's face and a voice line, graphs that
 // ComfyUI 0.44.1's own node definitions accept, prices, the checker, reading takes back, and @ mentions.
 // No ComfyUI, no network, no spend.   node test/seedance.mjs
@@ -106,7 +106,7 @@ await ok('Draft to Final: from the task id, priced as ComfyUI prices it', async 
 })
 
 await ok('reading takes back: SaveVideo under images or videos, the task id from PreviewAny', async () => {
-  const takes = takesFrom({ save1: { images: [{ filename: 'a_take1_00001_.mp4', subfolder: 'IV Studio/seedance', type: 'output' }] }, tid1: { text: ['  cgt-2026-abc  '] }, save2: { videos: [{ filename: 'a_take2.mp4' }] } }, 3)
+  const takes = takesFrom({ save1: { images: [{ filename: 'a_take1_00001_.mp4', subfolder: 'Techlit Studio/seedance', type: 'output' }] }, tid1: { text: ['  cgt-2026-abc  '] }, save2: { videos: [{ filename: 'a_take2.mp4' }] } }, 3)
   assert.equal(takes.length, 2)
   assert.equal(takes[0].draftTaskId, 'cgt-2026-abc')
   assert.equal(takes[1].candidate, 2)
@@ -123,7 +123,7 @@ await ok('checker: H3 tags are refused with a fix; unnamed and missing reference
   assert.ok(lintSeedance('She walks off down the road into the rain, the camera following slowly behind her.', { mode: 'continue', refs: { videos: [1] } }).some((f) => f.code === 'extend-word'))
   assert.deepEqual(lintSeedance('@image1 defines Tess. She waves at the camera from a rainy bus stop at night, smiling.', { refs: { pictures: [1] } }), [])
   assert.equal(toSeedanceTags('<Video 2> and <Audio 1>'), '@video2 and @audio1')
-  // a face IV Studio names itself isn't flagged
+  // a face Techlit Studio names itself isn't flagged
   assert.deepEqual(lintSeedance('Tess waits at a rainy bus stop at night and checks her phone, then sighs.', { refs: { pictures: [1] }, auto: ['@image1'] }), [])
 })
 

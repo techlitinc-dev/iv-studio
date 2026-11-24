@@ -26,7 +26,7 @@ await ok('the feed it writes reads back, and names the portable zip', () => {
   const f = parseFeed(feedText({ version: '1.2.3', sha512: 'abc==', size: 42 }))
   assert.equal(f.version, '1.2.3')
   assert.deepEqual(pickFile(f.files), { url: PORTABLE_ZIP, sha512: 'abc==', size: 42 })
-  assert.equal(pickFile([{ url: 'IV-Studio-Setup.exe', sha512: 'x' }]), null)
+  assert.equal(pickFile([{ url: 'Techlit-Studio-Setup.exe', sha512: 'x' }]), null)
   assert.ok(newer('1.2.3', '1.1.1') && !newer('1.1.1', '1.1.1'))
 })
 
@@ -56,7 +56,7 @@ await ok('unpacking checks the exe, the asar and the version, and drops the zipâ
   const fill = (dir, version) => {
     fs.mkdirSync(path.join(dir, 'resources'), { recursive: true })
     fs.mkdirSync(path.join(dir, 'data'), { recursive: true })
-    fs.writeFileSync(path.join(dir, 'IV Studio.exe'), 'exe')
+    fs.writeFileSync(path.join(dir, 'Techlit Studio.exe'), 'exe')
     fs.writeFileSync(path.join(dir, 'resources', 'app.asar'), 'asar')
     fs.writeFileSync(path.join(dir, 'data', 'README.txt'), 'empty')
     return { code: 0 }
@@ -66,18 +66,18 @@ await ok('unpacking checks the exe, the asar and the version, and drops the zipâ
   assert.equal(got, dir)
   assert.ok(!fs.existsSync(path.join(dir, 'data')), 'the zipâ€™s data folder is not kept')
   await assert.rejects(() => stage('x.zip', dir, { version: '9.9.9', unzip: (z, d) => fill(d), readVersion: () => '1.0.0' }), /says it is 1.0.0/)
-  await assert.rejects(() => stage('x.zip', dir, { version: '9.9.9', unzip: () => ({ code: 0 }), readVersion: () => '9.9.9' }), /no IV Studio.exe/)
+  await assert.rejects(() => stage('x.zip', dir, { version: '9.9.9', unzip: () => ({ code: 0 }), readVersion: () => '9.9.9' }), /no Techlit Studio.exe/)
   await assert.rejects(() => stage('x.zip', dir, { version: '9.9.9', unzip: () => ({ code: 2, stderr: 'bad zip' }) }), /bad zip/)
 })
 
 await ok('the swap script waits, keeps data, puts things back on failure and reopens', () => {
-  const s = installScript({ pid: 1234, appDir: 'D:\\IV Studio', staged: "D:\\IV Studio\\data\\updates\\new-9.9.9", log: 'D:\\IV Studio\\data\\updates\\update.log', stamp: 5 })
+  const s = installScript({ pid: 1234, appDir: 'D:\\Techlit Studio', staged: "D:\\Techlit Studio\\data\\updates\\new-9.9.9", log: 'D:\\Techlit Studio\\data\\updates\\update.log', stamp: 5 })
   assert.match(s, /Get-Process -Id 1234/)
   assert.match(s, /\$keep = 'data'/)
   assert.match(s, /Where-Object \{ \$_.Name -ne \$keep \}/)
   assert.match(s, /old-5/)
   assert.match(s, /putting the old files back/)
-  assert.match(s, /Start-Process -FilePath 'D:\\IV Studio\\IV Studio.exe'/)
+  assert.match(s, /Start-Process -FilePath 'D:\\Techlit Studio\\Techlit Studio.exe'/)
   assert.doesNotMatch(installScript({ pid: 1, appDir: 'C:\\a', staged: 'C:\\b', log: 'C:\\l', relaunch: false }), /Start-Process/)
   // a quote in a folder name stays inside its PowerShell string
   assert.match(installScript({ pid: 1, appDir: "C:\\Pat's apps", staged: 'C:\\b', log: 'C:\\l' }), /'C:\\Pat''s apps'/)

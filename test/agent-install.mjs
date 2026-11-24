@@ -1,5 +1,5 @@
-// Installing Claude Code or Codex from IV Studio (src/service/agentinstall.js): the official commands, a run with a
-// stand-in installer (finish, failure, Stop), the sign-in window's command, the sign-in check, and that IV Studio
+// Installing Claude Code or Codex from Techlit Studio (src/service/agentinstall.js): the official commands, a run with a
+// stand-in installer (finish, failure, Stop), the sign-in window's command, the sign-in check, and that Techlit Studio
 // finds what the installers put in place (harness.js).
 import fs from 'node:fs'
 import os from 'node:os'

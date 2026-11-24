@@ -1,10 +1,10 @@
-// Finishing any video (a Seedance draft, a clip from elsewhere) the way IV Studio finishes its own H3 previews: the
+// Finishing any video (a Seedance draft, a clip from elsewhere) the way Techlit Studio finishes its own H3 previews: the
 // video is put on H3's grid (a size on 32 pixels, frames padded to 17n+5), encoded into H3's latent space, upscaled
 // there by H3's latent upscaler to the finish size, refined by H3 in two steps at low strength with the prompt (and
 // the character's LoRA, if any), decoded, trimmed back to its own length, and saved with its OWN sound; DLSS 5 then
 // cleans it up (and can upscale 2x) as in a normal finish. Runs on this PC's ComfyUI, free.
 //
-// The model, LoRA and loader settings come from IV Studio's own H3 template (iv_studio_api.json), so Settings ->
+// The model, LoRA and loader settings come from Techlit Studio's own H3 template (iv_studio_api.json), so Settings ->
 // Models choices and model-file swaps apply as they do to every H3 render.
 import { resolveFinalSize, resolveSize } from './plan.js'
 
@@ -23,7 +23,7 @@ const ASPECT_OF = (w, h) => {
 }
 
 // source: { path, width, height, frames, fps }. character: a preset with `lora` (or null). opts: REFINE_DEFAULTS.
-// template: IV Studio's H3 API template. Returns { graph, resolved }.
+// template: Techlit Studio's H3 API template. Returns { graph, resolved }.
 // silence: a silent sound file in ComfyUI's input folder, for a source with no sound (H3 works on sound and picture
 // together, so it needs a track; the saved video then has none).
 export function refineGraph(template, { source, prompt, character = null, trigger = '', name, seed = 4686, unet = null, silence = null, ...opts }) {
@@ -40,7 +40,7 @@ export function refineGraph(template, { source, prompt, character = null, trigge
   const text = String(prompt || '').replace(/\{char\}/g, trigger || character?.name?.split(/\s+/)[0] || 'the person')
 
   const g = {
-    // the models: IV Studio's own loaders
+    // the models: Techlit Studio's own loaders
     clip: { class_type: 'CLIPLoader', inputs: t('2') },
     vae: { class_type: 'VAELoader', inputs: t('3') },
     avae: { class_type: 'VAELoader', inputs: t('4') },

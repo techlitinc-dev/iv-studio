@@ -106,7 +106,7 @@ export class Turnarounds {
     const imgs = (j.outputs || []).filter((o) => o.kind === 'image')
     const copies = []
     for (const o of imgs) {
-      // kept in IV Studio's data folder: a local render is copied out of ComfyUI's output, a cloud one downloaded
+      // kept in Techlit Studio's data folder: a local render is copied out of ComfyUI's output, a cloud one downloaded
       const got = await st.localCopy(o, dir)
       const to = path.join(dir, path.basename(got))
       if (path.resolve(got) !== path.resolve(to)) fs.copyFileSync(got, to)

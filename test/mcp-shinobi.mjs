@@ -1,4 +1,4 @@
-// Shinobi through IV Studio's MCP server: status, the tool list, a passthrough call that returns preview frames
+// Shinobi through Techlit Studio's MCP server: status, the tool list, a passthrough call that returns preview frames
 // as images, and the project view. Needs a data folder where Shinobi is set up and has a project with an edit
 // (test/shinobi.mjs leaves one).   IV_STUDIO_DATA=<data folder> node test/mcp-shinobi.mjs
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'

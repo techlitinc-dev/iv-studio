@@ -60,7 +60,7 @@ export function AccountCard({ n, notify }) {
   const b = a?.balance
   const aside = !a ? null : !a.hasKey ? <Pill>No key</Pill> : b ? <Pill tone="ok">{credits(b.credits)}</Pill> : a.error ? <Pill tone="warn">Not checked</Pill> : <Pill>Checking</Pill>
   return (
-    <SetCard id="account" n={n} title="Comfy account" sub="ComfyUI's paid partner nodes (Seedance, Kling, Veo and more) run on your own Comfy.org credits. IV Studio always shows the price and asks before anything paid runs." aside={aside}>
+    <SetCard id="account" n={n} title="Comfy account" sub="ComfyUI's paid partner nodes (Seedance, Kling, Veo and more) run on your own Comfy.org credits. Techlit Studio always shows the price and asks before anything paid runs." aside={aside}>
       <SetField label="API key">
         {a?.hasKey ? (
           <div className="set-inline">
@@ -82,7 +82,7 @@ export function AccountCard({ n, notify }) {
               <button className="link-btn" onClick={() => open(KEYS_PAGE)}>
                 platform.comfy.org
               </button>{' '}
-              (API keys). IV Studio checks it with Comfy.org before keeping it, and it never leaves this PC except to Comfy.org.
+              (API keys). Techlit Studio checks it with Comfy.org before keeping it, and it never leaves this PC except to Comfy.org.
             </p>
           </>
         )}

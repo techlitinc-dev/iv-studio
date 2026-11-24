@@ -1,7 +1,7 @@
-// Installing the person's own Claude Code or Codex from inside IV Studio, with the maker's own official installer
+// Installing the person's own Claude Code or Codex from inside Techlit Studio, with the maker's own official installer
 // (claude.ai/install.ps1 and chatgpt.com/codex/install.ps1, or the .sh ones on Mac and Linux). Neither needs admin
 // rights and both keep themselves up to date. Signing in has to happen in the agent itself (a browser login), so
-// IV Studio opens a terminal window running its login command.
+// Techlit Studio opens a terminal window running its login command.
 //   Claude Code lands in ~/.local/bin/claude(.exe); Codex in %LOCALAPPDATA%\Programs\OpenAI\Codex\bin\codex.exe on
 //   Windows and ~/.local/bin/codex elsewhere (harness.js findHarnesses looks in both).
 import { spawn } from 'node:child_process'
@@ -20,7 +20,7 @@ const SCRIPTS = {
 }
 
 const known = (engine) => {
-  if (!SCRIPTS[engine]) throw new Error('IV Studio can install Claude or ChatGPT.')
+  if (!SCRIPTS[engine]) throw new Error('Techlit Studio can install Claude or ChatGPT.')
 }
 
 // The official one-liner for this computer, run without a window and without questions (Codex's installer asks
@@ -122,7 +122,7 @@ export function signInCommands(engine, exe, platform = process.platform, home = 
   const name = AGENT_INFO[engine].name
   const login = LOGIN[engine]
   if (platform === 'win32') {
-    const run = `$Host.UI.RawUI.WindowTitle = ${psQuote(`Sign in to ${name}`)}; & ${psQuote(exe)} ${login.join(' ')}; Write-Host ''; Write-Host 'Done. You can close this window and go back to IV Studio.'`
+    const run = `$Host.UI.RawUI.WindowTitle = ${psQuote(`Sign in to ${name}`)}; & ${psQuote(exe)} ${login.join(' ')}; Write-Host ''; Write-Host 'Done. You can close this window and go back to Techlit Studio.'`
     return [{ command: 'powershell.exe', args: ['-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', run] }]
   }
   const line = `${shQuote(exe)} ${login.join(' ')}`

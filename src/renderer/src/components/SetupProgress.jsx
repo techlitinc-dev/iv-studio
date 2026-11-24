@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 // The cloud setup as it happens (setupprogress.js in the main process): an overall bar with the time so far and
 // about how long is left, each step with its usual time and its own bar when it reports one, a note that the page
-// can be left (IV Studio says when it's done), and Modal's or RunPod's raw output behind Show details.
+// can be left (Techlit Studio says when it's done), and Modal's or RunPod's raw output behind Show details.
 
 export function clock(secs) {
   const s = Math.max(0, Math.round(secs || 0))
@@ -77,7 +77,7 @@ export default function SetupProgress({ progress: p, log = [], name }) {
 
       {!p.finishedAt && (
         <p className="setup-progress-leave">
-          <strong>You don’t have to watch.</strong> Use the rest of IV Studio or leave this page: setup carries on, and IV Studio tells you when it’s ready. Keep IV Studio open until then.
+          <strong>You don’t have to watch.</strong> Use the rest of Techlit Studio or leave this page: setup carries on, and Techlit Studio tells you when it’s ready. Keep Techlit Studio open until then.
         </p>
       )}
       {done && <p className="setup-progress-leave ok">Set up and ready. Switch on The cloud to render there.</p>}

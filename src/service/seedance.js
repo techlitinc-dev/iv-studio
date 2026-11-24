@@ -1,4 +1,4 @@
-// Seedance 2.5 as a second engine for IV Studio's shots: the same four modes, form and hunt -> pick -> finish, with
+// Seedance 2.5 as a second engine for Techlit Studio's shots: the same four modes, form and hunt -> pick -> finish, with
 // ComfyUI's ByteDance partner nodes in place of H3. They run on the person's Comfy.org credits through any ComfyUI
 // (no GPU needed), so every render is priced and confirmed first (pricing.js, Comfy.submit).
 //
@@ -20,7 +20,7 @@ export const SEEDANCE_TIERS = {
   '720p': { model: 'Seedance 2.5', resolution: '720p', label: '720p', short: 720 },
   '1080p': { model: 'Seedance 2.5', resolution: '1080p', label: '1080p', short: 1080 },
   // Seedance 2.5 Flash: cheaper and quicker, 480p or 720p; its takes are finals (Draft to Final takes only Draft takes).
-  // In ComfyUI's ByteDance nodes since 2026-11-15 (after 0.45.0); IV Studio offers it when the ComfyUI has it.
+  // In ComfyUI's ByteDance nodes since 2026-11-15 (after 0.45.0); Techlit Studio offers it when the ComfyUI has it.
   flash480: { model: 'Seedance 2.5 Flash', resolution: '480p', label: 'Flash · 480p', short: 480, flash: true },
   flash720: { model: 'Seedance 2.5 Flash', resolution: '720p', label: 'Flash · 720p', short: 720, flash: true }
 }
@@ -197,11 +197,11 @@ export function finalGraph(draftTaskId, info, name) {
 }
 
 function saveNode(from, prefix, info) {
-  const inputs = { video: [from, 0], filename_prefix: `IV Studio/seedance/${prefix}`, format: 'mp4', 'format.codec': 'h264' }
+  const inputs = { video: [from, 0], filename_prefix: `Techlit Studio/seedance/${prefix}`, format: 'mp4', 'format.codec': 'h264' }
   return { class_type: 'SaveVideo', inputs: info?.SaveVideo ? fillDefaults(info.SaveVideo, inputs) : inputs, _meta: { title: 'save' } }
 }
 
-// Every node's missing required inputs (a graph IV Studio built wrongly), as "take1: model.prompt" lines.
+// Every node's missing required inputs (a graph Techlit Studio built wrongly), as "take1: model.prompt" lines.
 export function graphProblems(graph, info) {
   const out = []
   for (const [id, n] of Object.entries(graph)) {

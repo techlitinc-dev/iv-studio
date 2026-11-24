@@ -54,7 +54,7 @@ function CodexSetup({ f, onReady }) {
           </a>
           , or its command-line tool (<code>npm i -g @openai/codex</code>).
         </li>
-        <li>Open it and sign in with your ChatGPT account. Pictures then come from your ChatGPT plan; IV Studio adds no charge.</li>
+        <li>Open it and sign in with your ChatGPT account. Pictures then come from your ChatGPT plan; Techlit Studio adds no charge.</li>
         <li>Press Check again.</li>
       </ol>
       {f.missing?.length > 0 && <p className="small pink">Still needed: {f.missing.join(', ')}.</p>}
@@ -112,11 +112,11 @@ function FamilySetup({ f, remote, notify, go, onReady }) {
           ))}
         </ul>
       ) : (
-        <p className="small dim">IV Studio has no download for this one. Put its model files in ComfyUI’s models folders, then check again.</p>
+        <p className="small dim">Techlit Studio has no download for this one. Put its model files in ComfyUI’s models folders, then check again.</p>
       )}
       {other.length > 0 && <p className="small pink">Also needs {other.join(', ')}.</p>}
       {remote ? (
-        <p className="small dim">In the cloud, IV Studio downloads a model into your cloud storage the first time you use it.</p>
+        <p className="small dim">In the cloud, Techlit Studio downloads a model into your cloud storage the first time you use it.</p>
       ) : (
         <>
           {gated.length > 0 && <HfLogin notify={notify} pages={pages} />}
@@ -271,7 +271,7 @@ export default function Images({ kindSwitch, notify, go, pictureToShot, incoming
     document.querySelector('.images-page')?.scrollIntoView({ behavior: 'smooth' })
   }
   async function remove(s) {
-    if (!(await ask({ title: 'Delete these pictures?', message: `“${s.name}” and its ${s.files?.length || 0} picture${s.files?.length === 1 ? '' : 's'} leave IV Studio. ComfyUI's own copies stay in its output folder.`, confirm: 'Delete' }))) return
+    if (!(await ask({ title: 'Delete these pictures?', message: `“${s.name}” and its ${s.files?.length || 0} picture${s.files?.length === 1 ? '' : 's'} leave Techlit Studio. ComfyUI's own copies stay in its output folder.`, confirm: 'Delete' }))) return
     try {
       await I().delete(s.id)
       setSets((all) => all.filter((x) => x.id !== s.id))

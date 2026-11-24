@@ -1,4 +1,4 @@
-// IV Studio's voice engine on the person's own cloud (RunPod, Modal): the same worker as on a PC
+// Techlit Studio's voice engine on the person's own cloud (RunPod, Modal): the same worker as on a PC
 // (resources/python/voice_server.py), run beside ComfyUI by the gate (resources/cloud/voicehost.py). It has the
 // local engine's interface (status, install, call, release), so Voices uses either without knowing which. Files go
 // both ways as base64; a job is started and then asked about, so a first line (which loads VoxCPM2) never runs

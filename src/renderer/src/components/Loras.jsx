@@ -4,7 +4,7 @@ import QuickBar from './AudioQuick'
 import { fileUrl } from './edit/model'
 import Loading from './Loading'
 
-// LoRAs as pictures, for every model family IV Studio runs (civitai.js LORA_FAMILIES: MiniMax H3, LTX-2.5, Wan 2.1,
+// LoRAs as pictures, for every model family Techlit Studio runs (civitai.js LORA_FAMILIES: MiniMax H3, LTX-2.5, Wan 2.1,
 // Flux 3 Klein, Flux.2 Klein, Krea 2, Qwen Image 2.1, Z-Image, SDXL, Moss): Civitai's (Discover) and the ones on this
 // PC (Yours), with clips that play on hover. LoraPicker is the same thing in a dialog, for Create's LoRA trays and
 // for Characters; it opens on the family the tray is for.

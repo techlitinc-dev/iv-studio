@@ -1,19 +1,19 @@
-// Where IV Studio keeps its data and finds its bundled resources, for both the app and the MCP server.
+// Where Techlit Studio keeps its data and finds its bundled resources, for both the app and the MCP server.
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 
 // Where the data folder is, in this order:
 //   env       IV_STUDIO_DATA names it (tests, and anyone who wants to set it by hand)
-//   portable  a folder called "data" sits next to IV Studio.exe (the portable zip ships with one)
+//   portable  a folder called "data" sits next to Techlit Studio.exe (the portable zip ships with one)
 //   moved     the person moved it in Settings → Data folder; the default folder keeps a small pointer to it
-//   default   %APPDATA%\IV Studio (Windows), ~/Library/Application Support/IV Studio (Mac), ~/.config/IV Studio
+//   default   %APPDATA%\Techlit Studio (Windows), ~/Library/Application Support/Techlit Studio (Mac), ~/.config/Techlit Studio
 // The default folder is also where Electron keeps the window's own files, so the pointer lives there.
 // `missing` is set when the pointer names a folder that isn't there (a drive that isn't plugged in).
 export const POINTER_FILE = 'data-folder.json'
 export const PORTABLE_FOLDER = 'data'
-// Only IV Studio's own binary counts for portable, so a dev copy (electron.exe) or a Node run never does.
-const OWN_EXE = /^(IV Studio|iv-studio)(\.exe)?$/i
+// Only Techlit Studio's own binary counts for portable, so a dev copy (electron.exe) or a Node run never does.
+const OWN_EXE = /^(Techlit Studio|iv-studio)(\.exe)?$/i
 const isDir = (p) => {
   try {
     return fs.statSync(p).isDirectory()
@@ -24,9 +24,9 @@ const isDir = (p) => {
 
 export function defaultDataDir({ env = process.env, platform = process.platform } = {}) {
   // a Mac keeps app data in ~/Library/Application Support (where Electron keeps the window's own)
-  if (platform === 'darwin') return path.join(env.HOME || '.', 'Library', 'Application Support', 'IV Studio')
+  if (platform === 'darwin') return path.join(env.HOME || '.', 'Library', 'Application Support', 'Techlit Studio')
   const base = env.APPDATA || path.join(env.HOME || '.', '.config')
-  return path.join(base, 'IV Studio')
+  return path.join(base, 'Techlit Studio')
 }
 
 export function portableDataDir({ execPath = process.execPath } = {}) {
@@ -51,7 +51,21 @@ export function dataLocation({ env = process.env, execPath = process.execPath, p
   if (portable) return { dir: portable, source: 'portable', defaultDir }
   const pointer = readPointer(defaultDir)
   if (pointer) return { dir: pointer.dir, source: 'moved', defaultDir, pointer, missing: !isDir(pointer.dir) }
+  // rebranded: a copy made before the rename keeps its data in the old "IV Studio" folder. Electron creates the
+  // new folder for its own browser files, so the test is the data itself (settings.json): the old folder's
+  // settings with none in the new one means an existing install, and its data carries over
+  if (!fs.existsSync(path.join(defaultDir, 'settings.json'))) {
+    const legacy = legacyDataDir({ env, platform })
+    if (legacy && fs.existsSync(path.join(legacy, 'settings.json'))) return { dir: legacy, source: 'default', defaultDir: legacy }
+  }
   return { dir: defaultDir, source: 'default', defaultDir }
+}
+
+// The pre-rename default folder name, so an existing data folder keeps being used (dataLocation above).
+export function legacyDataDir({ env = process.env, platform = process.platform } = {}) {
+  if (platform === 'darwin') return path.join(env.HOME || '.', 'Library', 'Application Support', 'IV Studio')
+  const base = env.APPDATA || path.join(env.HOME || '.', '.config')
+  return path.join(base, 'IV Studio')
 }
 
 export function dataDir(opts) {
@@ -63,7 +77,7 @@ export function resourcesDir(hint) {
   // Built code sits in out/main or, when shared between entries, out/main/chunks.
   const candidates = [hint, process.resourcesPath && path.join(process.resourcesPath, 'resources'), path.resolve(__dirname, '../../resources'), path.resolve(__dirname, '../../../resources'), path.resolve('resources')]
   for (const c of candidates) if (c && fs.existsSync(path.join(c, 'workflows', 'iv_studio_api.json'))) return c
-  throw new Error('IV Studio resources not found')
+  throw new Error('Techlit Studio resources not found')
 }
 
 // comfyApiKey and civitaiKey are stored encrypted by the app (Electron safeStorage); they're never sent to the window.
@@ -78,13 +92,13 @@ export function resourcesDir(hint) {
 // its gate; runpodKey, the person's RunPod API key). The keys and tokens are stored encrypted.
 // comfyFolder: the person's main ComfyUI folder; comfyLauncher: the shortcut, .bat or ComfyUI.exe that starts
 // ComfyUI ('' = the best one in comfyFolder, else the best one found on this PC); comfyAutoStart:
-// start it when IV Studio opens if it isn't running (comfylauncher.js).
+// start it when Techlit Studio opens if it isn't running (comfylauncher.js).
 // chatBudget: the chat's spending limit { on, daily, perStep } in Comfy credits (spending.js; null = off).
 // incognito: the app works in its private set of everything made (see incognitoDir); switched by a restart.
 // outputFolder / privateFolder: the folder inside ComfyUI's output where renders save, normally and in
 // Incognito ('' = straight into output). Incognito uploads go into the same folder name under input.
-export const PRIVATE_FOLDER = 'IV Private'
-const DEFAULT_SETTINGS = { comfyUrl: 'http://127.0.0.1:8188', window: null, promptEngine: 'local', ollamaUrl: '', ollamaModel: 'huihui_ai/qwen3-vl-abliterated:8b-instruct', claudeModel: '', codexModel: '', hermesModel: '', localChatModel: '', chatEngine: '', openaiUrl: '', openaiModel: '', openaiVision: false, openaiKey: null, openaiHeaders: null, chatBudget: null, comfyApiKey: null, target: 'local', cloud: null, cloudToken: null, cloudProvider: 'modal', runpod: null, runpodKey: null, runpodToken: null, models: {}, comfyFolder: '', comfyLauncher: '', comfyAutoStart: true, civitaiKey: null, civitaiMature: false, civitaiUnblur: false, incognito: false, outputFolder: '', privateFolder: PRIVATE_FOLDER, onboarded: null, hardware: null, shotPrefs: null, speed: null, previewMp: null, plainWords: false, highContrast: false, aiLevel: null, fizgigFolder: '', videosFolder: '', textSize: 'normal', reduceMotion: false, focusRings: false, underlineLinks: false, accent: 'red', agentName: '', userName: '', usage: null, betaJoined: false, describeLibrary: true, livePreview: false, h3Terms: null, chatWindow: null }
+export const PRIVATE_FOLDER = 'Techlit Private'
+const DEFAULT_SETTINGS = { comfyUrl: 'http://127.0.0.1:8188', window: null, promptEngine: 'local', ollamaUrl: '', ollamaModel: 'huihui_ai/qwen3-vl-abliterated:8b-instruct', claudeModel: '', codexModel: '', hermesModel: '', localChatModel: '', chatEngine: '', openaiUrl: '', openaiModel: '', openaiVision: false, openaiKey: null, openaiAltKey: null, openaiHeaders: null, chatBudget: null, comfyApiKey: null, target: 'local', cloud: null, cloudToken: null, cloudProvider: 'modal', runpod: null, runpodKey: null, runpodToken: null, models: {}, comfyFolder: '', comfyLauncher: '', comfyAutoStart: true, civitaiKey: null, civitaiMature: false, civitaiUnblur: false, incognito: false, outputFolder: '', privateFolder: PRIVATE_FOLDER, onboarded: null, hardware: null, shotPrefs: null, speed: null, previewMp: null, plainWords: false, highContrast: false, aiLevel: null, fizgigFolder: '', videosFolder: '', textSize: 'normal', reduceMotion: false, focusRings: false, underlineLinks: false, accent: 'red', agentName: '', userName: '', usage: null, betaJoined: false, describeLibrary: true, livePreview: false, h3Terms: null, chatWindow: null }
 
 // A folder name as ComfyUI takes it: relative to its output (or input) folder, forward slashes, nothing
 // that climbs out of it or that Windows won't allow.
@@ -149,7 +163,7 @@ export function incognitoDir(base = dataDir()) {
 }
 
 // Points a graph's saved files into a folder inside ComfyUI's output: literal file name prefixes and output
-// directories, and the first part of a joined name that feeds a file name prefix (IV Studio's H3 graph
+// directories, and the first part of a joined name that feeds a file name prefix (Techlit Studio's H3 graph
 // builds its names as "H3/hunt/" + the project's name). No folder: the graph is left as it is.
 export function outputsUnder(graph, folder) {
   folder = cleanFolder(folder)
@@ -179,11 +193,11 @@ export function normalizeComfyUrl(value) {
 }
 
 // Where finished videos go (edit and film exports, cloud renders brought home): Settings → Folders → Finished videos,
-// else Videos\IV Studio. Incognito keeps its own inside its data folder.
+// else Videos\Techlit Studio. Incognito keeps its own inside its data folder.
 export function videosFolderOf(settings, { incognito = false, dataDir: data = '', videos = path.join(os.homedir(), 'Videos') } = {}) {
   if (incognito) return path.join(data, 'videos')
   const v = String(settings?.videosFolder || '').trim()
-  return v && path.isAbsolute(v) ? v : path.join(videos, 'IV Studio')
+  return v && path.isAbsolute(v) ? v : path.join(videos, 'Techlit Studio')
 }
 
 export function readSettings(dir = dataDir()) {

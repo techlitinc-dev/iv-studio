@@ -5,7 +5,7 @@ import Stage from './Stage'
 import { ask } from './Confirm'
 import { BetaJoin, useUsage } from './Privacy'
 
-// The title-bar meter while rendering in the cloud: GPU time and its estimated cost since IV Studio opened,
+// The title-bar meter while rendering in the cloud: GPU time and its estimated cost since Techlit Studio opened,
 // ticking while a GPU is up. Modal is asked every 30 s which containers run; each one counts from its own
 // start until it was last seen. Clicking it opens the Cloud page (Shut down GPU is there).
 const seen = new Map() // container id -> { start, last }, kept while the window is open
@@ -51,11 +51,174 @@ export function CloudMeter({ onOpen }) {
   const ids = new Set(usage.running.map((c) => c.id))
   const seconds = [...seen].reduce((sum, [id, c]) => sum + Math.max(0, ((ids.has(id) ? now : c.last) - c.start) / 1000), 0)
   const cost = (seconds / 3600) * usage.perHour
+  const rate = usage.rate || 11.5
+  const inr = (v) => `₹${(v * rate).toFixed(2)}`
   return (
-    <button className={`mono cloud-meter ${on ? 'on' : ''}`} onClick={onOpen} title={`Cloud GPU time and estimated cost since IV Studio opened (${usage.gpu} at $${usage.perHour.toFixed(2)} an hour, billed by the second). Click for the Cloud page.`}>
+    <button
+      className={`mono cloud-meter ${on ? 'on' : ''}`}
+      onClick={onOpen}
+      title={`Cloud GPU time and estimated cost since Techlit Studio opened (${usage.gpu} at $${usage.perHour.toFixed(2)} an hour, billed by the second)${usage.today != null ? `. Today: $${usage.today.toFixed(2)} (${inr(usage.today)})` : ''}. Click for the Cloud page.`}
+    >
       <span className="cloud-meter-dot" />
-      {on ? 'GPU on' : 'GPU off'} · {clock(seconds)} · ${cost.toFixed(2)}
+      {on ? 'GPU on' : 'GPU off'} · {clock(seconds)} · ${cost.toFixed(2)} · {inr(cost)}
     </button>
+  )
+}
+
+// The cloud dashboard: what's up (with the pod's own idle countdown), what today cost against the daily
+// budget, and the model storage on the volume. Polls every 30 s; the budget editor writes cloud:setBudget.
+function CloudDash({ notify }) {
+  const [dash, setDash] = useState(null)
+  const [dashAt, setDashAt] = useState(0)
+  const [now, setNow] = useState(Date.now())
+  const [daily, setDaily] = useState('')
+  const [rate, setRate] = useState('')
+  const [files, setFiles] = useState(null) // {up, files} once asked
+  const [showFiles, setShowFiles] = useState(false)
+  const [removing, setRemoving] = useState('')
+  const load = () =>
+    window.ivstudio.cloud
+      .dash()
+      .then((d) => {
+        setDash(d)
+        setDashAt(Date.now())
+        setDaily((v) => (v === '' ? String(d.budget.daily) : v))
+        setRate((v) => (v === '' ? String(d.rate) : v))
+      })
+      .catch(() => {})
+  useEffect(() => {
+    load()
+    const poll = setInterval(load, 30000)
+    const tick = setInterval(() => setNow(Date.now()), 1000)
+    const off = window.ivstudio.cloud.onBudgetStop(({ daily: d }) => notify(`Today's cloud budget ($${Number(d).toFixed(2)}) is spent — the GPU was shut down.`))
+    return () => {
+      clearInterval(poll)
+      clearInterval(tick)
+      off?.()
+    }
+  }, [])
+  async function saveBudget(on, d) {
+    try {
+      await window.ivstudio.cloud.setBudget({ on, daily: Number(d) })
+      load()
+    } catch (e) {
+      notify(e.message)
+    }
+  }
+  async function saveRate(r) {
+    try {
+      await window.ivstudio.cloud.setRate(Number(r))
+      load()
+    } catch (e) {
+      notify(e.message)
+    }
+  }
+  async function loadFiles() {
+    try {
+      setFiles(await window.ivstudio.cloud.runpodFiles())
+    } catch (e) {
+      notify(e.message)
+    }
+  }
+  async function removeFile(rel) {
+    if (!(await ask({ title: `Remove ${rel} from your cloud storage?`, message: 'The next render that needs it downloads it again.', confirm: 'Remove it' }))) return
+    setRemoving(rel)
+    try {
+      await window.ivstudio.cloud.runpodDeleteFile(rel)
+      await loadFiles()
+    } catch (e) {
+      notify(e.message)
+    } finally {
+      setRemoving('')
+    }
+  }
+  if (!dash || dash.provider === 'comfycloud') return null
+  const pod = dash.pod
+  const idleLeft = pod?.idleLeft != null ? Math.max(0, pod.idleLeft - (now - dashAt) / 1000) : null
+  const pct = dash.budget.on && dash.budget.daily > 0 ? Math.min(100, (dash.today / dash.budget.daily) * 100) : 0
+  const inr = (v) => `₹${(v * (dash.rate || 11.5)).toFixed(2)}`
+  const list = files?.files ? Object.entries(files.files).sort((a, b) => b[1] - a[1]) : null
+  const usedGb = list ? list.reduce((s, [, b]) => s + b, 0) / 1e9 : null
+  return (
+    <section className="cloud-dash">
+      <div className="cloud-dash-row">
+        <span className={`cloud-status mono small ${pod ? 'on' : ''}`}>
+          <span className="cloud-status-dot" />
+          {pod ? `GPU on · ${pod.gpu || ''}${pod.perHour != null ? ` · $${Number(pod.perHour).toFixed(2)}/h` : ''}` : 'GPU off'}
+        </span>
+        {pod && idleLeft != null && (
+          <span className="small dim">
+            shuts off in about {Math.floor(idleLeft / 60)}:{String(Math.floor(idleLeft % 60)).padStart(2, '0')}
+          </span>
+        )}
+        {pod && idleLeft == null && pod.idleLimit != null && <span className="small dim">shuts off after {Math.round(pod.idleLimit / 60)} idle min</span>}
+        {pod?.stage && pod.stage !== 'ready' && <span className="small dim">booting: {pod.stage}</span>}
+      </div>
+      <div className="cloud-dash-row">
+        <span className="small">
+          Today: ${dash.today.toFixed(2)} ({inr(dash.today)})
+          {dash.budget.on ? ` of $${dash.budget.daily.toFixed(2)} (${inr(dash.budget.daily)})` : ''}
+        </span>
+        {dash.budget.on && (
+          <span className="cloud-dash-bar" title={`${pct.toFixed(0)}% of today's budget spent`}>
+            <span style={{ width: `${pct}%` }} className={pct >= 100 ? 'over' : ''} />
+          </span>
+        )}
+        <label className="small dim cloud-dash-budget">
+          <input type="checkbox" checked={dash.budget.on} onChange={(e) => saveBudget(e.target.checked, daily || dash.budget.daily)} /> Daily budget $
+        </label>
+        <input className="cloud-dash-daily" type="number" min="0" step="0.5" value={daily} onChange={(e) => setDaily(e.target.value)} onBlur={() => saveBudget(dash.budget.on, daily)} aria-label="Daily cloud budget in dollars" />
+        <label className="small dim cloud-dash-budget" title="Every cloud cost in Techlit Studio is also shown in rupees at this rate">
+          ₹ per $1
+        </label>
+        <input className="cloud-dash-daily" type="number" min="0" step="0.1" value={rate} onChange={(e) => setRate(e.target.value)} onBlur={() => saveRate(rate)} aria-label="Rupees per dollar" />
+        <span className="small dim">when the budget's spent, the GPU shuts down and stays off until tomorrow</span>
+      </div>
+      {dash.provider === 'runpod' && dash.volume && (
+        <div className="cloud-dash-row">
+          <span className="small">
+            Storage: {dash.volume.gb} GB volume in {dash.volume.dataCenter} · about ${dash.volume.perMonth.toFixed(2)} a month
+            {usedGb != null ? ` · ${usedGb.toFixed(1)} GB of models on it` : ''}
+          </span>
+          <button
+            className="link-btn"
+            onClick={() => {
+              setShowFiles(!showFiles)
+              if (!files) loadFiles()
+            }}
+          >
+            {showFiles ? 'Hide files' : 'Manage files'}
+          </button>
+        </div>
+      )}
+      {showFiles && (
+        <div className="cloud-files">
+          {!files && <p className="small dim">Asking the pod…</p>}
+          {files && !files.up && (
+            <p className="small dim">
+              No cloud GPU is up. Files can be listed and removed while a pod is running — wake it (or run a render) first.{' '}
+              <button className="link-btn" onClick={loadFiles}>
+                Check again
+              </button>
+            </p>
+          )}
+          {list && list.length === 0 && <p className="small dim">No model files on the volume yet.</p>}
+          {list &&
+            list.slice(0, 60).map(([rel, bytes]) => (
+              <p key={rel} className="cloud-file mono small">
+                <span className="cloud-file-name" title={rel}>
+                  {rel}
+                </span>
+                <span className="dim">{(bytes / 1e9).toFixed(2)} GB</span>
+                <button className="link-btn" disabled={removing === rel} onClick={() => removeFile(rel)}>
+                  {removing === rel ? 'Removing…' : 'Remove'}
+                </button>
+              </p>
+            ))}
+          {list && list.length > 60 && <p className="small dim">…and {list.length - 60} more files.</p>}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -121,7 +284,7 @@ function CloudModelsStep({ st, busy, run, notify, refresh }) {
       </div>
       <div className="group-body">
         <p className="small dim">
-          Setup puts H3’s models in your cloud storage. Pictures, music, sounds, Replace, Effects and SeedVR2 bring their own models the first time you use them there: IV Studio says how big they are and asks before downloading. A few are behind a licence on Hugging Face (Flux.2 Klein 9B, Flux 3 Klein and the LTX effects). To use those in the cloud, accept each licence on its Hugging Face page, then add a Read token from huggingface.co → Settings → Access Tokens.
+          Setup puts H3’s models in your cloud storage. Pictures, music, sounds, Replace, Effects and SeedVR2 bring their own models the first time you use them there: Techlit Studio says how big they are and asks before downloading. A few are behind a licence on Hugging Face (Flux.2 Klein 9B, Flux 3 Klein and the LTX effects). To use those in the cloud, accept each licence on its Hugging Face page, then add a Read token from huggingface.co → Settings → Access Tokens.
         </p>
         {st.hasHfToken ? (
           <p className="small">
@@ -164,10 +327,35 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
   const [gpus, setGpus] = useState(st.runpodGpus.map((g) => ({ ...g, inStock: null })))
   const [gpu, setGpu] = useState(rp.gpu || st.runpodGpus[0].id)
   const [idle, setIdle] = useState(rp.idleSeconds || 300)
+  const [freeOnly, setFreeOnly] = useState(false)
+  const [sort, setSort] = useState('price') // 'price' | 'vram'
+  const [pods, setPods] = useState(null)
+  const loadPods = () => window.ivstudio.cloud.runpodPods().then(setPods).catch(() => {})
   useEffect(() => {
-    if (rp.hasKey) window.ivstudio.cloud.runpodCatalog().then(setGpus).catch(() => {})
+    if (rp.hasKey) {
+      window.ivstudio.cloud.runpodAllGpus().then((list) => list.length && setGpus(list)).catch(() => {})
+      loadPods()
+    }
   }, [rp.hasKey])
-  const chosen = gpus.find((g) => g.id === gpu)
+  // the saved card stays selectable while the catalog loads, or if RunPod stops listing it
+  const options = gpus.some((g) => g.id === gpu) ? gpus : [{ id: gpu, label: gpu, perHour: rp.gpu === gpu ? rp.gpuPerHour : null, inStock: null }, ...gpus]
+  const chosen = options.find((g) => g.id === gpu)
+  // once the volume exists it pins the data center: a card free somewhere else can't help, so stock is judged there
+  const usable = (g) => (rp.dataCenter && g.dataCenters ? g.dataCenters.includes(rp.dataCenter) : g.inStock !== false)
+  const stockText = (g) => {
+    if (rp.dataCenter && g.dataCenters) return g.dataCenters.includes(rp.dataCenter) ? ` · free now in ${rp.dataCenter}` : ` · none free in ${rp.dataCenter} now`
+    return g.inStock === false ? ' · busy right now' : g.inStock ? ' · free now' : ''
+  }
+  // for this project (H3): the cheapest card free now, and the best suited (the curated cards are in recommendation order)
+  const cheapest = options.filter((g) => usable(g) && g.perHour != null).sort((a, b) => a.perHour - b.perHour)[0] || null
+  const best = st.runpodGpus.map((c) => options.find((o) => o.id === c.id)).find((g) => g && usable(g)) || null
+  const sorted = [...options].sort(sort === 'vram' ? (a, b) => (b.vram ?? 0) - (a.vram ?? 0) || (a.perHour ?? Infinity) - (b.perHour ?? Infinity) : (a, b) => (a.perHour ?? Infinity) - (b.perHour ?? Infinity))
+  const visible = freeOnly ? sorted.filter(usable) : sorted
+  // the chosen card stays in the dropdown even when the filter would hide it
+  const listed = visible.some((g) => g.id === gpu) ? visible : [...visible, chosen].filter(Boolean)
+  const compatiblePods = (pods || []).filter((p) => options.some((o) => o.id === p.gpu))
+  const optionText = (g) =>
+    `${g.label}${g.perHour != null ? ` — $${g.perHour.toFixed(2)} an hour` : ''}${stockText(g)}${g.id === cheapest?.id ? ' · cheapest' : ''}${g.note?.startsWith('Recommended') ? ' · recommended' : ''}`
   async function saveKey(k) {
     await run(k ? 'Checking the key' : 'Removing the key', async () => {
       await window.ivstudio.cloud.runpodKey(k)
@@ -203,26 +391,72 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
               <button className="link-btn" onClick={() => window.ivstudio.links.open('https://console.runpod.io/user/settings')}>
                 Settings → API Keys
               </button>{' '}
-              (read/write). IV Studio uses it only to make your storage volume and to start and stop your own pods.
-              {links?.runpodSignup && <span className="cloud-support"> New accounts made through this link get a one-time RunPod credit of $5 to $500 after adding their first $10, and it supports IV Studio at no extra cost to you.</span>}
+              (read/write). Techlit Studio uses it only to make your storage volume and to start and stop your own pods.
+              {links?.runpodSignup && <span className="cloud-support"> New accounts made through this link get a one-time RunPod credit of $5 to $500 after adding their first $10, and it supports Techlit Studio at no extra cost to you.</span>}
             </p>
           </>
         )}
       </Step>
 
       <Step n={2} title="GPU and shut-off" done={!!rp.ready}>
-        <div className="cloud-gpus">
-          {gpus.map((g) => (
-            <button key={g.id} className={`mode-card ${gpu === g.id ? 'on' : ''}`} onClick={() => setGpu(g.id)}>
-              <span className="mode-name">{g.label}</span>
-              <span className="mono">${g.perHour.toFixed(2)} an hour, by the second</span>
-              <span className="dim small">
-                {g.note}
-                {g.inStock === false ? ' · busy right now' : g.inStock ? ' · free now' : ''}
-              </span>
-            </button>
-          ))}
+        <div className="row">
+          <span className="row-label">Filter</span>
+          <div className="cloud-gpu-filter">
+            <label className="small">
+              <input type="checkbox" checked={freeOnly} onChange={(e) => setFreeOnly(e.target.checked)} /> Free now only
+            </label>
+            <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort the graphics cards">
+              <option value="price">Cheapest first</option>
+              <option value="vram">Most memory first</option>
+            </select>
+          </div>
         </div>
+        <div className="row">
+          <span className="row-label">Graphics card</span>
+          <select className="cloud-gpu-select" value={gpu} onChange={(e) => setGpu(e.target.value)} aria-label="Graphics card">
+            {listed.map((g) => (
+              <option key={g.id} value={g.id}>
+                {optionText(g)}
+              </option>
+            ))}
+          </select>
+        </div>
+        {(cheapest || best) && (
+          <div className="row">
+            <span className="row-label">For this project</span>
+            <div className="segmented">
+              {cheapest && (
+                <button className={gpu === cheapest.id ? 'on' : ''} onClick={() => setGpu(cheapest.id)}>
+                  Cheapest: {cheapest.label} · ${cheapest.perHour.toFixed(2)}/h
+                </button>
+              )}
+              {best && (
+                <button className={gpu === best.id ? 'on' : ''} onClick={() => setGpu(best.id)}>
+                  Best suited: {best.label} · ${best.perHour.toFixed(2)}/h
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        {chosen?.note && <p className="small dim cloud-gpu-note">{chosen.note}</p>}
+        {rp.hasKey && pods && (
+          <div className="row">
+            <span className="row-label">Compatible pods</span>
+            <div className="small dim">
+              {compatiblePods.length === 0 && <p className="cloud-pod">None on your account right now — Set up starts one.</p>}
+              {compatiblePods.map((p) => (
+                <p key={p.id} className="cloud-pod">
+                  {p.name} · {options.find((o) => o.id === p.gpu)?.label || p.gpu} · {String(p.status || '').toLowerCase()}
+                  {p.perHour != null ? ` · $${Number(p.perHour).toFixed(2)}/h` : ''}
+                  {p.ours ? ' · Techlit Studio’s, reused on the next render' : ''}
+                </p>
+              ))}
+              <button className="link-btn" onClick={loadPods}>
+                Refresh
+              </button>
+            </div>
+          </div>
+        )}
         <div className="row">
           <span className="row-label">Shut down after</span>
           <div className="segmented">
@@ -234,7 +468,7 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
           </div>
         </div>
         <p className="small dim">
-          With nothing to do for {IDLE.find(([s]) => s === idle)?.[1]}, the pod deletes itself and GPU billing stops; your volume keeps ComfyUI, the models and every render. If your GPU is taken when a render needs one, IV Studio starts the next H3-ready GPU free in your volume's data center. The next render wakes it again (about 2–5 minutes).
+          With nothing to do for {IDLE.find(([s]) => s === idle)?.[1]}, the pod deletes itself and GPU billing stops; your volume keeps ComfyUI, the models and every render. If your GPU is taken when a render needs one, Techlit Studio starts the next H3-ready GPU free in your volume's data center. The next render wakes it again (about 2–5 minutes).
           {chosen && ` A 10-second 2 MP shot takes roughly 3–5 minutes of GPU, about $${((chosen.perHour * 4) / 60).toFixed(2)}.`}
         </p>
       </Step>
@@ -243,12 +477,12 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
         <p className="small dim">
           Makes a 100 GB network volume in a RunPod data center that has your GPU, starts a pod that installs ComfyUI and every node pack (matched to this version) and downloads the H3 models onto the volume (about 60 GB, once), then uploads your characters. The first time takes 20–40 minutes of GPU time, under about $1 on an L40S. RunPod bills the volume while it exists (about $7 a month for 100 GB); delete it on RunPod's Storage page when you're done with the cloud.
         </p>
-        <button className="btn btn-primary" disabled={!!busy || !rp.hasKey || st.target === 'cloud'} onClick={() => run('Setting up RunPod', () => window.ivstudio.cloud.runpodSetUp({ gpu, idleSeconds: idle }))}>
+        <button className="btn btn-primary" disabled={!!busy || !rp.hasKey || st.target === 'cloud'} onClick={() => run('Setting up RunPod', () => window.ivstudio.cloud.runpodSetUp({ gpu, idleSeconds: idle, perHour: chosen?.perHour ?? null }))}>
           {rp.ready ? 'Set up again' : 'Set up RunPod'}
         </button>
         {rp.volumeId && (
           <p className="mono small dim">
-            {gpus.find((g) => g.id === rp.gpu)?.label || rp.gpu} · shuts down after {Math.round((rp.idleSeconds || 300) / 60)} min · volume {rp.volumeId} in {rp.dataCenter}
+            {options.find((g) => g.id === rp.gpu)?.label || rp.gpu} · shuts down after {Math.round((rp.idleSeconds || 300) / 60)} min · volume {rp.volumeId} in {rp.dataCenter}
           </p>
         )}
       </Step>
@@ -256,7 +490,7 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
   )
 }
 
-// Comfy Cloud: Comfy's hosted ComfyUI. A key, then a check of what IV Studio can do there (it can't take node packs).
+// Comfy Cloud: Comfy's hosted ComfyUI. A key, then a check of what Techlit Studio can do there (it can't take node packs).
 function ComfyCloudSteps({ st, busy, run, notify, refresh }) {
   const cc = st.comfycloud || {}
   const [key, setKey] = useState('')
@@ -308,7 +542,7 @@ function ComfyCloudSteps({ st, busy, run, notify, refresh }) {
         )}
       </Step>
       <Step n={2} title="What works there" done={!!survey}>
-        <p className="small dim">Comfy Cloud runs ComfyUI's own nodes and the node packs Comfy chooses, with its own model library. You can't add node packs there, so IV Studio asks it what it has. Asking is free.</p>
+        <p className="small dim">Comfy Cloud runs ComfyUI's own nodes and the node packs Comfy chooses, with its own model library. You can't add node packs there, so Techlit Studio asks it what it has. Asking is free.</p>
         <button className="btn btn-small" disabled={!!busy || !cc.hasKey} onClick={() => run('Asking Comfy Cloud', () => window.ivstudio.cloud.comfyCloudCheck())}>
           {survey ? 'Check again' : 'Check what works'}
         </button>
@@ -472,6 +706,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
         <span className="small dim">A few steps: pick a service, connect it, choose a GPU, set it up, switch it on.</span>
       </div>
 
+      <CloudDash notify={notify} />
       <section className="cloud-control">
         <div className="cloud-control-head">
           <span className="mono label">Render on</span>
@@ -517,7 +752,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
       {!runpod && !comfyCloud && (
         <>
           <Step n={1} title="Cloud tools" done={st.toolkit}>
-            <p className="small dim">A private copy of Modal's client in IV Studio's own folder (about 100 MB). Nothing else on your PC changes.</p>
+            <p className="small dim">A private copy of Modal's client in Techlit Studio's own folder (about 100 MB). Nothing else on your PC changes.</p>
             {!st.toolkit && (
               <button className="btn btn-small" disabled={!!busy} onClick={() => run('Installing', () => window.ivstudio.cloud.install())}>
                 Install the cloud tools
@@ -565,7 +800,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
 
           <Step n={4} title="Set up" done={setUpDone}>
             <p className="small dim">
-              Builds IV Studio's cloud image (ComfyUI and every node pack, matched to this version), downloads the H3 models into your Modal storage (about 60 GB, once), and uploads your characters. The first time takes 20–40 minutes and costs a few cents of CPU time. Run it again after changing GPU or adding characters.
+              Builds Techlit Studio's cloud image (ComfyUI and every node pack, matched to this version), downloads the H3 models into your Modal storage (about 60 GB, once), and uploads your characters. The first time takes 20–40 minutes and costs a few cents of CPU time. Run it again after changing GPU or adding characters.
             </p>
             <button className="btn btn-primary" disabled={!!busy || !st.workspace} onClick={setUp}>
               {setUpDone ? 'Set up again' : 'Set up the cloud'}
@@ -597,7 +832,7 @@ export default function Cloud({ notify, recheck, setup, info }) {
         </div>
         <div className="group-body">
           <p className="small dim">
-            On Comfy Cloud, what works depends on the nodes and models Comfy offers there (the check above lists it); pictures and music use ComfyUI’s own nodes. On Modal and RunPod, nearly everything works as on a PC: shots, sequences, pictures and picture tools, Projects sketches, character design, music, sounds, Cut out, Reframe, Replace, Effects, SeedVR2 and voices (set them up once on the Voices page). Each feature’s models are downloaded into your cloud storage the first time you use it, after IV Studio asks. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps), or SeedVR2. Live step pictures, Replace’s old engine and New angle stay on PCs. Finished videos download to Videos\IV Studio when you open them.
+            On Comfy Cloud, what works depends on the nodes and models Comfy offers there (the check above lists it); pictures and music use ComfyUI’s own nodes. On Modal and RunPod, nearly everything works as on a PC: shots, sequences, pictures and picture tools, Projects sketches, character design, music, sounds, Cut out, Reframe, Replace, Effects, SeedVR2 and voices (set them up once on the Voices page). Each feature’s models are downloaded into your cloud storage the first time you use it, after Techlit Studio asks. The final DLSS clean-up only runs on Windows, so cloud finals use a 2× AI upscale (Real-ESRGAN) and frame interpolation (RIFE, 48/72/120 fps), or SeedVR2. Live step pictures, Replace’s old engine and New angle stay on PCs. Finished videos download to Videos\Techlit Studio when you open them.
           </p>
         </div>
       </section>

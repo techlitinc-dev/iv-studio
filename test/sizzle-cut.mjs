@@ -55,7 +55,7 @@ const scenes = [
 ]
 const clip = (w, h) => ({ clip: { frames_dir: 'plates/x', n: 1, fps: 30, w, h, pattern: '%05d.png' } })
 const media = { eye: clip(1920, 1080), maker: clip(1376, 768), phone: clip(780, 1688), ink: clip(1920, 1088) }
-const base = { scenes, format: { width: 1920, height: 1088 }, colors: ['#f1ede5', '#100c0e', '#de374f'], media, logo: clip(364, 198), site: { name: 'Infinite Variance', host: 'infinitevariance.ai', ctas: ['Let’s make something ↗'] }, font: { family: 'Barlow Condensed', url: 'media/f.ttf', measure } }
+const base = { scenes, format: { width: 1920, height: 1088 }, colors: ['#f1ede5', '#100c0e', '#de374f'], media, logo: clip(364, 198), site: { name: 'DD'S Techlit AI Solutions', host: 'infinitevariance.ai', ctas: ['Let’s make something ↗'] }, font: { family: 'Barlow Condensed', url: 'media/f.ttf', measure } }
 const beats = Array.from({ length: 40 }, (_, k) => k * 0.625)
 
 check('the storyboard on the beat', () => {

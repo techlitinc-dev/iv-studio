@@ -1,7 +1,7 @@
 // Prompt writer: turns a plain-words idea into a MiniMax H3 prompt, so nobody has to learn the format.
 //   contextir - MiniMax's own rewriter (H3 Context IR), run as a ComfyUI partner node. Paid per call
 //               through the user's Comfy.org API key; sees the reference media.
-//   local     - a model in the user's own Ollama with IV Studio's H3 rule sheet and MiniMax's own H3 guide
+//   local     - a model in the user's own Ollama with Techlit Studio's H3 rule sheet and MiniMax's own H3 guide
 //               (h3guide.js). Free and private; the model is unloaded right after writing so H3 gets the GPU back.
 //   claude, codex - the person's own Claude Code or Codex (harness.js), with the same rules and guide.
 //   openai    - the same as local, on an OpenAI-compatible server (llm.js; Settings calls it OpenAI-compatible).
@@ -28,7 +28,7 @@ export const OLLAMA_URL = 'http://127.0.0.1:11434'
 
 // Where Ollama is: Settings → Prompt writer → Ollama address, else OLLAMA_HOST (Ollama's own variable), else this PC.
 // Main and the MCP server point ollamaSource at their settings. An Ollama elsewhere (another container or PC) isn't
-// started by IV Studio, and isn't sent to the CPU while ComfyUI renders, since it doesn't share this GPU.
+// started by Techlit Studio, and isn't sent to the CPU while ComfyUI renders, since it doesn't share this GPU.
 let ollamaSource = () => ''
 export const setOllamaSource = (fn) => (ollamaSource = fn)
 export function normalizeOllamaUrl(value) {
@@ -143,7 +143,7 @@ const MODE_RULES = {
 - "summary": one short paragraph on what the target video is and what each reference supplies, using only the labels defined.
 - "retention": one entry per subject: the shots it appears in, how it is kept ("fully_preserved" when it appears as defined, "partially_preserved" when some defined features change, "attribute_transfer" only when its features pass to a different target subject, "weak_reference" for broad similarity of style or mood) and what is kept.
 - A picture of a person gives the PERSON, not the scene: keep their face, hair, age, build, wardrobe and what they wear or carry, and nothing of the picture's background, place, light, framing or pose. The place, light, camera and action come from the idea and are new: describe them fresh in the shots, as if the picture had been taken somewhere else. If the idea names no place, choose one that fits the idea instead of the picture's background. A person's "retention" lists only identity and wardrobe, never setting, background, scene or lighting, and the summary never says the setting is kept. Only a picture of a place (no person in it), or an idea that asks for the same place ("here", "in this room", "same place"), sets the place. Every shot happens in the idea's place, [Shot 1] included: never open on the picture's place and cut away from it.
-- Each subject also has "backdrop": for a person or thing seen in a picture, what is behind them in that picture, in a few plain words (like "pyramids, sphinx, desert, tourists"); "" for a place. It isn't part of the prompt: IV Studio uses it to keep that backdrop out of the shots unless the idea asks for it.
+- Each subject also has "backdrop": for a person or thing seen in a picture, what is behind them in that picture, in a few plain words (like "pyramids, sphinx, desert, tourists"); "" for a place. It isn't part of the prompt: Techlit Studio uses it to keep that backdrop out of the shots unless the idea asks for it.
 - In the shots, refer to those people and things as <Subject 1>, <Subject 2>, describing them in full at their first appearance. A subject who speaks is written "<Subject 2> (S1)".
 - Put one or two sentences of overall style in "style". The shots together run 350-500 words: each shot gives its composition, who is where and what they wear, the place and light, the action, the camera, and the sound.`
 }
@@ -163,7 +163,7 @@ function durationRule(seconds) {
 
 const firstName = (character) => character?.name?.split(/\s+/)[0] || null
 
-// Writer output -> IV Studio prompt: character name back to {char}, fences and thinking removed.
+// Writer output -> Techlit Studio prompt: character name back to {char}, fences and thinking removed.
 export function cleanPrompt(text, character) {
   let t = String(text || '')
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
@@ -285,20 +285,20 @@ export function outputSchema({ mode = 'text', sequence = false, lastFrame = fals
 
 const withName = (text, character) => (firstName(character) ? String(text).replaceAll('{char}', firstName(character)) : String(text).replaceAll('{char}', 'the main character'))
 
-// MiniMax's guide, as the writer reads it after IV Studio's rules: the base guide for every mode, its
-// full-reference guide too in reference mode. IV Studio's JSON shape and character rule still come first.
+// MiniMax's guide, as the writer reads it after Techlit Studio's rules: the base guide for every mode, its
+// full-reference guide too in reference mode. Techlit Studio's JSON shape and character rule still come first.
 function guideText(guide, mode) {
   if (!guide) return ''
   return `MINIMAX'S OWN H3 PROMPT GUIDE
-MiniMax, who made H3, wrote the guide below. Follow it for the content and wording of every field: style, composition, shots and cuts, camera moves (type, amplitude, speed), speakers and their voices, dialogue, voiceover, on-screen text, sound and music. Where it and IV Studio's rules above differ, follow the guide, except that you still answer in IV Studio's JSON shape and keep the main-character rule.
-IV Studio assembles the final prompt from your JSON, so don't write field names, the opening alignment line, [Shot N] labels or cut times yourself: "style" opens [Shot 1]${mode === 'reference' ? ' (in reference mode it is the one or two style sentences before [Shot 1])' : ''}, each shot's "description" is that shot's text, and "soundscape" and "music" are overall_soundscape and non_diegetic_music.
+MiniMax, who made H3, wrote the guide below. Follow it for the content and wording of every field: style, composition, shots and cuts, camera moves (type, amplitude, speed), speakers and their voices, dialogue, voiceover, on-screen text, sound and music. Where it and Techlit Studio's rules above differ, follow the guide, except that you still answer in Techlit Studio's JSON shape and keep the main-character rule.
+Techlit Studio assembles the final prompt from your JSON, so don't write field names, the opening alignment line, [Shot N] labels or cut times yourself: "style" opens [Shot 1]${mode === 'reference' ? ' (in reference mode it is the one or two style sentences before [Shot 1])' : ''}, each shot's "description" is that shot's text, and "soundscape" and "music" are overall_soundscape and non_diegetic_music.
 
 ${guide.base}${mode === 'reference' && guide.ref ? `\n\n${guide.ref}` : ''}`
 }
 
 function directingText() {
   return `THE DIRECTING METHOD
-${DIRECTING_SOURCE}. Direct the shot this way. You answer in IV Studio's JSON shape, so "return a shot brief" means the "direction" field and the shots: there is nobody to ask, so label a working assumption inside "direction" when something minor is missing. The review part applies when you are asked to review a take.
+${DIRECTING_SOURCE}. Direct the shot this way. You answer in Techlit Studio's JSON shape, so "return a shot brief" means the "direction" field and the shots: there is nobody to ask, so label a working assumption inside "direction" when something minor is missing. The review part applies when you are asked to review a take.
 
 ${DIRECTING}`
 }
@@ -337,7 +337,7 @@ export async function ollamaStatus() {
     const { models = [] } = await r.json()
     return { url, local, running: true, installed: true, models: models.map((m) => ({ name: m.name, size: m.size, vision: /vl|vision|llava|gemma3/i.test(m.name) })) }
   } catch {
-    // An Ollama elsewhere counts as installed: IV Studio can't see or start it, only reach it.
+    // An Ollama elsewhere counts as installed: Techlit Studio can't see or start it, only reach it.
     return { url, local, running: false, installed: !local || ollamaExe() != null, models: [] }
   }
 }
@@ -538,7 +538,7 @@ async function checked(data, { assembleOpts, character, ctx, again, retry, idea,
   const issues = limited ? [] : lintPrompt(draft, ctx).filter((f) => f.level === 'error' || REDO.has(f.code))
   if (left.length && !limited) issues.unshift({ message: `The shots set the scene in the reference picture's own backdrop (${left.join(', ')}), which the idea doesn't ask for. Every shot, [Shot 1] included, happens in the idea's place: rewrite the shots without the picture's backdrop.` })
   if (!issues.length || !again) return draft
-  const note = `IV Studio's prompt checker found these problems in your answer:\n${issues.map((f) => `- ${f.message}`).join('\n')}\nAnswer again with the whole JSON object, in the same shape, changing only what fixes these problems.`
+  const note = `Techlit Studio's prompt checker found these problems in your answer:\n${issues.map((f) => `- ${f.message}`).join('\n')}\nAnswer again with the whole JSON object, in the same shape, changing only what fixes these problems.`
   try {
     let fixed = await again(note, JSON.stringify(data))
     if (!fixed) return draft
@@ -579,7 +579,7 @@ export async function writeLocal({ idea, mode = 'text', seconds = 5, character, 
   const info = await localWriterModel(model)
   const name = info.name
   // On the CPU (ComfyUI is rendering) the full-reference part of the guide makes a prompt take over five minutes,
-  // so it's left out there; IV Studio's reference rules and layout still apply.
+  // so it's left out there; Techlit Studio's reference rules and layout still apply.
   const full = await loadGuide()
   const guide = full && cpu ? { base: full.base } : full
   const req = await promptRequest({ idea, mode, seconds, character, sequence, previous, media, guide, look: info.vision })
@@ -734,7 +734,7 @@ export async function pullModel(name, onProgress) {
 }
 
 // ---------- MiniMax Context IR (ComfyUI partner node) ----------
-// media: [{kind, name}] already uploaded into ComfyUI's input folder, in IV Studio order.
+// media: [{kind, name}] already uploaded into ComfyUI's input folder, in Techlit Studio order.
 export function contextIrGraph({ idea, mode, seconds, aspect, character, media = [], sequence = false }) {
   const g = {}
   const ir = { model: 'MiniMax H3', 'model.prompt': '', 'model.duration': Math.min(15, Math.max(4, Math.round(seconds))), 'model.ratio': aspect || '16:9' }
@@ -773,7 +773,7 @@ export function contextIrGraph({ idea, mode, seconds, aspect, character, media =
   return g
 }
 
-// Context IR names media "Image 1", "Video 1", "Audio 1"; IV Studio's workflow uses <Picture 1>, <Video 1>, <Audio 1>.
+// Context IR names media "Image 1", "Video 1", "Audio 1"; Techlit Studio's workflow uses <Picture 1>, <Video 1>, <Audio 1>.
 export function fromContextIr(text, character) {
   const t = String(text || '')
     .replace(/<?\b(?:Image|Picture)\s*(\d)\b>?/g, '<Picture $1>')

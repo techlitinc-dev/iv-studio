@@ -2,7 +2,7 @@
 // Seedance doesn't infer what a reference is for, so every attached reference should be named (@image1, @video1,
 // @audio1, in attach order) and given a role; H3's markup (<d>, <Picture 1>, field names) means nothing to it.
 //   lintSeedance(prompt, { mode, seconds, refs: { pictures, videos, audios }, auto }) -> [{ level, code, message, fix? }]
-// auto: tags IV Studio writes a role line for itself when the prompt doesn't (a character's face, a voice line).
+// auto: tags Techlit Studio writes a role line for itself when the prompt doesn't (a character's face, a voice line).
 
 const H3_FIELDS = /\b(integrated_multimodal_description|detailed_description|subject_definitions|retention_analysis|overall_soundscape|non_diegetic_music)\s*:/i
 

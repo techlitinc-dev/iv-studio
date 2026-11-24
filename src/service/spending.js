@@ -1,9 +1,9 @@
 // The chat's spending limit (Settings → Agents). Off unless the person turns it on. When it's on, a chat step whose
-// price IV Studio knows before it runs (Seedance on the person's Comfy.org credits, priced by IV Studio's own price
+// price Techlit Studio knows before it runs (Seedance on the person's Comfy.org credits, priced by Techlit Studio's own price
 // check) goes ahead without an Allow card when all of these hold: it costs no more than the per-step amount, today's
 // chat spending plus it stays within the daily budget, and the Comfy.org balance covers it. Anything else asks, as
 // before. Every paid chat step counts when it starts (Allowed or not, and even if the render later fails); the day
-// starts at local midnight. The record is spending.json in IV Studio's data folder.
+// starts at local midnight. The record is spending.json in Techlit Studio's data folder.
 //
 // The chat's MCP server runs as its own process and can't read the app's sealed Comfy.org key, so the app runs a
 // "spend desk" on 127.0.0.1 while a chat turn runs: the server asks it whether a step may go ahead, records what
@@ -57,7 +57,7 @@ export function todayLabel(budget, spent) {
 }
 
 // May this paid step go ahead without an Allow card? { auto: true } or { auto: false, why } (the card's words).
-// credits/usd: the top of IV Studio's price. unknown: part of the price isn't known. balance: credits, or null when
+// credits/usd: the top of Techlit Studio's price. unknown: part of the price isn't known. balance: credits, or null when
 // it couldn't be read.
 export function decideSpend({ budget, spent = 0, credits, usd, unknown = false, balance = null, what = 'Seedance renders on your Comfy.org credits' }) {
   const cost = `${what}: this costs about ${n(credits)} credits ($${Number(usd).toFixed(2)}).`
@@ -67,13 +67,13 @@ export function decideSpend({ budget, spent = 0, credits, usd, unknown = false, 
   if (!(credits >= 0)) return { auto: false, why: `${cost} Its price isn’t known, so it asks.${status}` }
   if (credits > budget.perStep) return { auto: false, why: `${cost} That’s more than the ${n(budget.perStep)} credits one step can spend without asking.${status}` }
   if (spent + credits > budget.daily) return { auto: false, why: `${cost} Only ${n(Math.max(0, budget.daily - spent))} credits are left in today’s limit.${status}` }
-  if (balance === null || !Number.isFinite(balance)) return { auto: false, why: `${cost} IV Studio couldn’t read your Comfy.org balance, so it asks.${status}` }
+  if (balance === null || !Number.isFinite(balance)) return { auto: false, why: `${cost} Techlit Studio couldn’t read your Comfy.org balance, so it asks.${status}` }
   if (balance < credits) return { auto: false, why: `${cost} Your Comfy.org balance is ${n(balance)} credits, not enough for it.${status}` }
   return { auto: true }
 }
 
 // The app's side: a small server on 127.0.0.1 that only answers a chat turn's own token.
-//   settings(): IV Studio's settings now. key(): the Comfy.org key or null. balance(): credits now, or null.
+//   settings(): Techlit Studio's settings now. key(): the Comfy.org key or null. balance(): credits now, or null.
 //   onSpend(turn, entry, { spent, budget }): a paid step started (the app adds a line to the chat).
 // Returns { url (a promise), issue(turn) → token, revoke(token), close() }.
 export function startSpendDesk({ dataDir, settings, key, balance, onSpend = () => {}, now = () => new Date() }) {
@@ -161,7 +161,7 @@ export function spendDeskClient(env = process.env, fetchImpl = globalThis.fetch)
       signal: AbortSignal.timeout(30000)
     })
     const j = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(j.error || `IV Studio answered ${res.status}.`)
+    if (!res.ok) throw new Error(j.error || `Techlit Studio answered ${res.status}.`)
     return j
   }
   return {

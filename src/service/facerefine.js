@@ -1,7 +1,7 @@
 // Refine faces: a finished shot's face tracked, cropped to fill a 768 px canvas, redrawn by MiniMax H3 against the
 // person's face picture (and their character LoRA), and stitched back into the original frames, so a small face in
 // a wide shot gets the detail and likeness a close-up has. Carasibana's ComfyUI-H3-FaceRefine (MIT) does the
-// tracking, the per-frame strength and the stitch; IV Studio builds its graph on IV Studio's own H3 files.
+// tracking, the per-frame strength and the stitch; Techlit Studio builds its graph on Techlit Studio's own H3 files.
 // Tested on a wide Tess shot (2026-11-13): likeness to her face picture went from 0.00 to 0.35 on a small face, 0.42
 // to 0.47 on a close one, in about 5 minutes for 124 frames with the model load.
 // The finish: AnniCodex's FaceRefine Plus (MIT), when it's installed, instead of the plain stitch: Stitch Plus (light
@@ -25,7 +25,7 @@ const H3 = {
   vae: 'minimax_h3_video_vae_int8_convrot.safetensors',
   audioVae: 'minimax_h3_audio_vae_fp32.safetensors',
   // lightx2v's ref2v turbo at 8 steps, made for 768 px: what FaceRefine's own example runs. Kijai's DMAD 4-step LoRA
-  // (IV Studio's shot turbo) at the same steps lifted Tess's small face only from 0.00 to 0.04 likeness; this one to 0.26
+  // (Techlit Studio's shot turbo) at the same steps lifted Tess's small face only from 0.00 to 0.04 likeness; this one to 0.26
   turbo: 'minimax_h3_ref2v_turbo_8step_v1.0_768p_comfyui_bf16.safetensors'
 }
 

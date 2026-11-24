@@ -67,7 +67,7 @@ export function ShinobiList({ openShinobi, notify, go }) {
                 {busy ? 'Setting up…' : 'Set up Shinobi'}
               </button>
             </div>
-            <p className="stage-note small">{st.browser ? `It renders with ${base(st.browser).replace('.exe', '')} and IV Studio's own ffmpeg, at a fixed version in IV Studio's own folder. Nothing else on your PC changes.` : 'Shinobi needs Microsoft Edge or Google Chrome to draw frames.'}</p>
+            <p className="stage-note small">{st.browser ? `It renders with ${base(st.browser).replace('.exe', '')} and Techlit Studio's own ffmpeg, at a fixed version in Techlit Studio's own folder. Nothing else on your PC changes.` : 'Shinobi needs Microsoft Edge or Google Chrome to draw frames.'}</p>
           </>
         )}
         <WorkflowNeeds page="shinobi" />
@@ -165,7 +165,7 @@ export function ShinobiProject({ projectId, notify, go }) {
       await load()
     })
   }
-  const agentBrief = `Edit a film with Shinobi, IV Studio's agent-driven editor (its MCP tools: shinobi_tools to list them, shinobi to call one).
+  const agentBrief = `Edit a film with Shinobi, Techlit Studio's agent-driven editor (its MCP tools: shinobi_tools to list them, shinobi to call one).
 
 Project: "${p.name}" (project_id ${p.id}).
 Media already imported:
@@ -175,7 +175,7 @@ ${p.timeline ? `There is a saved timeline (${p.timeline.seconds} s) you can buil
 What I want:
 ${brief || '(describe the film here)'}
 
-Read the guides first (shinobi read_guide: agent, timeline, effects). Look at the media with preview_source before choosing shots, preview the timeline before rendering, and render with start_render. Tell me when it's ready; I'll review it in IV Studio's Shinobi page.`
+Read the guides first (shinobi read_guide: agent, timeline, effects). Look at the media with preview_source before choosing shots, preview the timeline before rendering, and render with start_render. Tell me when it's ready; I'll review it in Techlit Studio's Shinobi page.`
 
   return (
     <div className="shinobi create-v2 flow-page">
@@ -191,7 +191,7 @@ Read the guides first (shinobi read_guide: agent, timeline, effects). Look at th
             + Files
           </button>
           <button className="btn btn-small" onClick={async () => setLib(lib ? null : await window.ivstudio.edits.library())}>
-            + IV Studio render
+            + Techlit Studio render
           </button>
         </div>
         {lib && (
@@ -262,7 +262,7 @@ Read the guides first (shinobi read_guide: agent, timeline, effects). Look at th
         )}
       </Step>
 
-      <Step n={3} title="Hand it to your agent" sub="Your agent edits through IV Studio's MCP (Settings → Agents). This message tells it which film, what's in it and what you want.">
+      <Step n={3} title="Hand it to your agent" sub="Your agent edits through Techlit Studio's MCP (Settings → Agents). This message tells it which film, what's in it and what you want.">
         <div onClick={() => S.saveBrief(projectId, brief)}>
           <SetCode text={agentBrief} label="Copy for your agent" tall />
         </div>

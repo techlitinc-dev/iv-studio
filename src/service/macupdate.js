@@ -1,8 +1,8 @@
-// IV Studio's own updater for a Mac. Apple's updater (Squirrel.Mac, which electron-updater uses there) only installs
-// into an app signed with a paid Apple Developer ID, and IV Studio's Mac build is ad-hoc signed. So a Mac copy reads
+// Techlit Studio's own updater for a Mac. Apple's updater (Squirrel.Mac, which electron-updater uses there) only installs
+// into an app signed with a paid Apple Developer ID, and Techlit Studio's Mac build is ad-hoc signed. So a Mac copy reads
 // the same latest-mac.yml the release carries, downloads the zip for its own chip, checks it against the feed's
 // SHA-512 and size, unpacks it with ditto (which keeps the bundle's signature and links), checks the new bundle's
-// version and signature, and after IV Studio quits a small shell script swaps the bundle in place and opens it again.
+// version and signature, and after Techlit Studio quits a small shell script swaps the bundle in place and opens it again.
 // Nothing here needs Electron, so the parts are tested on any OS (test/mac-update.mjs); the steps that need macOS
 // tools (ditto, codesign, PlistBuddy) take a runner so the test can stand them in.
 import crypto from 'node:crypto'
@@ -39,7 +39,7 @@ export function parseFeed(text) {
   return { version: String(doc.version).replace(/^v/, ''), files, releaseDate: doc.releaseDate || null }
 }
 
-// the zip for this chip: IV-Studio-mac-arm64.zip on Apple Silicon, IV-Studio-mac-x64.zip on Intel (and under Rosetta,
+// the zip for this chip: Techlit-Studio-mac-arm64.zip on Apple Silicon, Techlit-Studio-mac-x64.zip on Intel (and under Rosetta,
 // where an Intel copy keeps running as Intel)
 export function pickFile(files, arch) {
   const zips = files.filter((f) => /\.zip$/i.test(f.url))
@@ -56,7 +56,7 @@ export function feedUrls(testFeed) {
   return { feed: `${RELEASES}/latest/download/latest-mac.yml`, file: (name, version) => `${RELEASES}/download/v${version}/${encodeURIComponent(name)}` }
 }
 
-// /Applications/IV Studio.app/Contents/MacOS/IV Studio -> /Applications/IV Studio.app
+// /Applications/Techlit Studio.app/Contents/MacOS/Techlit Studio -> /Applications/Techlit Studio.app
 export function appBundleOf(execPath) {
   const m = String(execPath).match(/^(.*?\.app)\/Contents\/MacOS\/[^/]+$/)
   return m ? m[1] : null
@@ -67,9 +67,9 @@ export function appBundleOf(execPath) {
 // into Applications first; a folder the person can't write to (a standard account with the app in /Applications)
 // needs the download page.
 export function cannotReplace(bundle, { access = fs.accessSync } = {}) {
-  if (!bundle) return 'IV Studio isn’t running from an app bundle.'
-  if (/\/AppTranslocation\//.test(bundle)) return 'macOS is running IV Studio from a temporary read-only copy. Drag IV Studio into your Applications folder and open it from there, then it can update itself.'
-  if (/^\/Volumes\//.test(bundle)) return 'IV Studio is running from its disk image or another drive. Drag it into your Applications folder and open it from there, then it can update itself.'
+  if (!bundle) return 'Techlit Studio isn’t running from an app bundle.'
+  if (/\/AppTranslocation\//.test(bundle)) return 'macOS is running Techlit Studio from a temporary read-only copy. Drag Techlit Studio into your Applications folder and open it from there, then it can update itself.'
+  if (/^\/Volumes\//.test(bundle)) return 'Techlit Studio is running from its disk image or another drive. Drag it into your Applications folder and open it from there, then it can update itself.'
   try {
     access(path.dirname(bundle), fs.constants.W_OK)
     access(bundle, fs.constants.W_OK)
@@ -123,7 +123,7 @@ export async function download(url, file, { onProgress = () => {}, fetchImpl = n
 function get(url, { signal, quietMs, hops = 0 }) {
   return new Promise((resolve, reject) => {
     const lib = url.startsWith('https:') ? https : http
-    const req = lib.get(url, { signal, headers: { 'user-agent': 'IV-Studio-updater' } }, (res) => {
+    const req = lib.get(url, { signal, headers: { 'user-agent': 'Techlit-Studio-updater' } }, (res) => {
       if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
         res.resume()
         if (hops >= 5) return reject(new Error('The download redirected too many times.'))
@@ -183,15 +183,15 @@ export async function stage(zip, dir, { version, run }) {
 
 const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`
 
-// The script that swaps the bundle once IV Studio (pid) has quit: the old copy moves aside, the new one takes its
-// place, and the old one is removed only when that worked (else it's put back). Then IV Studio opens again.
+// The script that swaps the bundle once Techlit Studio (pid) has quit: the old copy moves aside, the new one takes its
+// place, and the old one is removed only when that worked (else it's put back). Then Techlit Studio opens again.
 export function installScript({ pid, bundle, staged, log, relaunch = true }) {
   const old = `${bundle}.iv-old`
   return [
     '#!/bin/sh',
-    `# IV Studio update: swap ${bundle}`,
+    `# Techlit Studio update: swap ${bundle}`,
     `exec >>${q(log)} 2>&1`,
-    `echo "$(date) waiting for IV Studio (pid ${pid}) to quit"`,
+    `echo "$(date) waiting for Techlit Studio (pid ${pid}) to quit"`,
     'n=0',
     `while kill -0 ${pid} 2>/dev/null; do n=$((n+1)); [ $n -gt 600 ] && { echo "it didn't quit"; exit 1; }; sleep 0.2; done`,
     `rm -rf ${q(old)}`,

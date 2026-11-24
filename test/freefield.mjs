@@ -1,4 +1,4 @@
-// Freefield's apps as IV Studio runs them (src/service/freefield.js): every vendored app loads, its inputs bind to
+// Freefield's apps as Techlit Studio runs them (src/service/freefield.js): every vendored app loads, its inputs bind to
 // real nodes, filling sets the values (templates, random seeds, select checks), and model files this PC has as
 // another build are swapped in.
 import assert from 'node:assert/strict'
@@ -61,7 +61,7 @@ ok('model files this PC has as another build are swapped in; the rest are report
   const field = Object.entries(te.inputs).find(([, v]) => /qwen3vl_32b/.test(v))[0]
   const ivTe = manifest.models.find((m) => m.id === 'text_encoder').match
   const info = {}
-  // a ComfyUI that lists only IV Studio's own H3 text encoder for that loader, and nothing else for any loader
+  // a ComfyUI that lists only Techlit Studio's own H3 text encoder for that loader, and nothing else for any loader
   for (const nd of Object.values(graph)) {
     for (const [f, v] of Object.entries(nd.inputs || {})) {
       if (typeof v !== 'string' || !/\.(safetensors|gguf)$/i.test(v)) continue
@@ -72,7 +72,7 @@ ok('model files this PC has as another build are swapped in; the rest are report
   }
   const r = swapModels(fillGraph(app, graph, {}), info, manifest)
   assert.deepEqual(r.missing, [])
-  assert.equal(Object.values(r.graph).find((nd) => nd.class_type === te.class_type && nd.inputs[field]).inputs[field], ivTe, 'the int8 encoder is swapped for IV Studio’s')
+  assert.equal(Object.values(r.graph).find((nd) => nd.class_type === te.class_type && nd.inputs[field]).inputs[field], ivTe, 'the int8 encoder is swapped for Techlit Studio’s')
   info[te.class_type].input.required[field] = [['something_else.safetensors']]
   assert.ok(swapModels(graph, info, manifest).missing.some((m) => /qwen3vl_32b/.test(m)), 'nothing to swap in: reported missing')
 })

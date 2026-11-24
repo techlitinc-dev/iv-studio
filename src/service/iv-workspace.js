@@ -6,7 +6,7 @@ import { mkdirSync, existsSync, readFileSync, openSync, readSync, closeSync, cop
 import { join, extname, basename } from 'node:path'
 import { homedir } from 'node:os'
 
-export const APPS = { outreach: 'IV Outreach', studio: 'IV Studio', signal: 'IV Signal' }
+export const APPS = { outreach: 'Techlit Outreach', studio: 'Techlit Studio', signal: 'Techlit Signal' }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const text = (value, max = 2000) => typeof value === 'string' ? value.trim().slice(0, max) : ''
 const at = () => new Date().toISOString()
@@ -55,7 +55,7 @@ function mediaKind(file) {
 
 export class IVWorkspace {
   constructor({ root = workspaceDir(), appId, profile = '' }) {
-    if (!APPS[appId] && appId !== 'hivemind') throw Error('Unknown IV app.')
+    if (!APPS[appId] && appId !== 'hivemind') throw Error('Unknown Techlit app.')
     this.root = root; this.appId = appId; this.profile = hash(profile).slice(0, 20)
     mkdirSync(root, { recursive: true })
     this.db = new DatabaseSync(join(root, 'workspace.db'))
@@ -87,7 +87,7 @@ export class IVWorkspace {
       this.db.prepare('insert into brands values(?,?) on conflict(id) do update set value=excluded.value').run(b.id, JSON.stringify(b)); return b
     })
   }
-  // The business the person is working on across the IV apps, set in IV Hivemind or by picking a shared business in
+  // The business the person is working on across the Techlit apps, set in Techlit Link or by picking a shared business in
   // an app. '' means none (all businesses). Each app follows it to its own linked copy.
   active() { const a = parse(this.db.prepare('select value from meta where key=?').get('active')); return a && typeof a.brandId === 'string' ? a : { brandId: '', at: null, by: null } }
   setActive(brandId) {

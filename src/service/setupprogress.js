@@ -89,7 +89,7 @@ export class SetupProgress {
     this.onChange(this.snapshot())
   }
 
-  // Modal's output, as IV Studio's cloud.js logs it
+  // Modal's output, as Techlit Studio's cloud.js logs it
   fromLine(raw) {
     const line = String(raw || '').trim()
     if (!line) return

@@ -38,7 +38,7 @@ export const MUSIC_ENGINES = [
 export const ACE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'].flatMap((k) => [`${k} major`, `${k} minor`])
 export const MUSIC_DEFAULTS = { engine: 'minimax', seconds: 60, bpm: 120, key: 'C major', timesignature: '4', language: 'en' }
 const INSTRUMENTAL = '[Instrumental]'
-// Remix strength: how much of the song ACE-Step redraws (the sampler's denoise). Picked by ear on an IV Studio
+// Remix strength: how much of the song ACE-Step redraws (the sampler's denoise). Picked by ear on an Techlit Studio
 // score: 0.5 keeps nearly all of it, 0.65 restyles it and keeps its shape, 0.8 is a loose take. Outside
 // 0.4..0.9 it barely changes or barely resembles the song.
 export const REMIX = {

@@ -1,5 +1,5 @@
-// Where IV Studio's data folder is (src/service/paths.js: IV_STUDIO_DATA, the portable "data" folder beside
-// IV Studio.exe, a moved folder's pointer, the default) and moving it (src/service/datafolder.js: copy, links,
+// Where Techlit Studio's data folder is (src/service/paths.js: IV_STUDIO_DATA, the portable "data" folder beside
+// Techlit Studio.exe, a moved folder's pointer, the default) and moving it (src/service/datafolder.js: copy, links,
 // path rewriting, the check, the pointer, removing the old copy). Works in temporary folders; touches nothing else.
 //   node test/data-folder.mjs
 import fs from 'node:fs'
@@ -29,20 +29,20 @@ try {
   console.log('where the data folder is')
   const appdata = path.join(root, 'AppData', 'Roaming')
   const env = { APPDATA: appdata, HOME: path.join(root, 'home') }
-  const def = path.join(appdata, 'IV Studio')
-  const install = path.join(root, 'Programs', 'IV Studio')
-  const exe = path.join(install, 'IV Studio.exe')
+  const def = path.join(appdata, 'Techlit Studio')
+  const install = path.join(root, 'Programs', 'Techlit Studio')
+  const exe = path.join(install, 'Techlit Studio.exe')
   write(exe)
 
   let loc = dataLocation({ env, execPath: exe, platform: 'win32' })
-  ok(loc.source === 'default' && loc.dir === def, `default: %APPDATA%\\IV Studio (${loc.dir})`)
+  ok(loc.source === 'default' && loc.dir === def, `default: %APPDATA%\\Techlit Studio (${loc.dir})`)
   ok(dataDir({ env, execPath: exe, platform: 'win32' }) === def, 'dataDir() gives the same folder')
-  ok(dataLocation({ env: { HOME: '/Users/m' }, execPath: '/x/IV Studio', platform: 'darwin' }).dir === path.join('/Users/m', 'Library', 'Application Support', 'IV Studio'), 'default on a Mac: ~/Library/Application Support/IV Studio')
+  ok(dataLocation({ env: { HOME: '/Users/m' }, execPath: '/x/Techlit Studio', platform: 'darwin' }).dir === path.join('/Users/m', 'Library', 'Application Support', 'Techlit Studio'), 'default on a Mac: ~/Library/Application Support/Techlit Studio')
 
-  // portable: a "data" folder beside IV Studio.exe
+  // portable: a "data" folder beside Techlit Studio.exe
   fs.mkdirSync(path.join(install, 'data'))
   loc = dataLocation({ env, execPath: exe, platform: 'win32' })
-  ok(loc.source === 'portable' && loc.dir === path.join(install, 'data'), 'portable: the data folder beside IV Studio.exe')
+  ok(loc.source === 'portable' && loc.dir === path.join(install, 'data'), 'portable: the data folder beside Techlit Studio.exe')
   ok(dataLocation({ env, execPath: path.join(install, 'iv-studio'), platform: 'linux' }).source === 'portable', 'portable: the Linux binary name counts too')
   const dev = path.join(root, 'node_modules', 'electron', 'dist', 'electron.exe')
   write(dev)
@@ -55,7 +55,7 @@ try {
   fs.rmSync(path.join(install, 'data'))
 
   // moved: the pointer in the default folder
-  const moved = path.join(root, 'D', 'IV Studio Data')
+  const moved = path.join(root, 'D', 'Techlit Studio Data')
   fs.mkdirSync(moved, { recursive: true })
   write(path.join(def, POINTER_FILE), JSON.stringify({ dir: moved }))
   loc = dataLocation({ env, execPath: exe, platform: 'win32' })
@@ -82,7 +82,7 @@ try {
 
   // ---------- moving ----------
   console.log('moving the data folder')
-  // a data folder as the app leaves it: Electron's files, IV Studio's, Incognito with its junctions, paths inside
+  // a data folder as the app leaves it: Electron's files, Techlit Studio's, Incognito with its junctions, paths inside
   const from = def
   for (const n of ['Cache/data_0', 'Local Storage/leveldb/1.log', 'Preferences', 'lockfile', '.updaterId']) write(path.join(from, n), 'electron')
   writeSettings({ comfyFolder: 'E:\\ComfyUI_windows_portable', incognito: false }, from)
@@ -105,19 +105,19 @@ try {
 
   const entries = movableEntries(from)
   ok(!entries.some((e) => ['cache', 'local storage', 'preferences', 'lockfile', '.updaterid', POINTER_FILE].includes(e.toLowerCase())), `Electron’s own files stay (${entries.join(', ')})`)
-  ok(entries.includes('projects') && entries.includes('incognito') && entries.includes('settings.json'), 'IV Studio’s files move')
+  ok(entries.includes('projects') && entries.includes('incognito') && entries.includes('settings.json'), 'Techlit Studio’s files move')
 
   // where it goes
   const drive = path.join(root, 'D')
   fs.mkdirSync(drive, { recursive: true })
   ok(same(chooseTarget(path.join(drive, 'Fresh'), { from, defaultDir: def }), path.join(drive, 'Fresh')), 'a new folder: used as is')
   write(path.join(drive, 'Busy', 'stuff.txt'), 'x')
-  ok(same(chooseTarget(path.join(drive, 'Busy'), { from, defaultDir: def }), path.join(drive, 'Busy', 'IV Studio')), 'a folder with files in it: a new "IV Studio" folder inside')
-  write(path.join(drive, 'Busy', 'IV Studio', 'x.txt'), 'x')
-  await throws(() => chooseTarget(path.join(drive, 'Busy'), { from, defaultDir: def }), /already has files/, 'refused: its IV Studio folder has files too')
+  ok(same(chooseTarget(path.join(drive, 'Busy'), { from, defaultDir: def }), path.join(drive, 'Busy', 'Techlit Studio')), 'a folder with files in it: a new "Techlit Studio" folder inside')
+  write(path.join(drive, 'Busy', 'Techlit Studio', 'x.txt'), 'x')
+  await throws(() => chooseTarget(path.join(drive, 'Busy'), { from, defaultDir: def }), /already has files/, 'refused: its Techlit Studio folder has files too')
   await throws(() => chooseTarget(from, { from, defaultDir: def }), /already/, 'refused: the folder in use')
   await throws(() => chooseTarget(path.join(from, 'projects'), { from, defaultDir: def }), /outside/, 'refused: inside the folder in use')
-  await throws(() => chooseTarget(def, { from: path.join(drive, 'Elsewhere'), defaultDir: def }), /old copy/, 'refused: back to the default while it still has IV Studio’s files')
+  await throws(() => chooseTarget(def, { from: path.join(drive, 'Elsewhere'), defaultDir: def }), /old copy/, 'refused: back to the default while it still has Techlit Studio’s files')
 
   // the copy
   const to = chooseTarget(path.join(drive, 'IV Data'), { from, defaultDir: def })
@@ -129,7 +129,7 @@ try {
   ok(!fs.existsSync(path.join(to, 'Cache')) && !fs.existsSync(path.join(to, 'lockfile')), 'Electron’s files not copied')
   const proj = JSON.parse(fs.readFileSync(path.join(to, 'projects', 'p1', 'project.json'), 'utf8'))
   ok(proj.still === path.join(to, 'media', 'a.png') && proj.comfy === 'E:\\ComfyUI\\output\\x.mp4', 'paths into the data folder now point at the copy; ComfyUI’s don’t change')
-  ok(fs.readFileSync(path.join(to, 'voiceengine', 'venv', 'pyvenv.cfg'), 'utf8').includes(`home = ${path.join(to, 'cloud', 'python', 'cpython-3.12')}\n`), 'a Python env on IV Studio’s own Python points at the copy')
+  ok(fs.readFileSync(path.join(to, 'voiceengine', 'venv', 'pyvenv.cfg'), 'utf8').includes(`home = ${path.join(to, 'cloud', 'python', 'cpython-3.12')}\n`), 'a Python env on Techlit Studio’s own Python points at the copy')
   ok(fs.readFileSync(path.join(to, 'shinobi', 'venv', 'pyvenv.cfg'), 'utf8') === 'home = C:\\Python312\n', 'a Python env on the system Python is left alone')
   const notes = JSON.parse(fs.readFileSync(path.join(to, 'notes.json'), 'utf8'))
   ok(notes.other === from + ' Old\\thing' && notes.exact === to, 'only whole folder names are rewritten')
@@ -168,7 +168,7 @@ try {
   const old = oldCopy(def, to)
   ok(old && old.dir === from && old.entries.includes('projects'), 'the old copy is known')
 
-  // removing the old copy: only IV Studio's files, never through a junction, Electron's stay
+  // removing the old copy: only Techlit Studio's files, never through a junction, Electron's stay
   const target = path.join(to, 'voiceengine', 'models', 'big.bin')
   await removeOldCopy(def, to)
   ok(!fs.existsSync(path.join(from, 'projects')) && !fs.existsSync(path.join(from, 'incognito')) && !fs.existsSync(path.join(from, 'settings.json')), 'old copy removed')
@@ -186,7 +186,7 @@ try {
   await removeOldCopy(def, def)
   ok(!fs.existsSync(to) && !fs.existsSync(path.join(def, POINTER_FILE)) && dataLocation({ env, execPath: exe, platform: 'win32' }).source === 'default', 'old copy gone, pointer gone: plain default again')
 
-  ok(rewritePaths('"C:\\\\Users\\\\m\\\\AppData\\\\Roaming\\\\IV Studio\\\\x"', 'C:\\Users\\m\\AppData\\Roaming\\IV Studio', 'D:\\IV') === '"D:\\\\IV\\\\x"', 'JSON-escaped Windows paths are rewritten')
+  ok(rewritePaths('"C:\\\\Users\\\\m\\\\AppData\\\\Roaming\\\\Techlit Studio\\\\x"', 'C:\\Users\\m\\AppData\\Roaming\\Techlit Studio', 'D:\\IV') === '"D:\\\\IV\\\\x"', 'JSON-escaped Windows paths are rewritten')
 } finally {
   fs.rmSync(root, { recursive: true, force: true })
 }

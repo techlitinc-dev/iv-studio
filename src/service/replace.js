@@ -2,7 +2,7 @@
 // OpenJutsu's ComfyUI workflows (github.com/D3voz/openjutsu, MIT, commit 47c3724): SAM 3.1 tracks who or what
 // to replace, Qwen3-VL describes the shots, MiniMax H3 reference-to-video redraws only the masked area, clip by
 // clip through the H3 Context Loop. OpenJutsu's mode logic is vendored unchanged in ./replace/*.ts; this file
-// is the part its Next.js app did: inputs, models, the node check and submitting through IV Studio's queue.
+// is the part its Next.js app did: inputs, models, the node check and submitting through Techlit Studio's queue.
 //   person   one character replaces the main person          (simple.api.json)
 //   people   1-4 characters, each matched to a role           (advanced.api.json, advanced_maxq.api.json)
 //   object   change, remove, or replace the background        (object.api.json)
@@ -77,7 +77,7 @@ export class Replace {
 
   graph = (name) => JSON.parse(fs.readFileSync(path.join(this.dir, `${name}.api.json`), 'utf8'))
 
-  // IV Studio's own H3 files (Settings -> Models for References), plus the describer this ComfyUI has.
+  // Techlit Studio's own H3 files (Settings -> Models for References), plus the describer this ComfyUI has.
   async models(extraLoras = []) {
     const t = this.studio.template
     const info = await this.studio.comfy.objectInfo('CLIPLoader')

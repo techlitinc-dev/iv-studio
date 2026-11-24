@@ -18,7 +18,7 @@ const sayTime = (text) => {
   return { words, seconds: Math.max(1, Math.round(words / 2.6)) }
 }
 
-// IV Studio's voice engine (VoxCPM2 and Whisper in its own folder), with Set up the first time.
+// Techlit Studio's voice engine (VoxCPM2 and Whisper in its own folder), with Set up the first time.
 export function useVoiceEngine() {
   const [status, setStatus] = useState(null)
   const check = () => V().status().then(setStatus, () => setStatus({ ready: false, engines: [] }))
@@ -66,8 +66,8 @@ export function EngineStatus({ status, check, notify }) {
         <p className="mono pink">Voices need a one-time setup</p>
         <p className="small dim">
           {status.cloud
-            ? `IV Studio speaks with ${status.setup?.models.map((m) => `${m.name} (${m.by}, ${m.licence})`).join(' and ')}, running on your ${status.cloud === 'runpod' ? 'RunPod' : 'Modal'} cloud GPU beside ComfyUI. Setup puts about ${GB(status.setup?.size || 0)} in your cloud storage, once (${status.cloud === 'runpod' ? 'on a cloud GPU, 10–20 minutes, about $0.30' : 'on a CPU, a few cents'}). Each line then runs on the cloud GPU, billed by the second.`
-            : `IV Studio speaks with ${status.setup?.models.map((m) => `${m.name} (${m.by}, ${m.licence})`).join(' and ')}, running on this PC. Setup downloads about ${GB(status.setup?.size || 0)} into IV Studio's folder, once.`}
+            ? `Techlit Studio speaks with ${status.setup?.models.map((m) => `${m.name} (${m.by}, ${m.licence})`).join(' and ')}, running on your ${status.cloud === 'runpod' ? 'RunPod' : 'Modal'} cloud GPU beside ComfyUI. Setup puts about ${GB(status.setup?.size || 0)} in your cloud storage, once (${status.cloud === 'runpod' ? 'on a cloud GPU, 10–20 minutes, about $0.30' : 'on a CPU, a few cents'}). Each line then runs on the cloud GPU, billed by the second.`
+            : `Techlit Studio speaks with ${status.setup?.models.map((m) => `${m.name} (${m.by}, ${m.licence})`).join(' and ')}, running on this PC. Setup downloads about ${GB(status.setup?.size || 0)} into Techlit Studio's folder, once.`}
         </p>
         {working && <p className="mono small dim voice-log">{log}</p>}
       </div>
@@ -91,7 +91,7 @@ function SeedField({ value, onChange, placeholder = 'Random' }) {
   )
 }
 
-// Audio > Voices: every voice IV Studio can speak in, which character has it, and two ways to make one.
+// Audio > Voices: every voice Techlit Studio can speak in, which character has it, and two ways to make one.
 export function VoicesPage({ notify, characters, setCharacters, go }) {
   const [status, check] = useVoiceEngine()
   const [voices, setVoices] = useState(null)

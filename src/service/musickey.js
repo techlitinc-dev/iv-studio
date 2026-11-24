@@ -1,7 +1,7 @@
 // A song's key, guessed from its sound: how strongly each of the 12 pitch classes sounds over the whole song
 // (Goertzel filters on every note from C2 to B6), matched against key profiles. Used by Remix to fill in the key
 // ACE-Step is told; the person can change it. Mono samples in, no FFT needed.
-// On 24 of IV Studio's own ACE songs, against the key each was asked for: Temperley 16 exact (7 a fifth off),
+// On 24 of Techlit Studio's own ACE songs, against the key each was asked for: Temperley 16 exact (7 a fifth off),
 // Albrecht-Shanahan 14, Krumhansl-Kessler 13. Temperley is the default.
 export const PITCHES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 export const PROFILES = {

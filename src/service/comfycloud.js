@@ -1,7 +1,7 @@
 // Comfy Cloud (cloud.comfy.org): Comfy's own hosted ComfyUI, billed per run on the person's Comfy account. It runs
 // ComfyUI's core nodes and a fixed set of custom node packs that Comfy maintains, with its own model library: nobody can
-// add node packs there. So what IV Studio can do on it depends on what it offers today, and IV Studio asks it
-// (object_info) instead of assuming: pictures and music use core nodes; shots need IV Studio's node packs.
+// add node packs there. So what Techlit Studio can do on it depends on what it offers today, and Techlit Studio asks it
+// (object_info) instead of assuming: pictures and music use core nodes; shots need Techlit Studio's node packs.
 import { Comfy, COMFY_CLOUD } from './comfy.js'
 
 // A key is checked before it's kept: Comfy Cloud answers /api/user only for a valid key on an active plan.

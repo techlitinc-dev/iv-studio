@@ -148,7 +148,7 @@ export function ltxTakes(outputs = {}, previews = 1) {
   return out
 }
 
-// How the writer is told to write for LTX 2.5 (Lightricks' prompting guide, in IV Studio's words): one flowing
+// How the writer is told to write for LTX 2.5 (Lightricks' prompting guide, in Techlit Studio's words): one flowing
 // present-tense paragraph, in the order things happen, with the shot, the look and the sound, spoken words quoted.
 export const LTX_WRITER_RULES = `Write one prompt for LTX 2.5, a video model with sound. Rules:
 - One flowing paragraph in the present tense, 4 to 8 sentences, in the order things happen. No headings, lists, tags or section names.

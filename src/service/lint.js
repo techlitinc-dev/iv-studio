@@ -2,7 +2,7 @@
 // window (Create, a shot's page), the MCP server and the writer's self-repair all share it. Each finding is
 // { level: 'error' | 'warning' | 'info', code, message, fix? }: an error blocks a render unless the person renders
 // anyway; fix, when given, is the whole prompt with the problem mended. The rules follow MiniMax's own H3 guide
-// and what IV Studio's test renders showed.
+// and what Techlit Studio's test renders showed.
 import { resolveFrames } from './plan.js'
 import { isPrevis } from './staging.js'
 
@@ -54,7 +54,7 @@ export function withLine(prompt, who, line) {
 }
 
 // H3 has no negative prompt: every noun is something to show, so "No photographs appear anywhere" hung the wall with
-// photographs (keys + Sam Wasserman's Imagination Studio found this, twice). IV Studio's own house sentences stay:
+// photographs (keys + Sam Wasserman's Imagination Studio found this, twice). Techlit Studio's own house sentences stay:
 // they were tested in renders, and without "No one speaks" H3 invents lines.
 const HOUSE_NEGATIVES = [
   /\b(?:no one|nobody) (?:speaks|says anything|talks)\b[^.\n]*[.\n]?/gi,

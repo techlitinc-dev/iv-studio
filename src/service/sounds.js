@@ -1,7 +1,7 @@
 import { isHarness } from './harness.js'
 // Audio -> Sounds: sound effects, ambiences, one-shots and short loops from a description, with Stability AI's
 // Stable Audio 3 (medium) on this PC's ComfyUI. The graph is ComfyUI's own Stable Audio 3 template (the one Freefield's
-// Sound Effects app is built from, github.com/neuregex/freefield, MIT), without its Qwen prompt expander: IV Studio's
+// Sound Effects app is built from, github.com/neuregex/freefield, MIT), without its Qwen prompt expander: Techlit Studio's
 // own writer expands a description instead (Write it for me). Each sound is a ComfyUI job of kind 'sound' with one
 // to four takes, copied into the data folder's sounds/ when finished.
 import fs from 'node:fs'
@@ -20,7 +20,7 @@ export const SOUND_KINDS = [
 export const SOUND_LIMITS = { min: 1, max: 120, takes: 4 }
 export const SOUND_ENGINE = { label: 'Stable Audio 3', by: 'Stability AI', licence: 'Stable Audio Community License', models: ['sa3', 'sa3_te'] }
 
-// How the writer expands a description, per kind (IV Studio's own wording).
+// How the writer expands a description, per kind (Techlit Studio's own wording).
 const WRITE_RULES = {
   sfx: 'Describe one sound effect for a generative audio model: the source, what it is made of (metal, wood, glass, skin, water), the space it happens in (a small room, a hall, outdoors, underwater, close or far), and how it moves through time (the attack, what follows, how it ends). One or two dense sentences, no lists.',
   ambience: 'Describe a background ambience for a generative audio model: the place, the steady bed of sound, two or three details that come and go over it, and how near or far each one is. It should loop naturally. One or two dense sentences, no lists.',

@@ -1,7 +1,7 @@
 // RunPod cloud (src/service/runpod.js, resources/cloud/gate.py, the ComfyUI client's waker), without RunPod:
 // a mock of RunPod's REST API, and the real gate.py run locally in RunPod mode.
 //   node test/runpod.mjs [python-with-aiohttp]
-// The Python defaults to IV Studio's voice engine (%APPDATA%\IV Studio\voiceengine\venv), which has aiohttp.
+// The Python defaults to Techlit Studio's voice engine (%APPDATA%\Techlit Studio\voiceengine\venv), which has aiohttp.
 import { spawn, execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
@@ -14,7 +14,7 @@ import { Comfy } from '../src/service/comfy.js'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const RES = path.join(ROOT, 'resources')
-const PY = process.argv[2] || path.join(process.env.APPDATA || '', 'IV Studio', 'voiceengine', 'venv', 'Scripts', 'python.exe')
+const PY = process.argv[2] || path.join(process.env.APPDATA || '', 'Techlit Studio', 'voiceengine', 'venv', 'Scripts', 'python.exe')
 let pass = 0
 let fail = 0
 const ok = (cond, what) => (cond ? (pass++, console.log(`  ok   ${what}`)) : (fail++, console.log(`  FAIL ${what}`)))
@@ -39,8 +39,11 @@ function mockApi() {
     if (route === '/catalog/gpus') {
       return json(200, {
         gpus: [
-          { id: 'NVIDIA L40S', availability: 'NONE', price: { secure: 1.09 } },
-          { id: 'NVIDIA RTX 6000 Ada Generation', availability: 'LOW', price: { secure: 0.99 }, dataCenters: [{ id: 'US-WA-1' }] }
+          { id: 'NVIDIA L40S', name: 'L40S', memory: 48, availability: 'NONE', price: { secure: 1.09 } },
+          { id: 'NVIDIA RTX 6000 Ada Generation', name: 'RTX 6000 Ada', memory: 48, availability: 'LOW', price: { secure: 0.99 }, dataCenters: [{ id: 'US-WA-1' }] },
+          { id: 'NVIDIA A100-SXM4-80GB', name: 'A100 SXM', memory: 80, availability: 'HIGH', price: { secure: 1.99 }, dataCenters: [{ id: 'US-NC-1' }] },
+          { id: 'NVIDIA GeForce RTX 3080', name: 'RTX 3080', memory: 10, availability: 'HIGH', price: { secure: 0.17 } },
+          { id: 'NVIDIA B200', name: 'B200', memory: 180, availability: 'NONE', price: {} }
         ]
       })
     }
@@ -49,7 +52,8 @@ function mockApi() {
         dataCenters: [
           { id: 'US-MO-1', networkVolumeTypes: [], gpuAvailability: [{ id: 'NVIDIA L40S', availability: 'HIGH' }] },
           { id: 'US-WA-1', networkVolumeTypes: ['STANDARD'], gpuAvailability: [{ id: 'NVIDIA RTX 6000 Ada Generation', availability: 'LOW' }] },
-          { id: 'US-NC-1', networkVolumeTypes: ['STANDARD'], gpuAvailability: [{ id: 'NVIDIA L40S', availability: 'LOW' }, { id: 'NVIDIA A100 80GB PCIe', availability: 'LOW' }, { id: 'NVIDIA H200', availability: 'LOW' }] }
+          { id: 'US-NC-1', networkVolumeTypes: ['STANDARD'], gpuAvailability: [{ id: 'NVIDIA L40S', availability: 'LOW' }, { id: 'NVIDIA A100 80GB PCIe', availability: 'LOW' }, { id: 'NVIDIA H200', availability: 'LOW' }] },
+          { id: 'EUR-IS-1', networkVolumeTypes: ['STANDARD'], gpuAvailability: [{ id: 'NVIDIA A100-SXM4-80GB', availability: 'HIGH' }] }
         ]
       })
     }
@@ -81,8 +85,14 @@ async function serviceTests() {
   const cat = await rp.catalog()
   ok(cat.length === GPUS.length && cat[0].inStock === false && cat[1].inStock === true && cat[1].dataCenters[0] === 'US-WA-1', 'catalog: live stock and data centers for our GPUs')
 
+  const all = await rp.allGpus()
+  ok(all.map((g) => g.id).join('|') === 'NVIDIA RTX 6000 Ada Generation|NVIDIA L40S|NVIDIA A100-SXM4-80GB', 'graphics-card list: every catalog GPU with room for H3, cheapest first; the 10 GB 3080 and the priceless B200 are out')
+  ok(all[0].label === 'RTX 6000 Ada · 48 GB' && !!all[0].note && all[0].inStock === true, 'graphics-card list: a curated card keeps its label, note and stock')
+  ok(all[2].label === 'A100 SXM · 80 GB' && all[2].vram === 80 && all[2].note === null && all[2].inStock === true && all[2].dataCenters[0] === 'US-NC-1', 'graphics-card list: any other card goes by RunPod’s name and memory')
+
   ok((await rp.pickDataCenter('NVIDIA L40S')) === 'US-NC-1', 'data center: has the chosen GPU and network storage (not US-MO-1, which has no storage)')
   ok((await rp.pickDataCenter('NVIDIA H100 80GB HBM3')) === 'US-NC-1', 'data center: without the chosen GPU, the one with most of ours')
+  ok((await rp.pickDataCenter('NVIDIA A100-SXM4-80GB')) === 'EUR-IS-1', 'data center: a chosen card outside the curated six still counts as “has it”')
 
   const vol = await rp.ensureVolume('US-NC-1')
   const create = api.calls.find((c) => c.method === 'POST' && c.route === '/network-volumes')
@@ -110,10 +120,42 @@ async function serviceTests() {
   const pod = await rp.createPod({ gpu: 'NVIDIA L40S', volume: vol, token: 'tok', idleSeconds: 300 })
   ok(pod.gpu === GPUS[1].id && pod.url === 'https://pod1-8189.proxy.runpod.net' && logs.some((l) => /taken in US-NC-1/.test(l)), 'pod: chosen GPU out of capacity falls back to the next one, and says so')
 
+  // the fallback is price-capped: choosing a 4090 must never silently land on an H100 (GitHub: the person's report)
+  const tried = () => api.calls.filter((c) => c.method === 'POST' && c.route === '/pods').map((c) => c.body.gpu.id)
+  api.state.noCapacity = new Set(['NVIDIA GeForce RTX 4090', 'NVIDIA L40S'])
+  const pod2 = await rp.createPod({ gpu: 'NVIDIA GeForce RTX 4090', volume: vol, token: 'tok', idleSeconds: 300 })
+  ok(pod2.gpu === 'NVIDIA RTX 6000 Ada Generation', 'pod: a 4090 falls back to the 6000 Ada (near its price)')
+  ok(!tried().includes('NVIDIA H100 80GB HBM3') && !tried().includes('NVIDIA A100 80GB PCIe') && !tried().includes('NVIDIA GeForce RTX 5090'), 'pod: pricier cards (H100, A100, 5090) are never tried for a 4090')
+  api.state.noCapacity.add('NVIDIA RTX 6000 Ada Generation')
+  const before = tried().length
+  await rp.createPod({ gpu: 'NVIDIA GeForce RTX 4090', volume: vol, token: 'tok', idleSeconds: 300 }).then(
+    () => ok(false, 'pod: nothing affordable left should fail, not substitute a pricey GPU'),
+    (e) => ok(/within about \$0\.89\/h/.test(e.message), 'pod: the failure says what price range was looked for')
+  )
+  ok(tried().length === before + 3, 'pod: only the three near-price cards were tried in all')
+
+  // a card from the full dropdown, outside the curated six: started when free; its own price caps the fallback
+  api.state.noCapacity = new Set()
+  const sxm = await rp.createPod({ gpu: 'NVIDIA A100-SXM4-80GB', perHour: 1.99, volume: vol, token: 'tok', idleSeconds: 300 })
+  ok(sxm.gpu === 'NVIDIA A100-SXM4-80GB', 'pod: a catalog card outside the curated six is started when it is free')
+  api.state.noCapacity = new Set(['NVIDIA A100-SXM4-80GB'])
+  const before2 = tried().length
+  await rp.createPod({ gpu: 'NVIDIA A100-SXM4-80GB', perHour: 0.7, volume: vol, token: 'tok', idleSeconds: 300 }).then(
+    () => ok(false, 'pod: an outside card with nothing near its price should fail, not substitute a pricier GPU'),
+    (e) => ok(/within about \$0\.7\/h/.test(e.message), 'pod: an outside card’s own price caps its fallback')
+  )
+  ok(tried().length === before2 + 1 && tried().at(-1) === 'NVIDIA A100-SXM4-80GB', 'pod: nothing near the outside card’s price: only that card was tried')
+
+  api.state.pods = api.state.pods.filter((p) => p.id === 'pod1')
+  api.state.noCapacity = new Set(['NVIDIA L40S'])
   api.state.pods.push({ id: 'other', name: 'my-own-pod', status: 'RUNNING' }, { id: 'old', name: 'iv-studio-x', status: 'EXITED' })
   const mine = await rp.pods()
-  ok(mine.length === 1 && mine[0].id === 'pod1', 'pods: only IV Studio’s running pods (not the person’s other pods, not exited ones)')
-  ok((await rp.stopAll()).stopped === 1 && api.state.pods.some((p) => p.id === 'other'), 'Shut down GPU deletes IV Studio’s pod and leaves the person’s other pod alone')
+  ok(mine.length === 1 && mine[0].id === 'pod1', 'pods: only Techlit Studio’s running pods (not the person’s other pods, not exited ones)')
+  const every = await rp.myPods()
+  ok(every.length === 3 && every.find((p) => p.id === 'pod1').ours === true && every.find((p) => p.id === 'other').ours === false && every.find((p) => p.id === 'old').status === 'EXITED', 'account pods: all of them, Techlit Studio’s marked')
+  api.state.pods.push({ id: 'newpod', name: 'iv-studio-new', status: 'RUNNING' })
+  ok((await rp.stopAll('newpod')).stopped === 1 && api.state.pods.some((p) => p.id === 'newpod') && !api.state.pods.some((p) => p.id === 'pod1'), 'setup shuts the older pods only, keeping the one it just made')
+  ok((await rp.stopAll()).stopped === 1 && api.state.pods.some((p) => p.id === 'other'), 'Shut down GPU deletes Techlit Studio’s pod and leaves the person’s other pod alone')
 }
 
 // ---------- the real gate, locally, in RunPod mode ----------
@@ -134,6 +176,7 @@ async function gateTests() {
     let h = null
     for (let i = 0; i < 50 && !h; i++) (h = await rp.health(url)) || (await new Promise((r) => setTimeout(r, 200)))
     ok(h?.gate === 'ok' && h.platform === 'runpod' && h.stage === 'models' && h.percent === 40, 'health: no token needed, reports the boot stage')
+    ok(h.idleLimit === 300 && h.idleLeft > 0 && h.idleLeft <= 300, 'health: the idle countdown (the limit, and seconds left)')
     ok((await fetch(`${url}/system_stats`)).status === 401, 'anything else without the token: 401')
     ok((await fetch(`${url}/system_stats`, { headers: { Authorization: 'Bearer secret-token' } })).status === 503, 'with the token while ComfyUI is down: 503 (starting)')
 
@@ -153,6 +196,13 @@ async function gateTests() {
     ok((await put('path=loras/bad.safetensors&offset=10', 'def')).status === 409, 'upload: a chunk out of order is refused')
     const done = await fetch(`${url}/iv/upload?path=loras/bad.safetensors&sha256=${'0'.repeat(64)}`, { method: 'POST', headers: { Authorization: 'Bearer secret-token' } })
     ok(done.status === 422 && !fs.existsSync(path.join(models, 'loras', 'bad.safetensors')) && !fs.existsSync(path.join(models, 'loras', 'bad.safetensors.part')), 'upload: a checksum mismatch is removed, not kept')
+
+    // the storage manager: a model file on the volume can be removed again, and only a model file
+    const del = (q) => fetch(`${url}/iv/delete?${q}`, { method: 'DELETE', headers: { Authorization: 'Bearer secret-token' } })
+    ok((await fetch(`${url}/iv/delete?path=loras/x.safetensors`, { method: 'DELETE' })).status === 401, 'delete: needs the token')
+    ok((await del('path=../../etc/passwd')).status === 400 && (await del(`path=${encodeURIComponent('loras/../custom_nodes/x.py')}`)).status === 400, 'delete: a path that climbs out is refused')
+    ok((await del('path=loras/MiniMax%20H3/tess/tess.safetensors')).status === 200 && !fs.existsSync(landed), 'delete: a model file comes off the volume')
+    ok((await del('path=loras/MiniMax%20H3/tess/tess.safetensors')).status === 400, 'delete: what is already gone is refused, not an error')
   } finally {
     gate.kill()
     fs.rmSync(tmp, { recursive: true, force: true })

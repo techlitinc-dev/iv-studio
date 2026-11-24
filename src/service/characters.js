@@ -1,4 +1,4 @@
-// Ready-made characters (resources/characters/catalog.json): a face picture shipped with IV Studio and a
+// Ready-made characters (resources/characters/catalog.json): a face picture shipped with Techlit Studio and a
 // character LoRA downloaded on request into ComfyUI's loras folder, checked against its sha256, then saved
 // as a character preset. Downloads resume from a .part file like the model downloads on Setup.
 import { createHash } from 'node:crypto'

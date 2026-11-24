@@ -50,7 +50,7 @@ export default function StartComfy({ notify, recheck, className = 'btn btn-small
 }
 
 // "Restart ComfyUI": after installing node packs or models, or when ComfyUI misbehaves. ComfyUI-Manager's own
-// restart when it's there, else IV Studio stops this ComfyUI and starts it again with your launcher
+// restart when it's there, else Techlit Studio stops this ComfyUI and starts it again with your launcher
 // (main: comfy:restart). When ComfyUI is rendering it asks first: the button turns into "Restart anyway".
 export function RestartComfy({ notify, recheck, className = 'btn btn-small', label = 'Restart ComfyUI' }) {
   const [state, setState] = useState(null) // null | 'restarting' | { busy: message }

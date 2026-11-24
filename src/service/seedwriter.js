@@ -1,6 +1,6 @@
 import { isHarness } from './harness.js'
 // Writes Seedance 2.5 prompts from a plain-words idea, with the same writers as H3 shots (the local model in
-// Ollama, or the person's Claude Code or Codex), following IV Studio's bundled Seedance guide
+// Ollama, or the person's Claude Code or Codex), following Techlit Studio's bundled Seedance guide
 // (resources/guides/seedance25: Matthew Hollis's playbook distilled from ByteDance/Dreamina's public guides).
 // Claude Code and Codex get the whole guide; the local 8B model gets the core rules below.
 import fs from 'node:fs'
@@ -74,7 +74,7 @@ export function seedanceSystem({ mode = 'text', seconds = 5, character = null, l
   const who = character?.name?.split(/\s+/)[0]
   return [
     'You write prompts for ByteDance Seedance 2.5 video generation. Answer with JSON: { direction, prompt }.',
-    full ? `IV Studio's Seedance 2.5 guide (follow it; write references as @image1, @video1, @audio1, not "@Image 1"):\n\n${full}` : CORE_RULES,
+    full ? `Techlit Studio's Seedance 2.5 guide (follow it; write references as @image1, @video1, @audio1, not "@Image 1"):\n\n${full}` : CORE_RULES,
     `This shot: ${seconds} seconds. ${MODE_RULES[mode] || MODE_RULES.text} Size and length are set outside the prompt: don't write them.`,
     labels.length ? `Attached references, in order (name each one in the prompt with its role and exclusion):\n${labels.map((l) => `${l.tag}: ${l.what}`).join('\n')}` : 'No references are attached: do not write @image, @video or @audio.',
     who ? `The character is ${who}: write their name, never "{char}". ${labels.some((l) => /face/.test(l.what)) ? 'Their face comes from their reference; describe their clothes and actions, not their face.' : ''}` : '',

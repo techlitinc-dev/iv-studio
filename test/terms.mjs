@@ -1,4 +1,4 @@
-// IV Studio's terms for MiniMax H3 (src/service/terms.js, TERMS.md, docs/SAFEGUARDS.md): which graphs count as H3, the
+// Techlit Studio's terms for MiniMax H3 (src/service/terms.js, TERMS.md, docs/SAFEGUARDS.md): which graphs count as H3, the
 // gate in Comfy.submit and training, and that the documents carry MiniMax's use restrictions and the abuse address.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -13,7 +13,7 @@ const ok = async (name, fn) => (await fn(), n++, console.log('ok ', name))
 const read = (rel) => fs.readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8')
 const node = (class_type, inputs = {}) => ({ class_type, inputs })
 
-await ok('IV Studio’s own shot graph counts as H3', () => {
+await ok('Techlit Studio’s own shot graph counts as H3', () => {
   assert.equal(usesH3(JSON.parse(read('resources/workflows/iv_studio_api.json'))), true)
 })
 await ok('H3 nodes, H3 model files, H3 LoRAs and Viggle Remake count; other models don’t', () => {

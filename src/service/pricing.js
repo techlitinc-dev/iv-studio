@@ -1,8 +1,8 @@
 // What a ComfyUI graph costs before it runs. ComfyUI's partner (API) nodes run on the person's Comfy.org credits, and
 // each one declares its price in /object_info as a `price_badge`: a JSONata expression over the node's widget values,
-// which inputs are linked, and how many of a growing input group are filled. IV Studio evaluates the same expression
+// which inputs are linked, and how many of a growing input group are filled. Techlit Studio evaluates the same expression
 // for an API-form graph, so the confirm before a paid run shows the price ComfyUI's own window would show.
-// (Written for IV Studio from how ComfyUI behaves; none of ComfyUI's front-end code is copied. JSONata is MIT.)
+// (Written for Techlit Studio from how ComfyUI behaves; none of ComfyUI's front-end code is copied. JSONata is MIT.)
 import jsonata from 'jsonata'
 import { isLink, specDefault, specFor } from './nodeschema.js'
 

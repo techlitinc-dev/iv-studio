@@ -282,7 +282,7 @@ export function imageGraph({ family, mode = 'generate', unet, te, vae, loras = [
     return g
   }
   if (family === 'h3') {
-    // IV Studio's text-mode shot, cut short: H3 conditioning and its audio+video latent, the turbo LoRA and the
+    // Techlit Studio's text-mode shot, cut short: H3 conditioning and its audio+video latent, the turbo LoRA and the
     // person's LoRAs, er_sde on a beta schedule; one frame from the middle of each take is kept
     let model = [add('UNETLoader', { unet_name: unet, weight_dtype: 'default' }), 0]
     for (const l of [...(turbo ? [{ name: turbo, strength: 1 }] : []), ...loras]) model = [add('LoraLoaderModelOnly', { model, lora_name: l.name, strength_model: Number(l.strength ?? 1) }), 0]
@@ -492,7 +492,7 @@ export class Images {
     const st = await this.status()
     if (st.error) throw new Error(st.error)
     const fam = st.families.find((f) => f.models.includes(model)) || st.families.find((f) => f.id === familyOfModel(String(model || ''))?.id)
-    if (!fam) throw new Error(`"${model}" isn't an image model IV Studio knows. Pick one from list_image_models.`)
+    if (!fam) throw new Error(`"${model}" isn't an image model Techlit Studio knows. Pick one from list_image_models.`)
     if (!fam.models.includes(model)) throw new Error(`${fam.label} has no checkpoint "${model}" in ComfyUI.`)
     if (!fam.ready) throw new Error(`${fam.label} needs ${fam.missing.join(', ')}.`)
     if (mode === 'edit') {
@@ -529,7 +529,7 @@ export class Images {
 
   // ---------- ChatGPT Images (codeximages.js) ----------
   // A set made by the person's Codex: each picture is its own Codex run, two at a time, copied into images/ as it
-  // lands (cropped to the shape asked for). The set belongs to this process (owner); another IV Studio process (the
+  // lands (cropped to the shape asked for). The set belongs to this process (owner); another Techlit Studio process (the
   // window, or the MCP server) sees it through images.json.
   async codexCreate({ mode = 'generate', prompt, aspect = IMAGE_DEFAULTS.aspect, count = 1, refs = [], name, tag = null }) {
     const st = codexImageStatus()
@@ -603,10 +603,10 @@ export class Images {
   async refresh(rec) {
     if (rec.engine === 'codex') {
       if (DONE.includes(rec.status)) return rec
-      // still being made here, or by another IV Studio process that's still open
+      // still being made here, or by another Techlit Studio process that's still open
       if (this.codexRuns?.has(rec.id) || (rec.owner && rec.owner !== process.pid && alive(rec.owner))) return rec
       // its process closed before it finished: what it made is kept
-      return this.saveRec(rec.id, rec.files?.length ? { status: 'success', finishedAt: now(), note: 'IV Studio closed before every picture was made.', progress: undefined } : { status: 'error', error: 'IV Studio closed while ChatGPT was making these.', finishedAt: now(), progress: undefined })
+      return this.saveRec(rec.id, rec.files?.length ? { status: 'success', finishedAt: now(), note: 'Techlit Studio closed before every picture was made.', progress: undefined } : { status: 'error', error: 'Techlit Studio closed while ChatGPT was making these.', finishedAt: now(), progress: undefined })
     }
     if (DONE.includes(rec.status) && (rec.status !== 'success' || rec.files?.length)) return rec
     let job

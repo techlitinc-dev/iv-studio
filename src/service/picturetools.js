@@ -1,9 +1,9 @@
 // Create -> Image -> Tools: one-step fixes for a picture, each an API graph of ComfyUI's own nodes (the workflows of
-// Freefield's apps, github.com/neuregex/freefield, MIT, adapted to the models IV Studio already uses).
+// Freefield's apps, github.com/neuregex/freefield, MIT, adapted to the models Techlit Studio already uses).
 //   inpaint   paint over part of a picture and describe the change; Flux 3 Klein redraws only that part
 //   relight   new light for the whole picture (Qwen Image Edit 2509 + its Relight and Lightning LoRAs)
 //   removebg  the subject cut out onto transparency (BiRefNet)
-//   upscale   2x or 4x with restored detail (SeedVR2, the ComfyUI-SeedVR2_VideoUpscaler pack IV Studio finishes with)
+//   upscale   2x or 4x with restored detail (SeedVR2, the ComfyUI-SeedVR2_VideoUpscaler pack Techlit Studio finishes with)
 //   depth     a depth or normal map (MoGe-2)
 export const PICTURE_TOOLS = [
   { id: 'inpaint', label: 'Inpaint', short: 'Paint over a part and describe the change', needs: ['flux3'] },

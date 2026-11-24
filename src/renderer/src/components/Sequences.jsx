@@ -244,7 +244,7 @@ function TakeKind({ seq, take, char, edit }) {
             </div>
           </div>
           {!take?.references?.count && <p className="small pink">Add at least one reference, or switch to Plain.</p>}
-          <p className="small dim">Write each shot as usual. IV Studio opens it with a line naming the references (“{'{char}'} looks like the person in &lt;Picture 1&gt;.”), and H3 Multishot adds the ref2va sections; open “What gets sent” under a shot to see it.</p>
+          <p className="small dim">Write each shot as usual. Techlit Studio opens it with a line naming the references (“{'{char}'} looks like the person in &lt;Picture 1&gt;.”), and H3 Multishot adds the ref2va sections; open “What gets sent” under a shot to see it.</p>
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@ import { CREDITS } from '../credits'
 
 const open = (url) => url && window.ivstudio.links.open(url)
 
-// Settings → About → Credits: who and what IV Studio is built on (credits.js), grouped by what each does here,
+// Settings → About → Credits: who and what Techlit Studio is built on (credits.js), grouped by what each does here,
 // with a search. Esc or the backdrop closes it.
 export default function Credits({ onClose }) {
   const [q, setQ] = useState('')
@@ -25,7 +25,7 @@ export default function Credits({ onClose }) {
       <div className="modal credits" role="dialog" aria-modal="true" aria-labelledby="credits-title">
         <div className="modal-head">
           <h2 id="credits-title">Credits</h2>
-          <span className="small dim">IV Studio is built on {total} pieces of other people’s work. Thank you.</span>
+          <span className="small dim">Techlit Studio is built on {total} pieces of other people’s work. Thank you.</span>
           <span className="spacer" />
           <button className="lora-chip-x" aria-label="Close the credits" onClick={onClose}>
             ×
@@ -65,7 +65,7 @@ export default function Credits({ onClose }) {
           {!groups.length && <p className="small dim">Nothing matches “{q}”.</p>}
         </div>
         <p className="small dim credits-foot">
-          IV Studio itself is MIT-licensed. Each model and tool keeps its own licence: check a model’s page before commercial use. The full licence texts ship with the app, and{' '}
+          Techlit Studio itself is MIT-licensed. Each model and tool keeps its own licence: check a model’s page before commercial use. The full licence texts ship with the app, and{' '}
           <button className="link-btn" onClick={() => open('https://github.com/hollisorg/iv-studio/blob/main/THIRD_PARTY_NOTICES.md')}>
             THIRD_PARTY_NOTICES
           </button>{' '}

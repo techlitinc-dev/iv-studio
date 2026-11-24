@@ -1,5 +1,5 @@
 // Animal Cam: animal videos that look filmed on a phone, as a seven-step wizard (Workflows → Animal Cam). The method
-// (after pik.vik1's Higgsfield guide on realistic animal phone footage, in IV Studio's own words) fitted to H3:
+// (after pik.vik1's Higgsfield guide on realistic animal phone footage, in Techlit Studio's own words) fitted to H3:
 //   1 the animal     a reference sheet (made here from a pet photo or words, or a character), its real size, outfit
 //                    and state (dry, soaked...). Without an H3 LoRA it goes in as a referenced subject (cast.js kind
 //                    'animal'), so its look comes from the sheet.
@@ -10,7 +10,7 @@
 //   5 the action     six timed beats (hook, build, progress, check, payoff, ending) fitted to H3's real length
 //   6 the sound      a closed list of the only sounds heard, a hook sound in the first 1.5 s, the animal's sound
 //                    with its pitch and mouth timing
-//   7 check, film    a checklist, IV Studio's prompt checker, then hunt, pick and finish like any shot, an optional
+//   7 check, film    a checklist, Techlit Studio's prompt checker, then hunt, pick and finish like any shot, an optional
 //                    phone finish, and an edit.
 // H3 has no negative prompt (lint.js): every rule is written as what to show, never "no music" or "without fingers".
 // The pure parts (presets, beat times, the prompt, the checklist, the fixes) are tested in test/animal-cam.mjs.
@@ -101,7 +101,7 @@ export const BEATS = {
   hook: { label: 'Hook', about: 'A striking action and a sharp real sound together; where the animal is looking.' },
   build: { label: 'Build', about: 'Exact mechanics: where each paw is, what it presses, the effort starting.' },
   progress: { label: 'Progress', about: 'What the object or surface does back; one focus shift if there’s a reason.' },
-  check: { label: 'Check', about: 'Still the same: outfit, size against the anchor, which way it faces (IV Studio adds these).' },
+  check: { label: 'Check', about: 'Still the same: outfit, size against the anchor, which way it faces (Techlit Studio adds these).' },
   payoff: { label: 'Payoff', about: 'The strongest moment, with the animal’s sound and its mouth in time with it.' },
   ending: { label: 'Ending', about: 'Not flat: a lingering look, a late reaction, something still wobbling.' }
 }
@@ -355,7 +355,7 @@ export function checklist(raw, { prompt = null, lintCtx = null, character = null
     add('positive', 'Everything is written as what to show (H3 has no negative prompt)', 4, !neg.length, `H3 shows every noun, so “${neg[0]?.phrase}” can bring it in. Write what is there instead${neg[0]?.instead ? ` (${neg[0].instead})` : ''}.`)
     if (lintCtx) {
       const errors = lintPrompt(prompt, lintCtx).filter((x) => x.level === 'error')
-      add('checker', 'IV Studio’s prompt checker finds nothing blocking', 6, !errors.length, errors[0]?.message || '')
+      add('checker', 'Techlit Studio’s prompt checker finds nothing blocking', 6, !errors.length, errors[0]?.message || '')
     }
   }
   return items
@@ -365,7 +365,7 @@ export function checklist(raw, { prompt = null, lintCtx = null, character = null
 export const FIXES = [
   { key: 'identity', label: 'It doesn’t look like my animal', step: 0, tip: 'Use a clearer reference sheet: the face close-up, the front with the outfit and the back, studio lit.' },
   { key: 'size', label: 'It grew or shrank', step: 3, tip: 'Make the size anchor more concrete: something next to it in every beat, like the foot plate or a person’s shin.' },
-  { key: 'outfit', label: 'The outfit changed or vanished', step: 0, tip: 'Put every item it wears on the sheet and in the outfit list; IV Studio repeats them in the check beat.' },
+  { key: 'outfit', label: 'The outfit changed or vanished', step: 0, tip: 'Put every item it wears on the sheet and in the outfit list; Techlit Studio repeats them in the check beat.' },
   { key: 'fingers', label: 'It has fingers or holds things like a hand', step: 4, tip: 'Rewrite the contact as pads pressing, hooking or pushing; heavy things take both paws.' },
   { key: 'slow', label: 'It went into slow motion', step: 4, tip: 'Take out anything slow or dramatic from the beats; the payoff happens at normal speed.' },
   { key: 'sound', label: 'Music or made-up sounds', step: 5, tip: 'Keep the sound list short and concrete; every sound you want is listed, and the room tone fills the rest.' },

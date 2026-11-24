@@ -1,4 +1,4 @@
-// Refine faces (src/service/facerefine.js): the graph built on IV Studio's H3 files, without ComfyUI.
+// Refine faces (src/service/facerefine.js): the graph built on Techlit Studio's H3 files, without ComfyUI.
 //   node test/facerefine.mjs
 import assert from 'node:assert/strict'
 import { FACE_DETECTOR, FACE_STRENGTHS, FACE_TURBO, PLUS_NODES, facePromptFor, faceRefineGraph } from '../src/service/facerefine.js'

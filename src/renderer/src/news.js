@@ -6,7 +6,7 @@ export const NEWS = [
     items: [
       { text: 'New: Replace swaps the voice too. When you swap someone for a character with a saved voice, the new person says the same words at the same moments in that voice, and H3 speaks them as it remakes the video, so the lips follow the new voice. Pick the voice per person (a character’s own voice is chosen for you), check the words in “The voice”, change a line or untick it, or keep the original voice.' },
       { text: 'Rebuild swaps the voice too: the person painted in speaks in their saved voice, each remade shot’s lips follow its piece of it, and the first cut puts the new voice on A1. Speech only for now: a song isn’t sung in the new voice yet.' },
-      { text: 'The room sound stays under the new voice: the first time, IV Studio adds a voice splitter (Demucs, about 120 MB) to its voice engine. Replace’s node pack has an update for this; Settings → Setup offers it.' },
+      { text: 'The room sound stays under the new voice: the first time, Techlit Studio adds a voice splitter (Demucs, about 120 MB) to its voice engine. Replace’s node pack has an update for this; Settings → Setup offers it.' },
       { text: 'Fixed: opening two pages that list voices at once could make a character’s ready-made voice twice.' }
     ]
   },
@@ -22,7 +22,7 @@ export const NEWS = [
   {
     version: '1.1.23',
     items: [
-      { text: 'Join The IV Newsletter from Settings → The IV Newsletter: one email a week from Matt about what’s new in the IV apps, how things are made, and free tools. Nothing is sent unless you type your email and press Join, Kit sends a confirm email first, and IV Studio doesn’t keep your address.' },
+      { text: 'Join The Techlit Newsletter from Settings → The Techlit Newsletter: one email a week from Matt about what’s new in the Techlit apps, how things are made, and free tools. Nothing is sent unless you type your email and press Join, Kit sends a confirm email first, and Techlit Studio doesn’t keep your address.' },
       { text: 'New copies also offer it once at the end of the welcome setup, with Not now. Your projects, characters and settings are left exactly as they are.' }
     ]
   },
@@ -36,7 +36,7 @@ export const NEWS = [
   {
     version: '1.1.21',
     items: [
-      { text: 'Fixed: Qwen Image 2.1 failed with “normalized_shape=[4096] … got … 2560” when the only Qwen3-VL text encoder in ComfyUI was one sold as 8B that is really the 4B (GitHub #46). IV Studio now uses only ComfyUI’s own qwen3vl_8b_int8_convrot and offers to download it.' },
+      { text: 'Fixed: Qwen Image 2.1 failed with “normalized_shape=[4096] … got … 2560” when the only Qwen3-VL text encoder in ComfyUI was one sold as 8B that is really the 4B (GitHub #46). Techlit Studio now uses only ComfyUI’s own qwen3vl_8b_int8_convrot and offers to download it.' },
       { text: 'Fixed: “← Workflows” on Replace showed “Cannot read properties of null (reading ‘path’)” instead of going back (GitHub #47).' },
       { text: 'Fixed: the hover underline of “← Keyframes” (and “← Music videos”) ran the whole width of the window (GitHub #48).' },
       { text: 'LoRAs from Civitai for every picture model: Moss and MiniMax H3 Image have their own Civitai categories now, and Flux.2 Klein, Flux 3 Klein, Krea 2, Z-Image and SDXL also show LoRAs made for their base, Turbo and NoobAI versions.' },
@@ -51,21 +51,21 @@ export const NEWS = [
       { text: 'New character: start from photos, a LoRA you have, a RefMod or a description. A character with only pictures works in H3 shots too.' },
       { text: 'Seedance 2.5 Flash: Flash · 480p and Flash · 720p, cheaper and quicker. It appears once your ComfyUI has it.' },
       { text: 'First renders: choose how many megapixels the first takes are, everywhere (Settings → Your PC, and on each page that hunts).' },
-      { text: 'Updating IV Studio can update ComfyUI and your node packs too: the update pop-up shows what’s new for each and lets you pick. A snapshot first, and Undo in Settings → Setup.' },
+      { text: 'Updating Techlit Studio can update ComfyUI and your node packs too: the update pop-up shows what’s new for each and lets you pick. A snapshot first, and Undo in Settings → Setup.' },
       { text: 'Back and forward buttons in the title bar (Alt+Left and Alt+Right too), and a sidebar that folds to page icons.' },
       { text: 'The app says Claude and ChatGPT for your agents. The title bar drops the graphics card’s name, and Incognito has a new switch.' },
-      { text: 'Fixed: an update could stop with “Failed to uninstall old application files … : 2” when one of IV Studio’s files was in use (GitHub #45). It now closes what’s using them and carries on.' }
+      { text: 'Fixed: an update could stop with “Failed to uninstall old application files … : 2” when one of Techlit Studio’s files was in use (GitHub #45). It now closes what’s using them and carries on.' }
     ]
   },
   {
     version: '1.1.18',
     items: [
-      { text: 'New: Music video (Workflows). Pick a song; IV Studio finds its beat and parts and cuts it into scenes on the bars. Your cast sings and plays along to each scene’s own stretch of the song, and Make the edit lays the finished scenes over the song.' },
+      { text: 'New: Music video (Workflows). Pick a song; Techlit Studio finds its beat and parts and cuts it into scenes on the bars. Your cast sings and plays along to each scene’s own stretch of the song, and Make the edit lays the finished scenes over the song.' },
       { text: 'Music video references: add pictures of people, products, places or things, and pick which scenes show them. A product keeps its shape, colours and label.' },
       { text: 'The welcome wizard fits the window: no more scrolling. A step with a lot in it shows a page at a time.' },
-      { text: 'Fixed: ChatGPT refused IV Studio’s tools when its approvals were off (GitHub #44).' },
+      { text: 'Fixed: ChatGPT refused Techlit Studio’s tools when its approvals were off (GitHub #44).' },
       { text: 'Fixed: a sequence’s story shot count went back to 3 if you left while it was writing (GitHub #43).' },
-      { text: 'Fixed: the infinitevariance.ai link at the bottom of the sidebar could wrap onto two lines (GitHub #42).' }
+      { text: 'Fixed: the website link at the bottom of the sidebar could wrap onto two lines (GitHub #42).' }
     ]
   },
   {
@@ -77,7 +77,7 @@ export const NEWS = [
   {
     version: '1.1.16',
     items: [
-      { text: 'Local AI in the chat: pick it beside Claude, ChatGPT and Hermes and the chat runs on a model in your own Ollama, free and on your PC. It has IV Studio’s everyday tools and the same Allow cards.' },
+      { text: 'Local AI in the chat: pick it beside Claude, ChatGPT and Hermes and the chat runs on a model in your own Ollama, free and on your PC. It has Techlit Studio’s everyday tools and the same Allow cards.' },
       { text: 'Create remembers your last setup: it opens the way you left it or last ran it. + New starts over.' },
       { text: 'Create templates: Save as template keeps a setup under a name (the prompt and files only if you want), and Templates fills the form from one. On Video and Image.' },
       { text: 'The live preview says when a render started with the switch off, instead of a confusing message about KJNodes.' }
@@ -86,7 +86,7 @@ export const NEWS = [
   {
     version: '1.1.15',
     items: [
-      { text: 'IV Hivemind: click the IV logo at the top left to open it. IV Studio knows the profile you picked in Hivemind, its chat reads your IV memory, and work can be handed between IV Studio, IV Outreach and IV Signal.' },
+      { text: 'Techlit Link: click the Techlit mark at the top left to open it. Techlit Studio knows the profile you picked in Techlit Link, its chat reads your Techlit memory, and work can be handed between your Techlit apps.' },
       { text: 'Live preview for everything that renders on your PC: shots, sequences, pictures, effects and more. Turning it on or off between hunting and finishing doesn’t lose your takes.' },
       { text: 'Sequences: One take is Plain by default (it plays your shots as written), or With references (a face picture, more pictures of the person, and a voice sample or shot 1’s own voice). Shot 1 can start from a picture.' },
       { text: 'Sequences: Write it for me keeps going if you leave the page, and your ideas and story are saved.' },
@@ -124,14 +124,14 @@ export const NEWS = [
     items: [
       { text: 'More than one character in a shot: in Create’s “Who’s in it”, click several. The first leads with their trained look; the others come along as their face pictures, and Write it for me names them.' },
       { text: 'Fixed: the storyboard of a long film stopped with “The writer returned something unreadable”. Long scenes are planned in parts, and if a writer’s answer is cut short anyway the board keeps what it finished and says so.' },
-      { text: 'Fixed: H3 files kept straight in diffusion_models (not in a “Minimax H3” folder) showed as installed but failed to render. IV Studio now uses each model’s name as your ComfyUI lists it.' },
+      { text: 'Fixed: H3 files kept straight in diffusion_models (not in a “Minimax H3” folder) showed as installed but failed to render. Techlit Studio now uses each model’s name as your ComfyUI lists it.' },
       { text: 'Hermes errors in the chat show Hermes’s own details, not just “Internal error”.' }
     ]
   },
   {
     version: '1.1.7',
     items: [
-      { text: 'A simpler welcome: it starts by asking how much you know about AI video. New to it? Everyday words, fewer choices, and IV Studio picks the settings for you. Then name yourself, your helper and your colour, and it checks your PC.' },
+      { text: 'A simpler welcome: it starts by asking how much you know about AI video. New to it? Everyday words, fewer choices, and Techlit Studio picks the settings for you. Then name yourself, your helper and your colour, and it checks your PC.' },
       { text: 'The Cinematography menu shows a picture for every setup: the same scene with each film stock, lens, light, camera move and mood, so you can see the difference before you pick. It opens from a new Cinematography button.' },
       { text: 'Hermes can write your prompts: pick it in Settings → Prompt writer, beside Claude and ChatGPT.' },
       { text: 'Start from an example and Stage it on a board open as pop-ups on Create.' }
@@ -142,8 +142,8 @@ export const NEWS = [
     items: [
       { text: 'Fixed: Write it for me said Unknown writer "h3" when H3 was the shot’s model (for example after Use in a shot). It uses the writer from Settings again.' },
       { text: 'The editor’s razor (C) is a red katana now: a dashed line shows where it will cut, and each cut slashes the clip in two.' },
-      { text: 'Pick a colour: red (the default), blue, purple, orange or Dark (greys only), in Settings → Accessibility or when IV Studio first opens. Buttons, highlights and the artwork all follow it.' },
-      { text: 'Name your agent, and tell it your name: when IV Studio first opens or in Settings → You and your agent. It answers to its name in the chat and on the Dashboard, and runs on Claude, ChatGPT or Hermes, your pick.' },
+      { text: 'Pick a colour: red (the default), blue, purple, orange or Dark (greys only), in Settings → Accessibility or when Techlit Studio first opens. Buttons, highlights and the artwork all follow it.' },
+      { text: 'Name your agent, and tell it your name: when Techlit Studio first opens or in Settings → You and your agent. It answers to its name in the chat and on the Dashboard, and runs on Claude, ChatGPT or Hermes, your pick.' },
       { text: 'Select, Ripple and Roll have their own red cursors too, in the katana’s style.' },
       { text: 'Replace leads the Workflows page.' },
       { text: 'Scroll bars in the app’s colours, the sidebar fits short windows, and Setup no longer scrolls sideways.' },
@@ -153,28 +153,28 @@ export const NEWS = [
   {
     version: '1.1.5',
     items: [
-      { text: 'Fixed on Windows: when IV Studio had to start Ollama itself, a terminal window opened every time Ollama loaded a model (with Library search on, after each new render). IV Studio now starts Ollama through its own tray app, or hidden.' }
+      { text: 'Fixed on Windows: when Techlit Studio had to start Ollama itself, a terminal window opened every time Ollama loaded a model (with Library search on, after each new render). Techlit Studio now starts Ollama through its own tray app, or hidden.' }
     ]
   },
   {
     version: '1.1.4',
     items: [
-      { text: 'Hermes in the chat: pick Hermes beside Claude and ChatGPT, and your own Hermes Agent works in IV Studio with every IV Studio tool, on the model you chose in Hermes. Anything Hermes would run outside IV Studio is declined.' },
+      { text: 'Hermes in the chat: pick Hermes beside Claude and ChatGPT, and your own Hermes Agent works in Techlit Studio with every Techlit Studio tool, on the model you chose in Hermes. Anything Hermes would run outside Techlit Studio is declined.' },
       { text: 'History: a tab in the chat lists your earlier conversations, newest first, with which agent and when. Open one to carry on where you left off.' },
-      { text: 'And the other way round: the IV Studio plugin for Hermes (github.com/hollisorg/hermes-iv-studio) makes Hermes’s own video and picture tools render here, on your GPU, for free.' }
+      { text: 'And the other way round: the Techlit Studio plugin for Hermes (github.com/hollisorg/hermes-iv-studio) makes Hermes’s own video and picture tools render here, on your GPU, for free.' }
     ]
   },
   {
     version: '1.1.3',
     items: [
-      { text: 'Talk to the chat: press the mic, say what you want, and press send. IV Studio’s own speech recognition writes it down on your PC. Talking while the agent works stops its answer and sends your new words.' },
+      { text: 'Talk to the chat: press the mic, say what you want, and press send. Techlit Studio’s own speech recognition writes it down on your PC. Talking while the agent works stops its answer and sends your new words.' },
       { text: 'Read aloud: the speaker in the chat’s header reads each reply in one of your voices (Audio → Voices).' },
       { text: 'A cleaner chat: your messages and the agent’s in bubbles with times, each agent in its own colour, and one rounded box to write in.' },
-      { text: 'Pop the chat out into its own window (the arrow in its header), keep it on top, and put it back in the app when you’re done. It still knows what’s open in IV Studio.' },
-      { text: 'Activity: a tab in the chat that lists everything agents did in IV Studio (the chat, Dashboard ideas, and Claude Desktop, ChatGPT or any agent using IV Studio from outside), with links to what they made and Undo for changes to an edit.' },
+      { text: 'Pop the chat out into its own window (the arrow in its header), keep it on top, and put it back in the app when you’re done. It still knows what’s open in Techlit Studio.' },
+      { text: 'Activity: a tab in the chat that lists everything agents did in Techlit Studio (the chat, Dashboard ideas, and Claude Desktop, ChatGPT or any agent using Techlit Studio from outside), with links to what they made and Undo for changes to an edit.' },
       { text: 'The chat knows more about what you’re looking at: the version you picked on a shot, the clip and playhead in the editor, the item open in the Library, how Create is set up, what’s rendering, and the last render that failed.' },
       { text: 'See how full the agent’s working memory is, and this chat’s usage, in the chat’s header. You’ll see a note when it summarizes earlier messages to make room.' },
-      { text: 'Create → Image: a model that isn’t set up opens what it needs, with one button that downloads it. Flux.2 Klein, Flux 3 Klein, Krea 2, Moss and Qwen Image 2.1 can now be downloaded from IV Studio.' },
+      { text: 'Create → Image: a model that isn’t set up opens what it needs, with one button that downloads it. Flux.2 Klein, Flux 3 Klein, Krea 2, Moss and Qwen Image 2.1 can now be downloaded from Techlit Studio.' },
       { text: 'Setup: each optional tool says what it does and where to find it, and lists its files. The Needs you / Everything bar stays at the top as you scroll. A Hugging Face login for gated models (Flux, the LTX effects) can be saved right there, for this PC and the cloud.' },
       { text: 'Fixed: Z-Image Turbo installed from Setup now works in Create → Image and Projects (they were looking for a different text encoder file).' }
     ]
@@ -198,10 +198,10 @@ export const NEWS = [
   {
     version: '1.1.0',
     items: [
-      { text: 'The rules for MiniMax H3: before your first H3 render, IV Studio shows them in plain words and asks you to agree to its terms once. Read them again, or report misuse, in Settings › About.' },
-      { text: 'Chat with your own Claude or ChatGPT: the Chat button in the title bar. It can use everything IV Studio does and knows which page you’re on. Before anything that deletes, costs money, installs or changes a setting, it asks you first.' },
+      { text: 'The rules for MiniMax H3: before your first H3 render, Techlit Studio shows them in plain words and asks you to agree to its terms once. Read them again, or report misuse, in Settings › About.' },
+      { text: 'Chat with your own Claude or ChatGPT: the Chat button in the title bar. It can use everything Techlit Studio does and knows which page you’re on. Before anything that deletes, costs money, installs or changes a setting, it asks you first.' },
       { text: 'Ask it from anywhere: Ask … to fix it on a failed render, to pick the best take on a shot, or about a picture in the Library. Drop pictures, videos, sound or a script into the chat.' },
-      { text: 'Show me where: ask where something is, and IV Studio goes there and lights it up.' },
+      { text: 'Show me where: ask where something is, and Techlit Studio goes there and lights it up.' },
       { text: 'Edit by talking: on an edit, press Ask … and say “tighten the middle” or “put captions on” (captions are new). Every change can be undone from the chat.' },
       { text: 'Recipes: say “save this as a recipe” and it becomes a button on the Dashboard that does it again.' },
       { text: 'Overnight batches: up to 12 variations of an idea render while you’re away, and a report with the best takes is waiting in the chat.' },
@@ -210,19 +210,19 @@ export const NEWS = [
       { text: 'Let Claude or ChatGPT make a Dashboard idea for you, and install either one from Check my PC or Settings → Agents.' },
       { text: 'MiniMax H3 Image in Create → Image: big 4, 8 or 16 MP pictures that follow long descriptions. It needs ComfyUI 0.45 or newer and a 22 GB download.' },
       { text: 'Nearly everything now runs on your own RunPod or Modal: pictures, effects, music, sounds, voices, Replace and more. The models it needs download the first time, after you agree.' },
-      { text: 'Want IV Studio to run the cloud for you? Join the cloud beta on the Cloud page or in Settings → Privacy.' },
+      { text: 'Want Techlit Studio to run the cloud for you? Join the cloud beta on the Cloud page or in Settings → Privacy.' },
       { text: 'A new look: tall animated banners on every page and an Audio front page. Nothing flashes, and every page fits smaller windows. Banner searches have a Search button.' },
       { text: 'Settings → Setup is tidier, with Restart ComfyUI in one click.' },
       { text: 'Start from an example: Create now offers six ready-made shots that fill in a working prompt, and the welcome wizard’s “Make your first shot” opens the first one ready to hunt.' },
       { text: 'A failed render now says what went wrong in plain words (out of memory, a missing model or node pack, a full drive, credits) with a button for the fix. ComfyUI’s own message is still there under Details.' },
       { text: 'Hunt and Finish say how long they will take on your machine, worked out from your own earlier renders, and what a cloud render will cost.' },
-      { text: 'The editor can add a “Made with IV Studio” end card to an export (Edit settings → End card). It is off unless you turn it on.' },
-      { text: 'Settings → Privacy: IV Studio sends nothing about how you use it unless you turn on “Help improve IV Studio”, which counts only opens and renders, never prompts, pictures or files.' },
+      { text: 'The editor can add a “Made with Techlit Studio” end card to an export (Edit settings → End card). It is off unless you turn it on.' },
+      { text: 'Settings → Privacy: Techlit Studio sends nothing about how you use it unless you turn on “Help improve Techlit Studio”, which counts only opens and renders, never prompts, pictures or files.' },
       { text: 'Effects on any clip in the editor (right-click → Effects…): dubbing into any language with new lip movement, clean plates, day to night, water, SDR to HDR, background removal and smooth or slow motion.' },
       { text: 'Workflows → Effects turns a photo into an effect clip, a transformation or a transition. Audio → Sounds makes sound effects, ambiences and loops, ready for A2.' },
       { text: 'Picture tools in Create → Image: inpaint by painting over a part, relight, remove the background, upscale 2× or 4×, and depth or normal maps.' },
       { text: 'LoRAs for every model, not just H3: pick MiniMax H3, LTX-2.5, Wan 2.1, Flux 3 Klein, Flux.2 Klein, Krea 2, Qwen Image 2.1, Z-Image, SDXL or Moss, find its LoRAs on Civitai and use them in that model’s tray.' },
-      { text: 'Closing and reopening IV Studio while ComfyUI starts no longer starts a second ComfyUI.' },
+      { text: 'Closing and reopening Techlit Studio while ComfyUI starts no longer starts a second ComfyUI.' },
       { text: 'Film craft in Projects: coverage plans for a scene (dialogue, entrance, parallel action and more), a continuity check like a script supervisor’s, a Lookbook from any film or cinematographer, and a shot list as a document or CSV.' },
       { text: 'Cinematography and prompt tools in Create and on every film shot: 165 setups (film stocks, lenses, light, camera rigs, moods), a director’s note, Tighten, Enrich, a new angle and 3 variants, with earlier versions kept.' },
       { text: 'Projects writes the script and plans the storyboard with your chosen prompt writer, Claude and ChatGPT included.' },
@@ -236,7 +236,7 @@ export const NEWS = [
       { text: 'The Library shows how each render was made: model, size, seed, finish, render time, cost and the prompt.' },
       { text: 'Simple words for people new to AI video, and Get ComfyUI for me when there isn’t one yet.' },
       { text: 'Mac copies now install their own updates, like Windows and Linux.' },
-      { text: 'Character training moves to the newest trainer, and RunPod training starts from its own template. Settings → About → Credits lists everything IV Studio is built on.' },
+      { text: 'Character training moves to the newest trainer, and RunPod training starts from its own template. Settings → About → Credits lists everything Techlit Studio is built on.' },
       { text: 'Takes that cut away: when a one-shot take cuts to a close-up nobody asked for, the take card says when, it scores lower, and you can keep the part before or after the cut. In First / last frame mode, each take says whether it really opens and ends on your pictures.' },
       { text: 'The prompt checker warns about “no …” wording: H3 has no negative prompt, so “no photographs” can put photographs on the wall. It suggests what to write instead.' },
       { text: 'Premiere / Resolve in the editor: the timeline as files Premiere Pro, DaVinci Resolve and Final Cut open, with every clip copied beside them and zipped to send.' },
@@ -267,35 +267,35 @@ export const NEWS = [
     version: '1.0.7',
     items: [
       { text: 'Show details during a cloud setup no longer turns the window blank. The setup itself always kept going; now the window does too.' },
-      { text: 'If a page ever hits an error, IV Studio says so with a Reload button instead of showing an empty window. Renders, downloads and setups carry on either way.' }
+      { text: 'If a page ever hits an error, Techlit Studio says so with a Reload button instead of showing an empty window. Renders, downloads and setups carry on either way.' }
     ]
   },
   {
     version: '1.0.6',
     items: [
       { text: 'Cloud setup shows how it’s going: each step with a check or its own progress bar, the time so far and about how long is left, instead of a scrolling log (that’s under Show details).' },
-      { text: 'You don’t have to watch it: leave the page or use the rest of IV Studio. A pill in the top bar shows the progress, and IV Studio tells you when the cloud is ready (with a notification if it’s in the background).' },
+      { text: 'You don’t have to watch it: leave the page or use the rest of Techlit Studio. A pill in the top bar shows the progress, and Techlit Studio tells you when the cloud is ready (with a notification if it’s in the background).' },
       { text: 'Setting up Modal on a PC without ComfyUI no longer stops at the last step.' }
     ]
   },
   {
     version: '1.0.5',
     items: [
-      { text: 'IV Studio keeps its copy of Modal’s client up to date: when a release needs a newer one, it updates itself before your next cloud setup, render or training on Modal (about a minute, sign-in kept). The Cloud page says when one is due, with Update now.' }
+      { text: 'Techlit Studio keeps its copy of Modal’s client up to date: when a release needs a newer one, it updates itself before your next cloud setup, render or training on Modal (about a minute, sign-in kept). The Cloud page says when one is due, with Update now.' }
     ]
   },
   {
     version: '1.0.4',
     items: [
-      { text: 'Cloud setup on a new Modal account works: Modal gives new accounts a newer image builder that IV Studio’s Modal client can’t use yet, so IV Studio now asks for the one its cloud is built and tested with (2025.06).' }
+      { text: 'Cloud setup on a new Modal account works: Modal gives new accounts a newer image builder that Techlit Studio’s Modal client can’t use yet, so Techlit Studio now asks for the one its cloud is built and tested with (2025.06).' }
     ]
   },
   {
     version: '1.0.3',
     items: [
-      { text: 'Modal sign-in fixed: IV Studio only says you’re signed in when Modal accepts the login (before, it could show a workspace called “default” with no login, and setup then stalled). While Modal’s page is open there’s a link to it, for when no browser opened, and Cancel.' },
+      { text: 'Modal sign-in fixed: Techlit Studio only says you’re signed in when Modal accepts the login (before, it could show a workspace called “default” with no login, and setup then stalled). While Modal’s page is open there’s a link to it, for when no browser opened, and Cancel.' },
       { text: 'Sign out of Modal on the Cloud page or in the cloud setup, to sign in again or with another account.' },
-      { text: 'If the window’s page or graphics stop working, IV Studio reloads the window instead of leaving it blank.' }
+      { text: 'If the window’s page or graphics stop working, Techlit Studio reloads the window instead of leaving it blank.' }
     ]
   },
   {
@@ -304,8 +304,8 @@ export const NEWS = [
       { text: 'Remix a song: on Music, pick a song or one of yours, describe a new style and choose how far to take it (Subtle, Remix or Reimagine, or the slider). ACE-Step redraws it in seconds, reading its tempo and key for you. Works best on instrumentals.' },
       { text: 'Sequences take LoRAs: add up to four in Look and size and every shot uses them, in one take, retakes and shot by shot.' },
       { text: 'Edit and run again on a sequence’s shot now opens that shot in its sequence, so the new render stays part of it. Renders that came loose before can be put back with Use as shot N.' },
-      { text: 'Move IV Studio’s data folder to another drive in Settings → Data folder. There’s also a portable Windows zip that keeps everything in a folder beside IV Studio.exe.' },
-      { text: 'Rebuild, a new workflow: bring a video you made and IV Studio reads it shot by shot. Your agent (Claude or ChatGPT) plans how each shot is remade, you approve the plan and the frames, H3 renders the new shots, and a first cut lands in Edit.' },
+      { text: 'Move Techlit Studio’s data folder to another drive in Settings → Data folder. There’s also a portable Windows zip that keeps everything in a folder beside Techlit Studio.exe.' },
+      { text: 'Rebuild, a new workflow: bring a video you made and Techlit Studio reads it shot by shot. Your agent (Claude or ChatGPT) plans how each shot is remade, you approve the plan and the frames, H3 renders the new shots, and a first cut lands in Edit.' },
       { text: 'Every workflow now says what it needs, on its card and on its page.' }
     ]
   },
@@ -319,8 +319,8 @@ export const NEWS = [
   {
     version: '1.0.0',
     items: [
-      { text: 'IV Studio 1.0. Every page has a How it works button that walks you through its real controls, and a full tour shows the whole app in two minutes (Settings, About takes it again).' },
-      { text: 'Check my PC reads your graphics card, memory and drives and sets IV Studio up to suit them, and a guided cloud setup connects RunPod, Modal or Comfy Cloud.' },
+      { text: 'Techlit Studio 1.0. Every page has a How it works button that walks you through its real controls, and a full tour shows the whole app in two minutes (Settings, About takes it again).' },
+      { text: 'Check my PC reads your graphics card, memory and drives and sets Techlit Studio up to suit them, and a guided cloud setup connects RunPod, Modal or Comfy Cloud.' },
       { text: 'Create, Settings, Characters and the Workflows tools are redesigned as clear numbered steps; Sizzle, Reel, Sequences, Shinobi and Replace open on animated stages.' },
       { text: 'Shots, Projects and the Library group your work by day, filter by when, kind, who and shape, and open quickly however much you have.' },
       { text: 'Train a character free on your own graphics card, or on RunPod or Modal, with presets, a spending cap, Train more and likeness scoring. Or make a RefMod character from a few pictures in seconds.' },
@@ -330,7 +330,7 @@ export const NEWS = [
   {
     version: '0.3.4',
     items: [
-      { text: 'Each Workflows tool (Sequences, Sizzle, Reel, Shinobi and Replace) has its own picture on its card, drawn in the style of IV Studio’s page banners.' }
+      { text: 'Each Workflows tool (Sequences, Sizzle, Reel, Shinobi and Replace) has its own picture on its card, drawn in the style of Techlit Studio’s page banners.' }
     ]
   },
   {
@@ -343,28 +343,28 @@ export const NEWS = [
   {
     version: '0.3.2',
     items: [
-      { text: 'IV Studio runs on a Mac (Apple Silicon and Intel). A Mac has no NVIDIA card for MiniMax H3, so shots render on your RunPod or Modal account, or on Comfy Cloud: the Dashboard points you to the Cloud page.' }
+      { text: 'Techlit Studio runs on a Mac (Apple Silicon and Intel). A Mac has no NVIDIA card for MiniMax H3, so shots render on your RunPod or Modal account, or on Comfy Cloud: the Dashboard points you to the Cloud page.' }
     ]
   },
   {
     version: '0.3.1',
     items: [
       { text: 'Create → Image makes pictures with SDXL (and any SDXL fine-tune) and with MiniMax H3: a still in the look of your shots, starring your H3 characters.' },
-      { text: 'Comfy Cloud is a third cloud choice: paste a Comfy API key, and the Cloud page checks what IV Studio can do there.' },
+      { text: 'Comfy Cloud is a third cloud choice: paste a Comfy API key, and the Cloud page checks what Techlit Studio can do there.' },
       { text: 'Free in the title bar clears the GPU and RAM now: ComfyUI’s models, the voice engine and the writer’s model.' }
     ]
   },
   {
     version: '0.3.0',
     items: [
-      { text: 'Replace has a new engine: swap people into any video, or change the scene in plain words (snow, night, something removed). IV Studio paints a frame of each shot for you to check, writes the prompt and keeps the motion and sound.' },
+      { text: 'Replace has a new engine: swap people into any video, or change the scene in plain words (snow, night, something removed). Techlit Studio paints a frame of each shot for you to check, writes the prompt and keeps the motion and sound.' },
       { text: 'In the editor, right-click a clip → Remake this clip.' }
     ]
   },
   {
     version: '0.2.11',
     items: [
-      { text: 'Settings → Setup installs every node pack IV Studio uses into your ComfyUI with one click, at the versions it’s tested with. Restart ComfyUI afterwards.' },
+      { text: 'Settings → Setup installs every node pack Techlit Studio uses into your ComfyUI with one click, at the versions it’s tested with. Restart ComfyUI afterwards.' },
       { text: 'Setup and renders accept other versions of the H3 models, like the ones ComfyUI’s own H3 templates download, so you don’t download them twice.' }
     ]
   },
@@ -374,12 +374,12 @@ export const NEWS = [
   },
   {
     version: '0.2.9',
-    items: [{ text: 'Learn opens the IV Studio guide, a step-by-step PDF with every button pointed out. Each page’s ? has it too. Videos are coming soon.' }]
+    items: [{ text: 'Learn opens the Techlit Studio guide, a step-by-step PDF with every button pointed out. Each page’s ? has it too. Videos are coming soon.' }]
   },
   {
     version: '0.2.8',
     items: [
-      { text: 'IV Studio runs on Linux too: an AppImage that updates itself, and it starts your ComfyUI from its .sh script or main.py.' },
+      { text: 'Techlit Studio runs on Linux too: an AppImage that updates itself, and it starts your ComfyUI from its .sh script or main.py.' },
       { text: 'On Linux, Settings → Agents gives Claude or ChatGPT a command that works from the AppImage.' }
     ]
   },
@@ -401,7 +401,7 @@ export const NEWS = [
   },
   {
     version: '0.2.5',
-    items: [{ text: 'IV Studio starts your ComfyUI: when it opens, or with Start ComfyUI in the title bar. Pick your ComfyUI folder and start file in Settings.' }]
+    items: [{ text: 'Techlit Studio starts your ComfyUI: when it opens, or with Start ComfyUI in the title bar. Pick your ComfyUI folder and start file in Settings.' }]
   },
   {
     version: '0.2.4',

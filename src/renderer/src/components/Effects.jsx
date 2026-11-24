@@ -78,7 +78,7 @@ export default function Effects({ notify, go, openEdit }) {
     }
   }
   async function remove(r) {
-    if (!(await ask({ title: `Delete “${r.title}”?`, message: 'Its video in IV Studio’s data folder goes too.', confirm: 'Delete', danger: true }))) return
+    if (!(await ask({ title: `Delete “${r.title}”?`, message: 'Its video in Techlit Studio’s data folder goes too.', confirm: 'Delete', danger: true }))) return
     await window.ivstudio.clipfx.deleteRun(r.id).catch((err) => notify(err.message))
     reload()
   }

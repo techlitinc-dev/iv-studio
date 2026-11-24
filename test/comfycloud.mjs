@@ -69,7 +69,7 @@ await ok('the summary: shots blocked by missing packs, pictures and music by fam
     ready: false,
     items: [
       { id: 'comfyui', status: 'ok' },
-      { id: 'pack:IV Studio', label: 'IV Studio', status: 'missing', kind: 'node_pack' },
+      { id: 'pack:Techlit Studio', label: 'Techlit Studio', status: 'missing', kind: 'node_pack' },
       { id: 'model:h3', label: 'MiniMax H3', status: 'missing', kind: 'model' },
       { id: 'pack:SeedVR2', label: 'SeedVR2', status: 'warn', kind: 'node_pack' }
     ]
@@ -79,7 +79,7 @@ await ok('the summary: shots blocked by missing packs, pictures and music by fam
   const s = summarise({ setup, images, music })
   assert.equal(s.reached, true)
   assert.equal(s.shots.ready, false)
-  assert.match(s.shots.note, /node packs Comfy Cloud doesn't offer \(IV Studio\) and models it doesn't have \(MiniMax H3\)/)
+  assert.match(s.shots.note, /node packs Comfy Cloud doesn't offer \(Techlit Studio\) and models it doesn't have \(MiniMax H3\)/)
   assert.deepEqual(s.pictures.map((p) => [p.id, p.ready, p.note]), [['sdxl', true, '2 models'], ['flux2', false, 'no model there']])
   assert.equal(s.music[0].note, 'needs ACE-Step 1.5')
   const down = summarise({ setup: { ready: false, items: [{ id: 'comfyui', status: 'missing', detail: 'refused' }] } })

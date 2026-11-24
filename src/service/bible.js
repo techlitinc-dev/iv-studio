@@ -1,7 +1,7 @@
 // The character bible: who a character is (name, look in words, manner, voice), their pictures with roles, and
 // what each model needs to show them. One character works with every model; `showFor` picks what a model gets.
 //
-// Stored in characters.json (Studio.characters). A bible keeps the old preset's fields where the rest of IV Studio
+// Stored in characters.json (Studio.characters). A bible keeps the old preset's fields where the rest of Techlit Studio
 // reads them, so nothing that knew the old presets changes: `lora`, `trigger`, `strength` and `refmod` are H3's main
 // LoRA or RefMod, and `picture` is the face picture. New fields:
 //   version 2

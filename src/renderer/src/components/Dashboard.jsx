@@ -17,11 +17,13 @@ const QUICK = [
   ['shot', 'New shot', 'An idea in plain words becomes H3 previews.', 'shots'],
   ['picture', 'New picture', 'Make or edit a picture on six image models.', 'library'],
   ['film', 'Short film', 'A script becomes shots, takes and a rough cut.', 'projects'],
+  ['feature', 'Feature film', 'A long film in acts: sequences, a trailer and songs.', 'projects'],
   ['edit', 'Cut an edit', 'Your renders, music and titles on a timeline.', 'edit'],
   ['music', 'New song', 'A song or a score, made on this PC.', 'music'],
   ['line', 'Voice line', "Words in a character's own voice.", 'lines'],
   ['sizzle', 'Website film', 'A web address becomes a promo film.', 'sizzle'],
-  ['character', 'New character', 'Design and train a recurring actor.', 'characters']
+  ['character', 'New character', 'Design and train a recurring actor.', 'characters'],
+  ['hermes', 'Chat with Hermes', 'Your Hermes agent inside the studio: plans, writes and makes things with you.', 'eye']
 ]
 const RECENT = 8
 
@@ -97,7 +99,7 @@ export default function Dashboard(ctx) {
 
   return (
     <div className="dashboard">
-      <Stage effect="pulse" art="eye" title="What if?" kicker="Infinite Variance Studio" help="home">
+      <Stage effect="pulse" art="eye" title="DD'S AI Movie Studio" kicker="DD'S Techlit AI Solutions" help="home">
         {/* straight into Create, where the prompt writer turns the words into a shot (PromptWriter sendIdea) */}
         <QuickBar
           label="What do you want to make?"
@@ -128,7 +130,7 @@ export default function Dashboard(ctx) {
       {newsOpen && ctx.news && <WhatsNew news={ctx.news} go={go} onClose={() => (setNewsOpen(false), ctx.dismissNews())} />}
       {macLocal && (
         <p className="notice">
-          On a Mac, shots render in the cloud: MiniMax H3 needs an NVIDIA graphics card. Set up your own RunPod or Modal account, or Comfy Cloud, and IV Studio sends the work there.{' '}
+          On a Mac, shots render in the cloud: MiniMax H3 needs an NVIDIA graphics card. Set up your own RunPod or Modal account, or Comfy Cloud, and Techlit Studio sends the work there.{' '}
           <button className="link-btn" onClick={() => go('cloud')}>
             Set up the cloud →
           </button>

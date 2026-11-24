@@ -1,8 +1,8 @@
-// MCP voices test: voice tools over stdio on a temporary data folder, with IV Studio's own voice engine
+// MCP voices test: voice tools over stdio on a temporary data folder, with Techlit Studio's own voice engine
 // (VoxCPM2 + Whisper). Pass an engine folder that is already set up (a data folder's voiceengine/, about
 // 12 GB) so the test doesn't download it again; it is linked into the temporary folder, not copied. It
 // speaks three short lines, designs one voice and reads one recording (about a minute on a 4090).
-//   node test/mcp-voices.mjs "%APPDATA%\IV Studio\voiceengine"
+//   node test/mcp-voices.mjs "%APPDATA%\Techlit Studio\voiceengine"
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import fs from 'node:fs'

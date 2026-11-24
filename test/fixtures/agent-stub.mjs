@@ -1,5 +1,5 @@
 // A stand-in for Claude Code in tests of the Dashboard's agent run (agentrun.js): it prints the stream-json lines a
-// real run prints, writes a job id into the run's jobs file (as IV Studio's MCP server would) and finishes.
+// real run prints, writes a job id into the run's jobs file (as Techlit Studio's MCP server would) and finishes.
 // AGENT_STUB_MODE: done (default), slow (waits for Stop), fail (exits 1 without a result).
 import fs from 'node:fs'
 
@@ -11,7 +11,7 @@ let idea = ''
 process.stdin.on('data', (d) => (idea += d))
 await new Promise((r) => process.stdin.on('end', r))
 const cfg = JSON.parse(fs.readFileSync(args[args.indexOf('--mcp-config') + 1], 'utf8')).mcpServers['iv-studio']
-const tool = (id, name, input = {}) => say({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: `mcp__iv-studio__${name}`, input }] } })
+const tool = (id, name, input = {}) => say({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: `mcp__techlit-studio__${name}`, input }] } })
 const result = (id, text, isError = false) => say({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, content: [{ type: 'text', text }], is_error: isError }] } })
 
 say({ type: 'system', subtype: 'init', tools: [] })

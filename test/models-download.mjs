@@ -1,6 +1,6 @@
 // Downloader check against a live ComfyUI with a 4 MB public Hugging Face file: a fresh download,
 // a resume from a partial .part, and a corrupted .part that must fail its checksum and be removed.
-// Writes into <ComfyUI>/models/vae/IV Studio test/ and removes that folder afterwards.
+// Writes into <ComfyUI>/models/vae/Techlit Studio test/ and removes that folder afterwards.
 import fs from 'node:fs'
 import path from 'node:path'
 import { Comfy } from '../src/service/comfy.js'
@@ -10,7 +10,7 @@ const comfy = new Comfy(process.env.COMFY_URL || 'http://127.0.0.1:8188', 'iv-st
 const model = {
   id: 'tiny',
   label: 'tiny test file',
-  folder: 'vae/IV Studio test',
+  folder: 'vae/Techlit Studio test',
   match: 'tiny_test.safetensors',
   url: 'https://huggingface.co/hf-internal-testing/tiny-random-LlamaForCausalLM/resolve/main/model.safetensors'
 }

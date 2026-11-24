@@ -375,7 +375,7 @@ export default function LivePip({ items, now, kindLabel, open, onOff }) {
         ) : (
           <div className="live-pip-empty mono small dim">
             {!item.ours
-              ? 'Started outside IV Studio: no picture to show.'
+              ? 'Started outside Techlit Studio: no picture to show.'
               : item.live
                 ? 'The first step’s picture shows here in a few seconds.'
                 : item.liveWhy === 'switch'

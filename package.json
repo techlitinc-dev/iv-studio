@@ -1,8 +1,8 @@
 {
   "name": "iv-studio",
-  "productName": "IV Studio",
+  "productName": "Techlit Studio",
   "version": "1.1.25",
-  "description": "Infinite Variance studio for MiniMax H3: hunt previews, pick one, finish at 2 MP with DLSS. Built on ComfyUI, with an MCP server for agents.",
+  "description": "DD'S Techlit AI Solutions studio for MiniMax H3: hunt previews, pick one, finish at 2 MP with DLSS. Built on ComfyUI, with an MCP server for agents.",
   "author": "Infinite Variance",
   "license": "MIT",
   "homepage": "https://infinitevariance.ai",
@@ -17,7 +17,8 @@
     "dist:portable": "electron-vite build && electron-builder --win --x64 --publish never --config electron-builder.portable.cjs && node scripts/portable-feed.mjs",
     "release": "electron-vite build && electron-builder --win --x64 --publish always",
     "dist:linux": "electron-vite build && electron-builder --linux --x64 --publish never",
-    "dist:mac": "node scripts/mac-ffmpeg.mjs && electron-vite build && electron-builder --mac --publish never"
+    "dist:mac": "node scripts/mac-ffmpeg.mjs && electron-vite build && electron-builder --mac --publish never",
+    "test:all": "node test/run-all.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
@@ -66,7 +67,8 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "artifactName": "Techlit-Studio-Setup.exe"
     },
     "nsis": {
       "oneClick": false,
@@ -74,8 +76,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "IV Studio",
-      "uninstallDisplayName": "IV Studio",
+      "shortcutName": "Techlit Studio",
+      "uninstallDisplayName": "Techlit Studio",
       "artifactName": "IV-Studio-Setup.exe",
       "deleteAppDataOnUninstall": false
     },
@@ -101,8 +103,8 @@
       ],
       "icon": "build/icon.png",
       "category": "AudioVideo",
-      "executableName": "iv-studio",
-      "artifactName": "IV-Studio.AppImage",
+      "executableName": "techlit-studio",
+      "artifactName": "Techlit-Studio.AppImage",
       "synopsis": "Make films with MiniMax H3 in your own ComfyUI",
       "desktop": {
         "entry": {
@@ -117,15 +119,15 @@
       ],
       "icon": "build/icon.png",
       "category": "public.app-category.video",
-      "artifactName": "IV-Studio-mac-${arch}.${ext}",
+      "artifactName": "Techlit-Studio-mac-${arch}.${ext}",
       "minimumSystemVersion": "12.0"
     },
     "dmg": {
-      "title": "IV Studio"
+      "title": "Techlit Studio"
     },
     "protocols": [
       {
-        "name": "Hivemind handoff",
+        "name": "Techlit Link handoff",
         "schemes": [
           "iv-studio"
         ]

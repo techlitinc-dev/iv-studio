@@ -6,11 +6,11 @@ import { isHarness } from './harness.js'
 // says what changes. Its ComfyUI nodes and prompt guide are Apache-2.0 and bundled (resources/comfy-nodes,
 // resources/remake); the weights are under the MiniMax H3 Community License and come from Setup.
 //
-// What Viggle leaves to a person (or a paid image API), IV Studio does on this PC:
+// What Viggle leaves to a person (or a paid image API), Techlit Studio does on this PC:
 //   prepare   the source at 24 fps on Remake's canvas (short edge 480, both edges multiples of 32, the source's own
 //             shape, stretched by a few percent at most, never cropped), cut to 17n+5 frames (a short one padded
 //             with its last frames played backwards, trimmed off again after), and a frame per shot to paint
-//   paint     each keyframe painted by IV Studio's picture editor (Qwen Image 2.1 edit, else Flux), from the
+//   paint     each keyframe painted by Techlit Studio's picture editor (Qwen Image 2.1 edit, else Flux), from the
 //             character's face for a swap or from the person's words for a change; the person approves them
 //   write     the six-section prompt by the person's writer (local, Claude Code or Codex), from the source frames,
 //             the painted frames and Viggle's guide
@@ -203,7 +203,7 @@ export function finalArgs({ take, track = null, n, width, height, out }) {
 const SCHEMA = { type: 'object', properties: Object.fromEntries(SECTIONS.map((k) => [k, { type: 'string' }])), required: SECTIONS }
 
 export class Remake {
-  // images: IV Studio's picture tools (images.js). writer: () => { engine, model } (Settings → Prompt writer).
+  // images: Techlit Studio's picture tools (images.js). writer: () => { engine, model } (Settings → Prompt writer).
   // faces: Shinobi's face model runner (likeness), to check painted swaps; optional.
   constructor({ studio, images, faces = null, dataDir, resourcesDir, ffmpeg, ffprobe, writer }) {
     this.studio = studio
@@ -279,10 +279,10 @@ export class Remake {
     return this.save({ id, kind, video, ...(origin && origin !== video ? { origin } : {}), section: { start, length: span }, source, n, frames, canvas, original: { width: info.width, height: info.height }, cuts, keyframes, createdAt: new Date().toISOString() })
   }
 
-  // The picture editor IV Studio uses here: Qwen Image 2.1 (it kept the shot and its style in the 2026-11-04 test),
+  // The picture editor Techlit Studio uses here: Qwen Image 2.1 (it kept the shot and its style in the 2026-11-04 test),
   // else Flux.2 or Flux 3 Klein.
   async painter() {
-    if (!this.images) throw new Error('Painting needs IV Studio’s picture tools.')
+    if (!this.images) throw new Error('Painting needs Techlit Studio’s picture tools.')
     const st = await this.images.status()
     if (st.error) throw new Error(st.error)
     const fam = ['qwen21', 'flux2', 'flux3'].map((id) => st.families.find((f) => f.id === id && f.edit && f.models.length)).find(Boolean)

@@ -21,7 +21,7 @@ function cleanText(text) {
   const value = String(text ?? '').replace(/\s+/g, ' ').trim()
   if (!value) throw new Error('Write the memory first.')
   if (value.length > MAX_TEXT) throw new Error(`Keep a memory under ${MAX_TEXT} characters.`)
-  if (looksSecret(value)) throw new Error('IV memory never keeps passwords, keys or codes.')
+  if (looksSecret(value)) throw new Error('Techlit memory never keeps passwords, keys or codes.')
   return value
 }
 
@@ -49,7 +49,7 @@ export function openMemory(root = workspaceDir()) {
       const value = cleanText(text)
       const same = db.prepare('select * from memories where scope = ? and lower(text) = lower(?)').get(scope, value)
       if (same) return { ...row(same), existed: true }
-      if (db.prepare('select count(*) as n from memories').get().n >= MAX_MEMORIES) throw new Error('IV memory is full. Remove a few memories first.')
+      if (db.prepare('select count(*) as n from memories').get().n >= MAX_MEMORIES) throw new Error('Techlit memory is full. Remove a few memories first.')
       const at = new Date().toISOString()
       const id = randomUUID()
       db.prepare('insert into memories values (?, ?, ?, ?, ?, ?, ?)').run(id, scope, value, String(source).slice(0, 80), String(by).slice(0, 40), at, at)

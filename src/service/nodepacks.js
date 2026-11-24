@@ -1,5 +1,5 @@
-// Installs the ComfyUI node packs IV Studio uses (resources/models.json node_packs) into the person's own ComfyUI.
-// IV Studio's own pack is copied from its resources; every other pack is downloaded at the version IV Studio is
+// Installs the ComfyUI node packs Techlit Studio uses (resources/models.json node_packs) into the person's own ComfyUI.
+// Techlit Studio's own pack is copied from its resources; every other pack is downloaded at the version Techlit Studio is
 // tested with (a GitHub commit or a Comfy Registry release), unpacked into custom_nodes and given its requirements
 // with ComfyUI's own Python. A folder that's already there is never touched. ComfyUI loads new packs when it restarts.
 import fs from 'node:fs'
@@ -18,7 +18,7 @@ export function missingPacks(manifest, objectInfo, { linux = false } = {}) {
 
 // A pack that also needs files its own script downloads (DLSS 5's VE_CLI.exe runtime): is that runtime there?
 // The pack looks in its runtime folder and in the runtime_dir its config.json names (or DLSS5_V15_RUNTIME_DIR,
-// which only ComfyUI's own process can see), so IV Studio checks the same two places.
+// which only ComfyUI's own process can see), so Techlit Studio checks the same two places.
 export function runtimeReady(packDir, runtime) {
   if (!runtime) return true
   if (fs.existsSync(path.join(packDir, runtime.folder || '', runtime.exe))) return true
@@ -35,7 +35,7 @@ export function packsNeedingRuntime(manifest, customNodes, { linux = false } = {
   return manifest.node_packs.filter((p) => p.runtime && !(linux && p.windowsOnly) && !(!linux && p.linuxOnly) && fs.existsSync(path.join(customNodes, p.dir)) && !runtimeReady(path.join(customNodes, p.dir), p.runtime))
 }
 
-// IV Studio's own pack(s) where the copy in custom_nodes is older than the one IV Studio carries, even when every
+// Techlit Studio's own pack(s) where the copy in custom_nodes is older than the one Techlit Studio carries, even when every
 // node loads (version 3 changed how the take cache reads the live preview, with no new nodes).
 export function packsOutdated(manifest, customNodes) {
   return manifest.node_packs.filter((p) => p.bundled && p.version && fs.existsSync(path.join(customNodes, p.dir)) && packVersion(path.join(customNodes, p.dir)) < p.version)
@@ -54,14 +54,14 @@ export function findPython(comfyRoot, platform = process.platform) {
 // Where this ComfyUI keeps its node packs and which Python runs it. ComfyUI says where custom_nodes is
 // (/internal/folder_paths); the ComfyUI folder picked in Settings is the fallback. Only a ComfyUI on this PC.
 export async function comfyPlace(comfy, folder) {
-  if (!isLocalUrl(comfy.url)) throw new Error('ComfyUI isn’t on this PC, so IV Studio can’t add node packs to it. Install them where that ComfyUI runs.')
+  if (!isLocalUrl(comfy.url)) throw new Error('ComfyUI isn’t on this PC, so Techlit Studio can’t add node packs to it. Install them where that ComfyUI runs.')
   let customNodes = null
   try {
     const paths = await comfy.req('/internal/folder_paths', { timeout: 20000 })
     customNodes = (paths.custom_nodes || []).map((p) => (Array.isArray(p) ? p[0] : p)).find((p) => p && fs.existsSync(p)) || null
   } catch {}
   if (!customNodes && folder) customNodes = ['ComfyUI/custom_nodes', 'custom_nodes'].map((f) => path.join(folder, f)).find((f) => fs.existsSync(f)) || null
-  if (!customNodes) throw new Error('IV Studio couldn’t find ComfyUI’s custom_nodes folder. Start ComfyUI, or pick your ComfyUI folder in Settings → ComfyUI.')
+  if (!customNodes) throw new Error('Techlit Studio couldn’t find ComfyUI’s custom_nodes folder. Start ComfyUI, or pick your ComfyUI folder in Settings → ComfyUI.')
   return { customNodes, python: findPython(path.dirname(customNodes)) }
 }
 
@@ -124,7 +124,7 @@ export function requirementsFor(text, { git = true } = {}) {
   return { kept, skipped }
 }
 
-// The VERSION file IV Studio's own pack carries (0 when it has none: a copy from before versions).
+// The VERSION file Techlit Studio's own pack carries (0 when it has none: a copy from before versions).
 export function packVersion(dir) {
   try {
     return Number(fs.readFileSync(path.join(dir, 'VERSION'), 'utf8').trim()) || 0
@@ -164,7 +164,7 @@ export async function installPacks(packs, { customNodes, python, resourcesDir, o
       const say = (step, detail) => onProgress({ dir: p.dir, label: p.label, step, detail })
       const result = { dir: p.dir, label: p.label }
       results.push(result)
-      // IV Studio's own pack is the one folder it updates in place, when the copy it carries is newer
+      // Techlit Studio's own pack is the one folder it updates in place, when the copy it carries is newer
       if (fs.existsSync(target) && p.bundled && p.version && packVersion(target) < p.version) {
         try {
           say('copying', `Updating to version ${p.version}`)

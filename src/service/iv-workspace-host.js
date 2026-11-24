@@ -106,7 +106,7 @@ export function workspaceHost({ appId, dataDir, nativeBrands, importBrand, recei
       return { ...asset, preview: get().preview(asset.id) }
     },
     pickAssets: async () => {
-      const selected = await dialog.showOpenDialog({ title: 'Share selected media with your IV apps', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Pictures and videos', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'mov', 'webm'] }] })
+      const selected = await dialog.showOpenDialog({ title: 'Share selected media with your Techlit apps', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Pictures and videos', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'mov', 'webm'] }] })
       if (selected.canceled) return []
       if (selected.filePaths.length > 10) throw Error('Choose up to ten files.')
       return selected.filePaths.map(p => get().addAsset(p))

@@ -13,8 +13,8 @@ export const TOURS = {
     title: 'The tour',
     steps: [
       { title: 'A quick look round', text: 'Two minutes, page by page. End it any time with Esc or the ×; you can take it again from Settings, About.' },
-      { go: { page: 'home', section: 'video' }, at: '.quick-cards', title: 'The Dashboard', text: 'Where IV Studio opens. Start anything from these cards; your latest work and your cast sit below.' },
-      { go: { page: 'create', section: 'video', create: 'video' }, at: 'step:What happens', title: 'Create', text: 'Say what happens in plain words and IV Studio writes the H3 prompt. Pick who is in it and the shape above and below.' },
+      { go: { page: 'home', section: 'video' }, at: '.quick-cards', title: 'The Dashboard', text: 'Where Techlit Studio opens. Start anything from these cards; your latest work and your cast sit below.' },
+      { go: { page: 'create', section: 'video', create: 'video' }, at: 'step:What happens', title: 'Create', text: 'Say what happens in plain words and Techlit Studio writes the H3 prompt. Pick who is in it and the shape above and below.' },
       { go: { page: 'create', section: 'video', create: 'video' }, at: ['.shot-card', '.create-dock'], title: 'Hunt, pick, finish', text: 'Hunt renders a few quick previews. You pick the best one on its shot page and finish it at full size.' },
       { go: { page: 'library', section: 'video' }, at: '.shelf-grid', title: 'Shots', text: 'Every shot you have made, with its takes and finals.' },
       { go: { page: 'projects', section: 'video' }, at: '.shelf-bar', title: 'Projects', text: 'A short film from an idea, step by step: story, cast, storyboard, filming and the cut.' },
@@ -24,21 +24,21 @@ export const TOURS = {
       { go: { page: 'audio', section: 'audio' }, at: '.section-switch', title: 'The sound side', text: 'Visual and Audio switch the sidebar. Audio has Voices, Lines, Music and Sounds.' },
       { go: { page: 'media', section: 'video' }, at: '.nav-library', title: 'Library', text: 'Everything you made, in one place: videos, pictures, songs and voice lines.' },
       { go: { page: 'cloud', section: 'video' }, at: '.cloud-guided', title: 'Cloud', text: 'No strong graphics card? Render on your own cloud GPU account instead.' },
-      { go: { page: 'home', section: 'video' }, at: '.chat-open', title: 'Chat with your agent', text: 'Your own Claude, ChatGPT, Hermes or Local AI (free, in Ollama), inside IV Studio. Type or talk; it knows what you’re looking at. History keeps earlier conversations, Activity shows what agents did (with Undo), and it can pop out into its own window.' },
-      { go: { page: 'settings', section: 'video' }, at: '.settings-tabs', title: 'Settings and Setup', text: 'How IV Studio works for you, and what ComfyUI has and needs.' },
+      { go: { page: 'home', section: 'video' }, at: '.chat-open', title: 'Chat with your agent', text: 'Your own Claude, ChatGPT, Hermes or Local AI (free, in Ollama), inside Techlit Studio. Type or talk; it knows what you’re looking at. History keeps earlier conversations, Activity shows what agents did (with Undo), and it can pop out into its own window.' },
+      { go: { page: 'settings', section: 'video' }, at: '.settings-tabs', title: 'Settings and Setup', text: 'How Techlit Studio works for you, and what ComfyUI has and needs.' },
       { go: { page: 'home', section: 'video' }, at: '.hero-help', title: 'Help on every page', text: 'Every page has this How it works button. Click it any time for a walk through that page, the same way as this tour.' }
     ]
   },
   home: {
     title: 'The Dashboard',
     steps: [
-      { at: '.ivw-launch-logo', title: 'Hivemind', text: 'Click the IV logo to open Hivemind. Open a creative brief from Outreach with its business context attached. Prepare your project here, then hand selected finished files and a caption to Signal as an unapproved draft.' },
-      { title: 'Welcome to IV Studio', text: 'Everything here runs on your own ComfyUI with MiniMax H3: shots with sound, pictures, voices, music and films. This tour takes a minute.' },
+      { at: '.ivw-launch-logo', title: 'Techlit Link', text: 'Click the Techlit mark to open Techlit Link. Open a creative brief from Outreach with its business context attached. Prepare your project here, then hand selected finished files and a caption to Signal as an unapproved draft.' },
+      { title: 'Welcome to Techlit Studio', text: 'Everything here runs on your own ComfyUI with MiniMax H3: shots with sound, pictures, voices, music and films. This tour takes a minute.' },
       { at: '.quick-cards', title: 'Start something', text: 'Each card opens the right page ready to go: a new shot, a picture, a short film, an edit, a song, a voice line and more.' },
       { at: '.dash-recent', title: 'Your latest work', text: 'The newest things you made. Click one to watch it and step through its versions.' },
       { at: '.cast-cards', title: 'Your cast', text: 'Your characters, with their faces and voices. New shot starts a shot with them already picked.' },
       { at: '.nav', title: 'Every page', text: 'The sidebar has every page. Visual and Audio at the bottom switch between the picture side and the sound side.' },
-      { at: '.chat-open', title: 'Chat with your agent', text: 'Your own Claude, ChatGPT, Hermes or Local AI (free, in Ollama), inside IV Studio. Type or talk; it knows what you’re looking at. History keeps earlier conversations, Activity shows what agents did (with Undo), and it can pop out into its own window.' },
+      { at: '.chat-open', title: 'Chat with your agent', text: 'Your own Claude, ChatGPT, Hermes or Local AI (free, in Ollama), inside Techlit Studio. Type or talk; it knows what you’re looking at. History keeps earlier conversations, Activity shows what agents did (with Undo), and it can pop out into its own window.' },
       { at: '.engine-badge', title: 'ComfyUI and your GPU', text: 'Whether ComfyUI is ready, and how much of your graphics card and memory is in use. Free memory unloads models when you need room.' },
       { at: '.hero-help', title: 'Help on every page', text: 'This button is on every page. Click it any time to walk through what that page does.' }
     ]
@@ -149,7 +149,7 @@ export const TOURS = {
   workflows: {
     title: 'Workflows',
     steps: [
-      { title: 'Take a video further', text: 'Tools for what comes after a render. Each one works with your IV Studio renders and files.' },
+      { title: 'Take a video further', text: 'Tools for what comes after a render. Each one works with your Techlit Studio renders and files.' },
       { at: '.workflow-cards', title: 'The tools', text: 'Replace swaps who is in a shot or changes the scene. Sequences, Sizzle, Effects, Reel, Shinobi and Rebuild follow: one-take scenes, films from websites, photo effects, reels and agent edits.' }
     ]
   },
@@ -179,7 +179,7 @@ export const TOURS = {
       { at: '.replace-modes', title: 'What to change', text: 'Swap people puts your character in someone’s place. Change the scene changes things, weather, light or style. Finish fixes small faces or softens the look.' },
       { at: 'step:The video', title: 'The video', text: 'Drop in the video to change. It keeps its camera, motion and sound. Click it to trim.' },
       { at: ['step:Who goes in', 'step:What changes'], title: 'Who or what', text: 'Pick the character (or a picture) who goes in, or say in plain words what should change. Soft mouth keeps the new person from mouthing the source’s words.' },
-      { at: 'step:The painted frames', title: 'Check the painted frames', text: 'IV Studio paints a frame per shot the way it should look. They decide how it turns out: paint one again, use your own, or leave one out.' },
+      { at: 'step:The painted frames', title: 'Check the painted frames', text: 'Techlit Studio paints a frame per shot the way it should look. They decide how it turns out: paint one again, use your own, or leave one out.' },
       { at: 'step:Runs', title: 'Runs', text: 'Every result lands here, ready to send to Edit.' }
     ]
   },
@@ -204,7 +204,7 @@ export const TOURS = {
   'shinobi-film': {
     title: 'A Shinobi film',
     steps: [
-      { at: 'step:Brief and media', title: 'Brief and media', text: 'Say what the film is, then add files or IV Studio renders. A clip’s sound can be the soundtrack.' },
+      { at: 'step:Brief and media', title: 'Brief and media', text: 'Say what the film is, then add files or Techlit Studio renders. A clip’s sound can be the soundtrack.' },
       { at: 'step:A first cut', title: 'A first cut', text: 'Pick a style and Shinobi lays out a starting edit, no agent needed.' },
       { at: 'step:Hand it to your agent', title: 'Hand it to your agent', text: 'Copy this message into your agent. It says which film, what is in it and what you want.' },
       { at: 'step:Render and review', title: 'Render and review', text: 'Render the saved edit, then send it to Edit or show it in its folder.' },
@@ -222,9 +222,9 @@ export const TOURS = {
   rebuild: {
     title: 'Rebuild',
     steps: [
-      { title: 'A video, taken apart and rebuilt', text: 'Bring a video you made, up to 2 minutes. IV Studio reads it shot by shot and makes it again: the same cuts, pacing and captions, the AI shots rendered fresh with H3, and anything you ask changed.' },
+      { title: 'A video, taken apart and rebuilt', text: 'Bring a video you made, up to 2 minutes. Techlit Studio reads it shot by shot and makes it again: the same cuts, pacing and captions, the AI shots rendered fresh with H3, and anything you ask changed.' },
       { at: '.stage-panel', title: 'Start here', text: 'Choose the video, say what should change if anything, tick that it’s yours to rework, and read it. It takes seconds.' },
-      { at: '.stage-needs', title: 'What it needs', text: 'Claude or ChatGPT, connected to IV Studio in Settings → Agents. Your agent says what each shot is and writes the plan.' },
+      { at: '.stage-needs', title: 'What it needs', text: 'Claude or ChatGPT, connected to Techlit Studio in Settings → Agents. Your agent says what each shot is and writes the plan.' },
       { at: '.tool-shelf', title: 'Your rebuilds', text: 'Each tile shows how far it got. Open one to carry on.' }
     ]
   },
@@ -266,7 +266,7 @@ export const TOURS = {
     title: 'LoRAs',
     steps: [
       { at: '.lora-families', title: 'Pick a model', text: 'LoRAs only work with the model they were trained for. Pick one: MiniMax H3 for shots, or a picture model (Flux, Krea, Qwen, Z-Image, SDXL, Moss) for Create → Image. The number is how many you already have.' },
-      { at: '.lora-tabs', title: 'Discover, yours, recommended', text: 'Discover finds that model’s LoRAs on Civitai. Yours shows the ones already in ComfyUI; open All to tell IV Studio which model an unknown LoRA is for. For MiniMax H3, Recommended holds a few we’ve tried, with how to use each.' },
+      { at: '.lora-tabs', title: 'Discover, yours, recommended', text: 'Discover finds that model’s LoRAs on Civitai. Yours shows the ones already in ComfyUI; open All to tell Techlit Studio which model an unknown LoRA is for. For MiniMax H3, Recommended holds a few we’ve tried, with how to use each.' },
       { at: '.lora-bar', title: 'Search', text: 'Search by name and sort by downloads, rating or newest.' },
       { at: '.lora-tags', title: 'Kinds', text: 'Narrow it down to styles, concepts, camera moves and more.' },
       { at: '.lora-card', title: 'A LoRA', text: 'Hover to play its clip. Click for its details, licence and trigger words, and download it or use it in a shot or a picture. Downloads need your Civitai key in Settings.' }
@@ -275,31 +275,31 @@ export const TOURS = {
   cloud: {
     title: 'Cloud',
     steps: [
-      { title: 'Render on a cloud GPU', text: 'No strong graphics card, or want more? IV Studio can render on your own RunPod, Modal or Comfy Cloud account, billed by the second. On RunPod and Modal nearly everything works: shots, pictures, music, sounds, Replace, Effects and more.' },
-      { at: '.cloud-guided', title: 'Guided setup', text: 'The easiest way in: pick a service, connect it, choose a GPU and set it up. Setup shows each step with a timer and how long is left; you can leave the page, and IV Studio tells you when it’s ready.' },
+      { title: 'Render on a cloud GPU', text: 'No strong graphics card, or want more? Techlit Studio can render on your own RunPod, Modal or Comfy Cloud account, billed by the second. On RunPod and Modal nearly everything works: shots, pictures, music, sounds, Replace, Effects and more.' },
+      { at: '.cloud-guided', title: 'Guided setup', text: 'The easiest way in: pick a service, connect it, choose a GPU and set it up. Setup shows each step with a timer and how long is left; you can leave the page, and Techlit Studio tells you when it’s ready.' },
       { at: '.cloud-control', title: 'Where it renders', text: 'Switch between this PC and the cloud whenever you like.' },
-      { at: '.cloud-models', title: 'Models on first use', text: 'Setup brings H3. Everything else brings its own models the first time you use it in the cloud: IV Studio says how big they are and asks before downloading. A Hugging Face token here unlocks the few behind a licence (Flux and the LTX effects).' },
+      { at: '.cloud-models', title: 'Models on first use', text: 'Setup brings H3. Everything else brings its own models the first time you use it in the cloud: Techlit Studio says how big they are and asks before downloading. A Hugging Face token here unlocks the few behind a licence (Flux and the LTX effects).' },
       { at: '.engine-badge', title: 'The meter', text: 'While on the cloud, the title bar shows GPU time and cost. Shut down GPU stops it at once; it also stops by itself when idle.' }
     ]
   },
   settings: {
     title: 'Settings',
     steps: [
-      { at: '.settings-tabs', title: 'Settings and Setup', text: 'Settings is how IV Studio works for you. Setup checks what ComfyUI has and downloads what it needs.' },
+      { at: '.settings-tabs', title: 'Settings and Setup', text: 'Settings is how Techlit Studio works for you. Setup checks what ComfyUI has and downloads what it needs.' },
       { at: '.set-nav', title: 'Jump around', text: 'Every topic in one list. Click one to jump to it.' },
       { at: '#set-pc', title: 'Your PC', text: 'What your computer can do. Check again re-runs the scan and its recommended defaults.' },
       { at: '.speed-cards', title: 'Speed', text: 'How each new shot starts: Quality, Balanced, Fast or Low memory. The one that suits this PC is marked. Times are from an RTX 4090; smaller cards take longer.' },
       { at: '#set-you', title: 'You and your agent', text: 'Your name, your agent’s name, and whether it runs on Claude, ChatGPT, Hermes or Local AI (Ollama, free on this PC). The chat and the Dashboard use the names.' },
       { at: '#set-access', title: 'Colour and accessibility', text: 'Pick the app’s colour (red, blue, purple, orange, or Dark for greys only), then bigger text, higher contrast, less motion, clear focus outlines and underlined links. Each applies at once.' },
       { at: '#set-words', title: 'Words', text: 'Simple words: the app talks in everyday words instead of AI terms, for people new to this. Only the words change.' },
-      { at: '#set-comfy', title: 'ComfyUI', text: 'Where ComfyUI is (typing localhost:8000 is fine), and whether IV Studio starts it for you when it opens.' },
+      { at: '#set-comfy', title: 'ComfyUI', text: 'Where ComfyUI is (typing localhost:8000 is fine), and whether Techlit Studio starts it for you when it opens.' },
       { at: '#set-folders', title: 'Folders', text: 'Where finished videos go, on any drive, and where renders save inside ComfyUI.' },
       { at: '#set-writer', title: 'Prompt writer', text: 'Who writes your prompts: a free local model in Ollama, your own Claude, ChatGPT or Hermes, any OpenAI-compatible server (llama.cpp, vLLM, LM Studio, OpenAI…), or MiniMax’s paid rewriter.' },
-      { at: '#set-account', title: 'Comfy account', text: 'Your Comfy.org key and credits, for ComfyUI’s paid partner models such as Seedance, Kling and Veo. The balance also shows in the title bar, and IV Studio shows the price and asks before anything paid runs.' },
-      { at: '#set-agents', title: 'Agents', text: 'Connect Claude, ChatGPT or any MCP agent, so it can make shots and edits in IV Studio with you.' },
-      { at: '.about-terms', title: 'Terms of use', text: 'IV Studio is Powered by MiniMax H3. Read the rules for H3 here and agree once, before your first H3 render. They apply to everything you make with it.' },
-      { at: '.about-report', title: 'Report misuse', text: 'Seen something made with IV Studio that breaks the rules, or uses someone without consent? Report misuse emails us, and every report is acted on.' },
-      { at: '.about-credits', title: 'Credits', text: 'Everything IV Studio is built on: the models, tools, node packs and libraries, who made each and its licence.' }
+      { at: '#set-account', title: 'Comfy account', text: 'Your Comfy.org key and credits, for ComfyUI’s paid partner models such as Seedance, Kling and Veo. The balance also shows in the title bar, and Techlit Studio shows the price and asks before anything paid runs.' },
+      { at: '#set-agents', title: 'Agents', text: 'Connect Claude, ChatGPT or any MCP agent, so it can make shots and edits in Techlit Studio with you.' },
+      { at: '.about-terms', title: 'Terms of use', text: 'Techlit Studio is Powered by MiniMax H3. Read the rules for H3 here and agree once, before your first H3 render. They apply to everything you make with it.' },
+      { at: '.about-report', title: 'Report misuse', text: 'Seen something made with Techlit Studio that breaks the rules, or uses someone without consent? Report misuse emails us, and every report is acted on.' },
+      { at: '.about-credits', title: 'Credits', text: 'Everything Techlit Studio is built on: the models, tools, node packs and libraries, who made each and its licence.' }
     ]
   },
   setup: {
@@ -380,7 +380,7 @@ export const TOURS = {
 }
 
 // The page each page tour lives on (as App.jsx's iv:go takes it), for "Show me where" from the chat: an agent names a
-// tour and one of its steps (show_in_app), and IV Studio goes there and lights that one part up. Pages about one item
+// tour and one of its steps (show_in_app), and Techlit Studio goes there and lights that one part up. Pages about one item
 // (a shot, a film, an edit) need its id, so they aren't places to show.
 export const TOUR_PAGES = {
   home: { page: 'home', section: 'video' },

@@ -1,8 +1,8 @@
 // MiniMax's own H3 prompt-writing guide (skills/h3-prompt-writing in github.com/MiniMax-AI/MiniMax-H3), which the
 // local writer follows. It is part of H3's Documentation under the MiniMax H3 Community License, whose territory
-// rule keeps IV Studio from shipping it: it's fetched from MiniMax on first use, with that licence beside it, into
+// rule keeps Techlit Studio from shipping it: it's fetched from MiniMax on first use, with that licence beside it, into
 // the app data. Pinned to one commit and checked by SHA-256; anything else is refused and the writer falls back to
-// IV Studio's own rules.
+// Techlit Studio's own rules.
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -64,7 +64,7 @@ export async function loadGuide({ root, download = true } = {}) {
       if (sha256(buf) !== f.sha256) throw new Error(`${name} doesn't match the pinned copy`)
       fs.writeFileSync(path.join(dir, name), buf)
     }
-    fs.writeFileSync(path.join(dir, 'SOURCE.txt'), `${GUIDE_SOURCE}.\nDownloaded by IV Studio from MiniMax; IV Studio does not distribute these files.\n`)
+    fs.writeFileSync(path.join(dir, 'SOURCE.txt'), `${GUIDE_SOURCE}.\nDownloaded by Techlit Studio from MiniMax; Techlit Studio does not distribute these files.\n`)
   } catch (e) {
     failedAt = Date.now()
     console.warn(`H3 prompt guide not downloaded: ${e.message}`)

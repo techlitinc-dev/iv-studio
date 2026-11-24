@@ -100,7 +100,7 @@ await ok('the payoff times the animal’s sound and its mouth; the sound list is
   assert.match(sound, /No one speaks\./)
 })
 
-await ok('the prompt passes IV Studio’s prompt checker with no errors', () => {
+await ok('the prompt passes Techlit Studio’s prompt checker with no errors', () => {
   const p = buildPrompt(gym(), { who: '@Shadow' })
   assert.deepEqual(lintPrompt(p, { mode: 'text', seconds: 10, media: [] }).filter((x) => x.level === 'error'), [])
 })

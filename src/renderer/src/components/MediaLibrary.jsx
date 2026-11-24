@@ -8,7 +8,7 @@ import Loading from './Loading'
 import { dayGroup, groupBy, WHEN, inWhen, Chips, Near, useMore, Groups, FilterPanel } from './ShelfKit'
 import { askAgent, useAgentName } from './ChatPanel'
 
-// Everything made in IV Studio in one place: shot, sequence and Replace renders, Edit exports, pictures
+// Everything made in Techlit Studio in one place: shot, sequence and Replace renders, Edit exports, pictures
 // (Create -> Image), songs and voice lines. The takes of one shot (its previews and finals), of one sequence or of one edit are a single
 // tile; clicking it opens a viewer that plays them big and steps through every version.
 const FILTERS = [

@@ -58,7 +58,7 @@ export default function HfLogin({ notify, pages = [], onChange }) {
         <span className="dim small">Checking…</span>
       ) : from === 'iv' ? (
         <p className="small hf-login-ok">
-          <span className="ok-dot" aria-hidden="true">●</span> Token saved in IV Studio.{' '}
+          <span className="ok-dot" aria-hidden="true">●</span> Token saved in Techlit Studio.{' '}
           <button className="link-btn small" disabled={busy} onClick={() => save('')}>
             Remove it
           </button>

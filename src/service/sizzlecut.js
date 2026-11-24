@@ -1,7 +1,7 @@
 // A sizzle's first cut, as a Shinobi timeline: the approved storyboard laid out on the music's beat, with the
 // site's own screens, its colours, two-tone kinetic titles and an end card on the logo and the web address.
 // It is a starting point an agent (or the person) can refine in Shinobi; firstCut() is pure, so it is tested
-// without Shinobi. Titles use IV Studio's bundled Barlow Condensed, measured here from the font file itself
+// without Shinobi. Titles use Techlit Studio's bundled Barlow Condensed, measured here from the font file itself
 // so every line fits the frame.
 import fs from 'node:fs'
 

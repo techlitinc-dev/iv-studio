@@ -1,5 +1,5 @@
-// Website sizzle: a web address in, a short promo film out. IV Studio captures the site (sitecapture.js), an
-// agent writes the storyboard from what's actually on it, the person approves it, and IV Studio makes the
+// Website sizzle: a web address in, a short promo film out. Techlit Studio captures the site (sitecapture.js), an
+// agent writes the storyboard from what's actually on it, the person approves it, and Techlit Studio makes the
 // pieces on this PC: H3 shots (one preview each, finished at 1 MP), Z-Image pictures, a MiniMax or
 // ACE-Step track and, optionally, a voice-over. Then it hands everything to Shinobi with a brief and cuts a
 // first version itself (sizzlecut.js), which the agent can refine: the site's own screens, colours,
@@ -132,7 +132,7 @@ export class Sizzles {
       const models = { ...(await this.trainings.stillModels()), lora: null }
       for (const sc of stills) {
         const seed = Math.floor(Math.random() * 2 ** 31)
-        const graph = this.trainings.stillGraph(models, { prompt: sc.prompt, seed, width: f.width, height: f.height, prefix: `IV Studio/sizzle/${tag}/${sc.id}` })
+        const graph = this.trainings.stillGraph(models, { prompt: sc.prompt, seed, width: f.width, height: f.height, prefix: `Techlit Studio/sizzle/${tag}/${sc.id}` })
         const job = await this.studio.submitGraph({ kind: 'still', graph, plan: { images: true, request: { prompt: sc.prompt, seed } }, name: `${tag}_${sc.id}` })
         assets[sc.id] = { kind: 'image', jobId: job.id, status: job.status }
       }
@@ -279,7 +279,7 @@ export class Sizzles {
   }
 
   // ---------- 5 the first cut ----------
-  // IV Studio cuts the film itself (sizzlecut.js) from the approved storyboard and the music's beat, saves it as
+  // Techlit Studio cuts the film itself (sizzlecut.js) from the approved storyboard and the music's beat, saves it as
   // the Shinobi project's timeline, and looks at a frame from every scene. render: true renders it too.
   // An agent can refine the cut with the shinobi tools afterwards; cutting again replaces the timeline.
   async firstCut(id, { render = false } = {}) {

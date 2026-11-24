@@ -78,7 +78,7 @@ export function H3TermsHost() {
         <p className="mono label">MiniMax H3 · Terms of use</p>
         <h2 id="h3-terms-title">{waiting ? (req.what === 'training' ? 'Before you train on H3' : 'Before your first H3 render') : 'The rules for MiniMax H3'}</h2>
         <p className="confirm-message">
-          IV Studio makes video with MiniMax H3. Using it means agreeing to IV Studio’s terms, which carry MiniMax’s own use restrictions. They apply to
+          Techlit Studio makes video with MiniMax H3. Using it means agreeing to Techlit Studio’s terms, which carry MiniMax’s own use restrictions. They apply to
           everything you make with H3, wherever you share it. You’re asked once.
         </p>
         <ol className="h3-terms-rules">
@@ -87,7 +87,7 @@ export function H3TermsHost() {
           ))}
         </ol>
         <p className="small dim h3-terms-credit">
-          IV Studio is <strong>Powered by MiniMax H3</strong> and keeps that credit and MiniMax’s licence notice. Seen something that breaks these rules? Report it to{' '}
+          Techlit Studio is <strong>Powered by MiniMax H3</strong> and keeps that credit and MiniMax’s licence notice. Seen something that breaks these rules? Report it to{' '}
           <button className="link-btn" onClick={reportMisuse}>
             {ABUSE_EMAIL}
           </button>
@@ -106,7 +106,7 @@ export function H3TermsHost() {
         ) : (
           <label className="consent small h3-terms-agree">
             <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-            I’ve read these rules and agree to IV Studio’s terms for MiniMax H3.
+            I’ve read these rules and agree to Techlit Studio’s terms for MiniMax H3.
           </label>
         )}
         <div className="modal-foot">
