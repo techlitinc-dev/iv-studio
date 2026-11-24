@@ -6135,6 +6135,33 @@ button.nav-update:hover {
   background: var(--red);
   color: var(--ink);
 }
+.wiz-pills label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  min-height: 44px;
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+  font: 600 15px/1 var(--body);
+}
+.wiz-pills label:hover {
+  border-color: var(--paper-dim);
+}
+.wiz-pills label.on {
+  border-color: var(--red);
+}
+.wiz-pills label input {
+  width: 64px;
+  border: none;
+  background: none;
+  color: var(--paper);
+  font: 600 15px/1 var(--body);
+  text-align: right;
+}
+.wiz-pills label input:focus {
+  outline: none;
+}
 .wiz-foot {
   display: flex;
   align-items: center;
@@ -14528,28 +14555,174 @@ html.rm .agent-dot.live {
   gap: 4px;
 }
 .chat-empty {
-  display: grid;
-  gap: 14px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
   margin: auto 0;
+  padding: 12px 2px;
   color: var(--paper);
+  animation: chat-empty-in 0.5s ease both;
+}
+/* a soft glow the hello floats in */
+.chat-empty::before {
+  content: '';
+  position: absolute;
+  inset: -40px -18px auto;
+  height: 260px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--red) 16%, transparent), transparent 70%);
+  pointer-events: none;
+}
+@keyframes chat-empty-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.chat-hello {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+/* the agent's presence: a glowing disc with its initial */
+.chat-hello-orb {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--red) 55%, var(--cream)), var(--red) 58%, color-mix(in srgb, var(--red) 40%, var(--ink)) 100%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--red) 45%, transparent),
+    0 0 26px color-mix(in srgb, var(--red) 30%, transparent),
+    0 10px 26px rgba(0, 0, 0, 0.5);
+  animation: chat-orb-pulse 3.2s ease-in-out infinite;
+}
+.chat-hello-letter {
+  font: 700 30px/1 var(--display);
+  color: var(--ink);
+  text-transform: uppercase;
+  transform: translateY(1px);
+}
+@keyframes chat-orb-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--red) 45%, transparent),
+      0 0 26px color-mix(in srgb, var(--red) 30%, transparent),
+      0 10px 26px rgba(0, 0, 0, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--red) 65%, transparent),
+      0 0 44px color-mix(in srgb, var(--red) 50%, transparent),
+      0 10px 26px rgba(0, 0, 0, 0.5);
+  }
+}
+.chat-hello-kicker {
+  margin: 4px 0 0;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+.chat-hello-name {
+  margin: 0;
+  font: 700 34px/0.95 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--cream);
+}
+.chat-hello-stop {
+  color: var(--red);
+}
+.chat-hello-line {
+  margin: 0;
+  max-width: 32ch;
+  color: var(--paper-dim);
+  font-size: 13.5px;
+  line-height: 1.55;
 }
 .chat-ideas {
+  position: relative;
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 .chat-idea {
-  min-height: 40px;
-  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 10px 14px;
   border: 1px solid var(--line-strong);
-  background: var(--ink-2);
+  border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ink-3) 70%, transparent), var(--ink-2));
   color: var(--paper);
   text-align: left;
+  font-size: 13.5px;
+  line-height: 1.4;
   cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+.chat-idea-n {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--red);
+}
+.chat-idea-t {
+  flex: 1;
+}
+.chat-idea-go {
+  color: var(--red);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 .chat-idea:hover,
 .chat-idea:focus-visible {
   border-color: var(--red);
-  color: var(--cream);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--red) 10%, var(--ink-3)), var(--ink-2));
+  transform: translateY(-1px);
+  outline: none;
+}
+.chat-idea:hover .chat-idea-go,
+.chat-idea:focus-visible .chat-idea-go {
+  opacity: 1;
+  transform: none;
+}
+.chat-hello-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-empty,
+  .chat-hello-orb {
+    animation: none;
+  }
+  .chat-idea,
+  .chat-idea-go {
+    transition: none;
+  }
+}
+:root.rm .chat-empty,
+:root.rm .chat-hello-orb {
+  animation: none;
 }
 .chat-you {
   align-self: flex-end;

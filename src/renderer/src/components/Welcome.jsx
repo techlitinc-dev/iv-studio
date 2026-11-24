@@ -30,7 +30,7 @@ const STEPS = [
 const ART = { hello: '', you: '', pc: 'pc-card', way: 'pc-path', get: 'pc-path', done: '' }
 const GB = 1024 ** 3
 const gbs = (b) => (b / GB >= 1000 ? `${(b / GB / 1024).toFixed(1)} TB` : `${b / GB >= 100 ? Math.round(b / GB) : (b / GB).toFixed(b / GB < 10 ? 1 : 0)} GB`)
-const WRITERS = { claude: 'Claude', codex: 'ChatGPT', hermes: 'Hermes', local: 'Local (Ollama)' }
+const WRITERS = { claude: 'Claude', codex: 'ChatGPT', hermes: 'Hermes', local: 'Local (Ollama)', openai: 'OpenAI-compatible' }
 
 // small line icons, in the app's style
 const Icon = ({ name }) => {
@@ -64,6 +64,7 @@ export default function Welcome({ onClose, go, notify, first }) {
   const [way, setWay] = useState(null)
   const [prefs, setPrefs] = useState(null)
   const [writer, setWriter] = useState(null)
+  const writerTouched = useRef(false) // the writer changes only when the person picks one, never by the recommendation alone
   const [pick, setPick] = useState(null) // model group ids to download
   const [packs, setPacks] = useState(true)
   const [started, setStarted] = useState(null) // what Download started
@@ -110,7 +111,7 @@ export default function Welcome({ onClose, go, notify, first }) {
       setData(d)
       setWay((w) => w || d.rec.tier.renderOn)
       setPrefs((p) => p || d.rec.prefs)
-      setWriter((w) => w || d.rec.writer)
+      setWriter((w) => w || (d.promptEngine === 'openai' ? 'openai' : d.rec.writer))
       setPick(d.rec.downloads.filter((g) => g.recommended).map((g) => g.id))
     } catch (e) {
       setError(e.message)
@@ -142,7 +143,7 @@ export default function Welcome({ onClose, go, notify, first }) {
 
   async function finish(target, cloudWizard = false) {
     try {
-      await window.ivstudio.hardware.apply({ shotPrefs: prefs, promptEngine: writer !== data?.promptEngine ? writer : undefined, hardware: summaryOf(data), plainWords: simple, highContrast: hc, accent, ...named, ...(level ? { aiLevel: level } : {}) })
+      await window.ivstudio.hardware.apply({ shotPrefs: prefs, promptEngine: writerTouched.current && writer !== data?.promptEngine ? writer : undefined, hardware: summaryOf(data), plainWords: simple, highContrast: hc, accent, ...named, ...(level ? { aiLevel: level } : {}) })
     } catch (e) {
       notify?.(e.message)
     }
@@ -307,7 +308,7 @@ export default function Welcome({ onClose, go, notify, first }) {
             {step === 'hello' && <Hello level={level} knows={knows} />}
             {step === 'you' && <MakeItYours isNew={isNew} names={names} setNames={setNames} agents={agents} simple={simple} words={words} hc={hc} contrast={contrast} accent={accent} tint={tint} />}
             {step === 'pc' && (scanned && rec ? <YourPc rec={rec} scan={data.scan} isNew={isNew} /> : <Scan rows={rows} shown={shown} error={error} retry={scan} />)}
-            {step === 'way' && rec && <Way rec={rec} way={way} setWay={setWay} prefs={prefs} setPrefs={setPrefs} writer={writer} setWriter={setWriter} installs={installs} agents={agents} scan={data.scan} notify={notify} isNew={isNew} />}
+            {step === 'way' && rec && <Way rec={rec} way={way} setWay={setWay} prefs={prefs} setPrefs={setPrefs} writer={writer} setWriter={(v) => ((writerTouched.current = true), setWriter(v))} installs={installs} agents={agents} scan={data.scan} notify={notify} isNew={isNew} />}
             {step === 'get' && rec && <Get isNew={isNew} rec={rec} way={way} pick={pick} setPick={setPick} packs={packs} setPacks={setPacks} installs={installs} scan={data.scan} started={started} download={download} startComfy={startComfy} comfyStarting={comfyStarting} rescan={scan} notify={notify} />}
             {step === 'done' && rec && <Done rec={rec} way={way} prefs={prefs} writer={writer} started={started} onTour={() => finish('tour')} count={count} setCount={setCount} />}
           </div>
@@ -703,6 +704,8 @@ function Way({ rec, way, setWay, prefs, setPrefs, writer, setWriter, installs, a
             value={writer}
             onChange={setWriter}
             options={[
+              // the OpenAI-compatible server is set up in Settings, not here: shown when it's the current writer
+              ...(writer === 'openai' ? [['openai', 'OpenAI-compatible (set up in Settings)']] : []),
               ['claude', 'Claude', !installs.claude && 'Claude isn’t on this PC'],
               ['codex', 'ChatGPT', !installs.codex && 'ChatGPT isn’t on this PC'],
               ['hermes', 'Hermes', !installs.hermes && 'Hermes isn’t on this PC'],

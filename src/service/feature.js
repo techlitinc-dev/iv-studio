@@ -57,12 +57,13 @@ export function featureEstimate({ targetMinutes = 120, speed = 'balanced' } = {}
 }
 
 export class Features {
-  // productions: () => Productions, edits: () => Edits. writer: () => the prompt writer ({ engine, model }),
-  // for planAll. Same shape as Productions' own collaborators.
-  constructor({ dataDir, productions = () => null, edits = () => null, writer = () => ({ engine: 'local' }), onChange = () => {} }) {
+  // productions: () => Productions, edits: () => Edits, studio: () => Studio (the Characters page's people).
+  // writer: () => the prompt writer ({ engine, model }), for planAll. Same shape as Productions' own collaborators.
+  constructor({ dataDir, productions = () => null, edits = () => null, studio = () => null, writer = () => ({ engine: 'local' }), onChange = () => {} }) {
     this.dir = path.join(dataDir, 'features')
     this.productions = productions
     this.edits = edits
+    this.studio = studio
     this.writer = writer
     this.onChange = onChange
   }
@@ -254,25 +255,54 @@ export class Features {
     }
     const withCast = this.get(id)
     this.write({ ...withCast, cast })
-    for (const seq of withCast.sequences) {
-      try {
-        prod.update(seq.id, { cast: cast.map((c) => ({ as: c.name, characterId: null, description: c.looks, face: null })) })
-      } catch {}
-    }
+    this.linkCast(id, { force: true })
     return { acts: this.get(id).acts.length, sequences, characters: cast.length }
   }
 
+  // The feature's cast linked to studio characters, an existing one of the same name reused (who -> about,
+  // looks -> look): the film's people show on the Characters page, and the breakdown hands their names to the
+  // shot planner and matches shots to them (productions.js reads a cast member's name through characterId).
+  // planAll links as it plans (force: the sequences' casts are written even when no one needed creating);
+  // auto() links a feature planned before characters were linked, so it heals on the next Write everything.
+  linkCast(id, { force = false } = {}) {
+    const f = this.get(id)
+    if (!f.cast?.length) return []
+    const chars = this.studio()
+    let linked = false
+    const cast = f.cast.map((c) => {
+      if (c.characterId || !chars) return { ...c, characterId: c.characterId ?? null }
+      const found = chars.characters().find((x) => String(x.name).trim().toLowerCase() === String(c.name).trim().toLowerCase())
+      const saved = found || chars.saveCharacter({ name: c.name, about: c.who, look: c.looks })
+      linked = true
+      return { ...c, characterId: saved.id }
+    })
+    if (!linked && !force) return cast
+    this.write({ ...this.get(id), cast })
+    for (const seq of f.sequences) {
+      try {
+        this.productions().update(seq.id, { cast: cast.map((c) => ({ as: c.name, characterId: c.characterId, description: c.looks, face: null })) })
+      } catch {}
+    }
+    return cast
+  }
+
   // Writes every sequence's script and shots automatically, in running order. A sequence that already has a
-  // script keeps it; one with shots is skipped unless redo. Each sequence's script is written from its own
-  // title and logline plus the feature's story, so the acts tell one film. Breakdowns run in the background on
-  // the production (productions.js), so this returns at once with what it started.
-  // sequence: write only this sequence (total control: review it, then start the next). Returns { scripted, broken, errors }.
+  // script keeps it; one whose scenes all have shots is skipped unless redo, and a partly broken-down one
+  // resumes with the scenes still missing shots (breakDown plans exactly those). Each sequence's script is
+  // written from its own title and logline plus the feature's story, so the acts tell one film. Breakdowns run
+  // in the background on the production (productions.js), so this returns at once with what it started.
+  // sequence: write only this sequence (total control: review it, then start the next).
+  // Returns { scripted, broken, running, errors }: running counts sequences whose breakdown was already going
+  // (a second Write everything while the background work runs is not a failure).
   async auto(id, { redo = false, sequence = null } = {}) {
     const f = this.get(id)
+    try {
+      this.linkCast(id) // a feature planned before the cast was linked to studio characters heals here
+    } catch {}
     const prod = this.productions()
     const list = sequence ? this.order(f).filter((s) => s.id === sequence) : this.order(f)
     if (sequence && !list.length) throw new Error(`No sequence ${sequence} in this feature.`)
-    const out = { scripted: 0, broken: 0, errors: [] }
+    const out = { scripted: 0, broken: 0, running: 0, errors: [] }
     for (const seq of list) {
       try {
         const p = prod.get(seq.id)
@@ -288,13 +318,17 @@ export class Features {
           await prod.writeScript(seq.id, { idea })
           out.scripted++
         }
-        const shots = (prod.get(seq.id).scenes || []).some((s) => (s.shots || []).length)
-        if (redo || !shots) {
-          prod.breakDown(seq.id, {})
+        // any scene still without shots (or stale) needs planning — not only a sequence with no shots at all,
+        // or an interrupted breakdown could never be resumed; redo goes through so a re-plan redoes every scene
+        const scenes = prod.get(seq.id).scenes || []
+        const unfinished = !scenes.length || scenes.some((s) => !(s.shots || []).length || s.stale)
+        if (redo || unfinished) {
+          prod.breakDown(seq.id, { redo })
           out.broken++
         }
       } catch (err) {
-        out.errors.push({ sequence: seq.id, title: seq.title, error: err.message })
+        if (/already being broken down/.test(err.message)) out.running++
+        else out.errors.push({ sequence: seq.id, title: seq.title, error: err.message })
       }
     }
     return out

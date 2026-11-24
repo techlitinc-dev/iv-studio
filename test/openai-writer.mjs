@@ -18,6 +18,7 @@ const test = async (name, fn) => {
 // the stand-in: /v1/models lists two models; /v1/chat/completions answers with JSON. strict = refuse json_schema.
 const seen = []
 let strict = false
+let onlyTemp1 = false
 let needKey = null
 const server = http.createServer((req, res) => {
   let body = ''
@@ -29,6 +30,7 @@ const server = http.createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/v1/chat/completions') {
       const j = JSON.parse(body)
       seen.push({ headers: req.headers, body: j })
+      if (onlyTemp1 && j.temperature !== undefined && j.temperature !== 1) return send(400, { error: { message: 'invalid temperature: only 1 is allowed for this model' } })
       if (strict && j.response_format?.type === 'json_schema') return send(400, { error: { message: "response_format type 'json_schema' is not supported" } })
       return send(200, { choices: [{ message: { role: 'assistant', content: '<think>hm</think>{"description":"rain on a tin roof","seconds":12}' } }] })
     }
@@ -87,6 +89,21 @@ await test('a server without json_schema falls back to json_object, with the sch
   await openaiChat({ cfg, system: 'sys', messages: [{ role: 'user', content: 'again' }], schema: { type: 'object' } })
   assert.deepEqual(seen.map((s) => s.body.response_format?.type), ['json_object'])
   strict = false
+})
+
+await test('a model that allows only its own temperature gets none, and the address remembers', async () => {
+  seen.length = 0
+  onlyTemp1 = true
+  const cfg = { provider: 'openai', url: `${base}/v1`, model: 'kimi-for-coding', key: '', headers: {} }
+  const text = await openaiChat({ cfg, system: 's', messages: [{ role: 'user', content: 'hi' }], schema: { type: 'object' }, temperature: 0.6 })
+  assert.match(text, /rain on a tin roof/)
+  assert.equal(seen[0].body.temperature, 0.6)
+  assert.equal('temperature' in seen[1].body, false)
+  seen.length = 0
+  await openaiChat({ cfg, system: 's', messages: [{ role: 'user', content: 'again' }], schema: { type: 'object' }, temperature: 0.6 })
+  assert.equal(seen.length, 1)
+  assert.equal('temperature' in seen[0].body, false)
+  onlyTemp1 = false
 })
 
 await test('pictures go as image_url data parts only when the model sees pictures', async () => {

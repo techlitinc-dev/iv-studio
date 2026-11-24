@@ -100,6 +100,10 @@ const formatFor = new Map()
 const FORMATS = ['json_schema', 'json_object', 'none']
 const responseFormat = (f, schema) => (f === 'json_schema' ? { type: 'json_schema', json_schema: { name: 'answer', schema, strict: false } } : f === 'json_object' ? { type: 'json_object' } : undefined)
 
+// Servers whose model takes only its own temperature (Kimi's coding API allows only 1), by address: once one
+// refuses the field, later calls to that address leave it out and the model's default applies.
+const tempFor = new Map()
+
 // One answer. messages: [{ role, content, images?: [base64 JPEG] }], Ollama's shape, turned into OpenAI's here.
 // Returns the reply text (the JSON is parsed by the caller).
 export async function openaiChat({ cfg = llmConfig(), model, system, messages, schema, temperature = 0.5, maxTokens = 6000, timeoutMs = 600000 }) {
@@ -119,7 +123,7 @@ export async function openaiChat({ cfg = llmConfig(), model, system, messages, s
     const body = {
       model: name,
       stream: false,
-      temperature,
+      ...(tempFor.has(cfg.url) ? {} : { temperature }),
       max_tokens: maxTokens,
       // the schema goes in the system message too: json_object and plain servers need it, and it helps the rest
       messages: [{ role: 'system', content: `${system || ''}${f === 'json_schema' ? '' : jsonNote}`.trim() }, ...messages.map(convert)]
@@ -142,6 +146,12 @@ export async function openaiChat({ cfg = llmConfig(), model, system, messages, s
     last = await errorText(r)
     if (r.status === 401 || r.status === 403) throw new Error(`${say(cfg)} refused the key (${r.status}): ${last}`)
     if (r.status === 404 && /model/i.test(last)) throw new Error(`${say(cfg)} doesn't have the model "${name}": ${last}`)
+    // a model that allows only its own temperature: drop the field and ask again the same way
+    if (/temperature/i.test(last) && !tempFor.has(cfg.url)) {
+      tempFor.set(cfg.url, 'default')
+      i--
+      continue
+    }
     // a server that can't take pictures says so: tell the person to switch it off rather than guessing
     if (cfg.vision && /image|vision|multimodal|image_url/i.test(last) && !/response_format|json_schema|json_object|grammar|schema/i.test(last)) throw new Error(`${say(cfg)} can't take pictures with "${name}": ${last} Turn off "It can see pictures" in Settings → Prompt writer, or choose a vision model.`)
     // otherwise a 400/422/500 on the structured format: try the next, plainer one

@@ -38,6 +38,9 @@ const LENGTHS = [
   [120, '2 minutes'],
   [300, '5 minutes']
 ]
+// Any other length is typed in minutes beside the pills, up to 3 hours.
+const MIN_MINUTES = 0.5
+const MAX_MINUTES = 180
 const LOOKS = [
   ['Natural', 'natural light, realistic colours, soft film grain'],
   ['Cinematic', 'anamorphic widescreen look, dramatic contrast, rich colour grade, shallow depth of field'],
@@ -79,6 +82,8 @@ TESS
 Don't you dare break.
 `
 const clock = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
+// a film's length in words: whole minutes by name ("12 minutes", "180 minutes"), the rest as m:ss
+const lengthWords = (s) => (s % 60 === 0 ? `${s / 60} minute${s === 60 ? '' : 's'}` : clock(s))
 const src = (o) => (o?.path ? fileUrl(o.path) : media(o?.url))
 const first = (x) => String(x || '').split(/\s+/)[0].toLowerCase()
 // a name in capitals, as a script's cue writes it, the way people read it: "MR. WHISKERS" -> "Mr. Whiskers"
@@ -352,7 +357,17 @@ function Foot({ back, next, label, disabled, hint, busy }) {
 // ---------- 1 · Idea ----------
 function Idea({ v, act, setStep }) {
   const [logline, setLogline] = useState(v.logline || '')
+  const [mins, setMins] = useState(String(v.targetSeconds / 60))
+  useEffect(() => setMins(String(v.targetSeconds / 60)), [v.targetSeconds])
   const save = (patch) => act(() => P().update(v.id, patch))
+  // the minutes field commits on blur or Enter, clamped to 30 seconds–3 hours
+  const commitMins = () => {
+    const m = Number(mins)
+    if (!Number.isFinite(m) || m <= 0) return setMins(String(v.targetSeconds / 60))
+    const s = Math.round(Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, m)) * 60)
+    setMins(String(s / 60))
+    if (s !== v.targetSeconds) save({ targetSeconds: s })
+  }
   const next = async () => {
     if (logline !== v.logline) await save({ logline })
     setStep('story')
@@ -381,8 +396,12 @@ function Idea({ v, act, setStep }) {
             {l}
           </button>
         ))}
+        <label className={LENGTHS.every(([s]) => s !== v.targetSeconds) ? 'on' : ''}>
+          <input type="number" min={MIN_MINUTES} max={MAX_MINUTES} step={0.5} value={mins} onChange={(e) => setMins(e.target.value)} onBlur={commitMins} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} />
+          <span>minutes</span>
+        </label>
       </div>
-      <p className="wiz-help">Every shot is up to 10 seconds, so a minute is about 8 to 12 shots. Short films come out best.</p>
+      <p className="wiz-help">Every shot is up to 10 seconds, so a minute is about 8 to 12 shots. Type any length up to 3 hours (180 minutes). Short films come out best.</p>
       <Foot next={next} label="Next: the story" disabled={!logline.trim()} hint={logline.trim() ? '' : 'Say what it’s about to go on.'} />
     </section>
   )
@@ -448,7 +467,7 @@ function Story({ v, act, notify, setStep }) {
               ✦
             </span>
             <span className="wiz-choice-name">Write it for me</span>
-            <span className="small dim">A first draft from your idea, about {LENGTHS.find(([s]) => s === v.targetSeconds)?.[1] || clock(v.targetSeconds)} long.</span>
+            <span className="small dim">A first draft from your idea, about {LENGTHS.find(([s]) => s === v.targetSeconds)?.[1] || lengthWords(v.targetSeconds)} long.</span>
           </button>
           <button className="wiz-choice big" onClick={() => setEditing(true)}>
             <span className="wiz-choice-icon" aria-hidden="true">

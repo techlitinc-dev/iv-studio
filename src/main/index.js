@@ -1242,7 +1242,7 @@ app.whenReady().then(() => {
   // ---------- Projects (a short film from script to rough cut) ----------
   const productions = new Productions({ dataDir: DATA, studio: () => studio, voices: () => voices, images: () => images, previs: () => previs, catalog: () => catalog, edits, localCopy, onChange: (id) => send('productions:changed', { id }), model: () => readSettings(BASE).ollamaModel || undefined, writer: () => writerOf(readSettings(BASE)) })
   // Feature films (feature.js): acts and sequences over the productions above, with the trailer (a Sizzle) and songs (Music)
-  const features = new Features({ dataDir: DATA, productions: () => productions, edits: () => edits, writer: () => writerOf(readSettings(BASE)), onChange: (id) => send('features:changed', { id }) })
+  const features = new Features({ dataDir: DATA, productions: () => productions, edits: () => edits, studio: () => studio, writer: () => writerOf(readSettings(BASE)), onChange: (id) => send('features:changed', { id }) })
   handle('features:list', () => features.list())
   handle('features:get', (id) => features.get(id))
   handle('features:create', (opts) => features.create(opts))
@@ -1625,7 +1625,11 @@ app.whenReady().then(() => {
       if (!url) {
         if (cloudBudgetCheck(cloudBudget(), cloudToday()).over) throw overBudgetError()
         send('cloud:log', 'Starting a cloud GPU on RunPod…')
-        const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, perHour: r.gpuPerHour ?? null, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300, hf: hfToken() })
+        const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, perHour: r.gpuPerHour ?? null, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300, hf: hfToken() }).catch((e) => {
+          // a wake can't make a new volume itself (the models would reinstall for 30+ minutes): say what to do
+          if (/network volume .*not found/i.test(e.message)) throw new Error('Your RunPod network volume no longer exists. Run Set up again on the Cloud page to make a new one (the first boot then reinstalls the models).')
+          throw e
+        })
         url = pod.url
         saveRunpod({ url, podId: pod.id, podGpu: pod.gpu, podStamp: cloudStamp() })
       } else saveRunpod({ url })
@@ -1906,7 +1910,11 @@ app.whenReady().then(() => {
     cloudTask('setting up RunPod', () => tracked('runpod', async (t) => {
       const s = readSettings(BASE)
       if (s.target === 'cloud') throw new Error('Switch rendering to My PC first.')
-      const known = s.runpod?.volumeId ? { id: s.runpod.volumeId, dataCenter: s.runpod.dataCenter } : null
+      // The stored volume can be gone from RunPod (deleted on their site, or the key now belongs to another
+      // account): trusting its id fails the pod's creation with "Network volume not found". Check before reuse.
+      const stored = s.runpod?.volumeId ? await runpod.volume(s.runpod.volumeId) : null
+      if (s.runpod?.volumeId && !stored) send('cloud:log', `Your network volume ${s.runpod.volumeId} is no longer on your RunPod account — making a new one.`)
+      const known = stored ? { id: stored.id, dataCenter: stored.dataCenter } : null
       if (!known) send('cloud:log', 'Finding a data center with network storage and a free GPU…')
       if (known) t.skip('storage', `Already made, in ${known.dataCenter}`)
       else t.start('storage', 'Finding a data center with network storage and a free GPU')
@@ -2187,7 +2195,7 @@ app.whenReady().then(() => {
     // the speed preset (speed.js) the wizard picked; Settings → Your PC can change it afterwards
     if (shotPrefs?.speed && isSpeed(shotPrefs.speed)) patch.speed = shotPrefs.speed
     if (hardware) patch.hardware = hardware
-    if (promptEngine && ['local', 'claude', 'codex', 'hermes'].includes(promptEngine)) patch.promptEngine = promptEngine
+    if (promptEngine && ['local', 'openai', 'claude', 'codex', 'hermes'].includes(promptEngine)) patch.promptEngine = promptEngine
     return publicSettings(writeSettings(patch, BASE))
   })
   handle('setup:installNodes', () => studio.installNodePacks({ folder: readSettings(BASE).comfyFolder || null, onProgress: (u) => send('setup:nodes', u) }))

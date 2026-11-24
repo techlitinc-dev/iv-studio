@@ -224,8 +224,9 @@ ok('the trailer and songs are linked on the feature', () => {
       p.kind = 'feature'
       return Promise.resolve(fake.write(p))
     },
-    breakDown: (id) => {
+    breakDown: (id, opts) => {
       calls.breakdowns.push(id)
+      calls.redo = !!opts?.redo
       const p = fake.get(id)
       p.scenes = [{ shots: [{ id: 'a', seconds: 5 }] }]
       fake.write(p)
@@ -240,6 +241,7 @@ ok('the trailer and songs are linked on the feature', () => {
   const r = await feats.auto(f.id, {})
   assert.equal(r.scripted, 2)
   assert.equal(r.broken, 2)
+  assert.equal(calls.redo, false)
   assert.deepEqual(calls.breakdowns, ['p1', 'p2'])
   assert.match(calls.scripts[0][1], /Leaving: He locks the lighthouse\./)
   assert.match(calls.scripts[0][1], /The film so far: A keeper walks home through the winter\./)
@@ -247,7 +249,24 @@ ok('the trailer and songs are linked on the feature', () => {
   assert.equal(feats.get(f.id).sequences[0].logline, 'He locks the lighthouse.')
   // a second run finds scripts and shots and starts nothing again
   const again = await feats.auto(f.id, {})
-  assert.deepEqual(again, { scripted: 0, broken: 0, errors: [] })
+  assert.deepEqual(again, { scripted: 0, broken: 0, running: 0, errors: [] })
+  // a sequence whose breakdown is still running counts as running, not failed
+  const realBreakDown = fake.breakDown
+  fake.breakDown = (id) => {
+    if (id === 'p2') throw new Error('This project is already being broken down.')
+    return realBreakDown(id)
+  }
+  const busy = await feats.auto(f.id, { redo: true })
+  assert.equal(busy.running, 1)
+  assert.equal(busy.errors.length, 0)
+  assert.equal(busy.broken, 1)
+  fake.breakDown = realBreakDown
+  // a partly broken-down sequence (a scene still without shots) resumes instead of being skipped
+  files.set('p1', { ...fake.get('p1'), scenes: [{ id: 's1', shots: [{ id: 'a', seconds: 5 }] }, { id: 's2', shots: [] }] })
+  const resumed = await feats.auto(f.id, {})
+  assert.equal(resumed.broken, 1) // p1's missing scene is planned; p2 is complete
+  assert.equal(resumed.errors.length, 0)
+  assert.equal(calls.breakdowns.at(-1), 'p1')
   // a broken sequence is reported and the rest carry on
   calls.scripts.length = 0
   files.delete('p2')
@@ -257,11 +276,12 @@ ok('the trailer and songs are linked on the feature', () => {
   assert.equal(calls.scripts.length, 0) // p1 already had its script, so only the breakdown reran
   // auto({ sequence }): total control — write one sequence at a time
   const scoped = await feats.auto(f.id, { sequence: 'p1' })
-  assert.deepEqual(scoped, { scripted: 0, broken: 0, errors: [] }) // p1 already has its script and shots
+  assert.deepEqual(scoped, { scripted: 0, broken: 0, running: 0, errors: [] }) // p1 already has its script and shots
   await assert.rejects(feats.auto(f.id, { sequence: 'nope' }), /No sequence nope/)
   calls.breakdowns.length = 0
   const one = await feats.auto(f.id, { sequence: 'p1', redo: true })
   assert.equal(one.broken, 1)
+  assert.equal(calls.redo, true) // redo reaches breakDown, so a re-plan really redoes scenes that have shots
   assert.deepEqual(calls.breakdowns, ['p1']) // only the named sequence, not the whole feature
   // explore(): the whole story as a tree, with a status per shot
   files.set('p1', {
@@ -343,6 +363,46 @@ ok('the trailer and songs are linked on the feature', () => {
   await assert.rejects(feats2.planAll(f2.id, { ask }), /already has sequences/)
   n++
   console.log('ok  planAll writes acts, sequences and the cast from the story')
+}
+
+// linkCast(): the film's cast becomes studio characters — created by name, an existing one of the same name
+// reused — so the people show on the Characters page and shots can play them; auto() heals an unlinked feature.
+{
+  const dir4 = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-feat-cast-'))
+  const prods = new Map()
+  const fakeP2 = {
+    get: (id) => prods.get(id),
+    write: (p) => (prods.set(p.id, p), p),
+    update: (id, patch) => Object.assign(prods.get(id), patch),
+    writeScript: async (id) => Object.assign(prods.get(id), { script: { text: 'INT. HUT - DAY' } })
+  }
+  const people = [{ id: 'chT', name: 'Tess Marlow' }]
+  const fakeStudio = {
+    characters: () => people,
+    saveCharacter: (c) => {
+      const ch = { id: `ch${people.length}`, ...c }
+      people.push(ch)
+      return ch
+    }
+  }
+  const feats3 = new Features({ dataDir: dir4, productions: () => fakeP2, edits: () => edits, studio: () => fakeStudio })
+  const f3 = feats3.create({ name: 'Linked', story: 'A keeper and his granddaughter.' })
+  prods.set('q1', { id: 'q1', name: 'Q1', scenes: [{ id: 's1', shots: [{ id: 'a' }] }], cast: [] })
+  feats3.attach(f3.id, 'q1', { actId: feats3.get(f3.id).acts[0].id, title: 'Q1' })
+  feats3.write({ ...feats3.get(f3.id), cast: [{ name: 'The Keeper', who: 'an old keeper', looks: 'A gray man in a yellow oilskin.' }, { name: 'Tess Marlow', who: 'his granddaughter', looks: 'A girl in a red hat.' }] })
+  await feats3.auto(f3.id, {})
+  const cast = feats3.get(f3.id).cast
+  assert.equal(cast[0].characterId, 'ch1') // created, with who/looks as about/look
+  assert.equal(people[1].about, 'an old keeper')
+  assert.equal(people[1].look, 'A gray man in a yellow oilskin.')
+  assert.equal(cast[1].characterId, 'chT') // the name already on the Characters page is reused, not duplicated
+  assert.equal(people.length, 2)
+  assert.equal(prods.get('q1').cast[0].characterId, 'ch1') // the sequence's cast links too
+  await feats3.auto(f3.id, {})
+  assert.equal(people.length, 2) // linked once: a second run changes nothing
+  fs.rmSync(dir4, { recursive: true, force: true })
+  n++
+  console.log('ok  linkCast: the cast becomes studio characters, reused by name, and heals on Write everything')
 }
 
 console.log(`\n${n} ok`)

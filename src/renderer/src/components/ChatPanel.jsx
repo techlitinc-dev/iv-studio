@@ -752,14 +752,31 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
               <div className="chat-body" ref={bodyRef} aria-live="polite">
                 {!chat?.entries?.length ? (
                   <div className="chat-empty">
-                    <p className="small">Ask {call(pick)} about Techlit Studio or your projects, or tell it what to make. Type, or press the mic and talk. It can use everything Techlit Studio does, and it knows what you’re looking at.</p>
+                    <div className="chat-hello">
+                      <span className="chat-hello-orb" aria-hidden="true">
+                        <span className="chat-hello-letter">{(call(pick) || '?').slice(0, 1)}</span>
+                      </span>
+                      <p className="chat-hello-kicker mono">Ready when you are</p>
+                      <h3 className="chat-hello-name">
+                        {call(pick)}
+                        <span className="chat-hello-stop">.</span>
+                      </h3>
+                      <p className="chat-hello-line">Ask about Techlit Studio or your projects, or tell it what to make. It can use everything Techlit Studio does — and it knows what you’re looking at.</p>
+                    </div>
                     <div className="chat-ideas">
-                      {ideasFor(context?.page).map((i) => (
-                        <button key={i} className="chat-idea small" onClick={() => (setText(i), inputRef.current?.focus())}>
-                          {i}
+                      {ideasFor(context?.page).map((i, n) => (
+                        <button key={i} className="chat-idea" onClick={() => (setText(i), inputRef.current?.focus())}>
+                          <span className="chat-idea-n mono" aria-hidden="true">
+                            {String(n + 1).padStart(2, '0')}
+                          </span>
+                          <span className="chat-idea-t">{i}</span>
+                          <span className="chat-idea-go" aria-hidden="true">
+                            →
+                          </span>
                         </button>
                       ))}
                     </div>
+                    <p className="chat-hello-hint mono">Type · or press the mic and talk</p>
                   </div>
                 ) : (
                   chat.entries.map((e, i) => <Entry key={i} e={e} onAnswer={answer} onUndo={undo} onOpenShot={openShot} agentName={call(chat.engine) || 'Agent'} userName={status?.userName} first={e.kind !== chat.entries[i - 1]?.kind} />)

@@ -206,7 +206,9 @@ function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, o
     setBusy('auto')
     try {
       const r = await F().auto(id, {})
-      notify(r.errors.length ? `Started ${r.scripted} scripts and ${r.broken} breakdowns; ${r.errors.length} sequence(s) failed.` : `Started ${r.scripted} scripts and ${r.broken} breakdowns.`)
+      const failed = r.errors.map((e) => `“${e.title}”: ${e.error}`).join(' · ')
+      const nothing = !r.scripted && !r.broken && !r.running && !r.errors.length
+      notify(nothing ? 'Every sequence already has its script and shots — open one in Projects to change it.' : `Started ${r.scripted} scripts and ${r.broken} breakdowns${r.running ? `; ${r.running} already being written` : ''}${failed ? `; failed — ${failed}` : ''}.`)
       load()
     } catch (e) {
       notify(e.message)
@@ -224,7 +226,7 @@ function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, o
       const r = await F().planAll(id, { redo: f.sequences.length > 0 })
       notify(`Planned: ${r.acts} acts, ${r.sequences} sequences, ${r.characters} characters. Writing every script and shot now…`)
       const w = await F().auto(id, {})
-      notify(`Writing started: ${w.scripted} scripts, ${w.broken} breakdowns${w.errors.length ? `, ${w.errors.length} failed` : ''}.`)
+      notify(`Writing started: ${w.scripted} scripts, ${w.broken} breakdowns${w.running ? `, ${w.running} already being written` : ''}${w.errors.length ? `, failed — ${w.errors.map((e) => `“${e.title}”: ${e.error}`).join(' · ')}` : ''}.`)
       load()
     } catch (e) {
       notify(e.message)

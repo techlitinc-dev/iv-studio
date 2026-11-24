@@ -512,6 +512,17 @@ export class Productions {
     this.running = new Map() // production id -> breakdown promise
     this.writing = new Set() // production ids whose script is being written
     this.filming = new Map() // production id -> { speaking: shot id or null, waiting: Set of shot ids } while lines are said
+    // A breakdown still "running" on disk when the app starts was cut off by a quit or crash: mark it stopped,
+    // or its scenes would show "Planning…" forever. Scenes that got their shots keep them; breaking down again
+    // picks up the rest. Written directly (not write()) so the recovery doesn't reorder the projects list.
+    for (const f of fs.existsSync(this.dir) ? fs.readdirSync(this.dir) : []) {
+      if (!f.endsWith('.json')) continue
+      const p = readJson(path.join(this.dir, f), null)
+      if (p?.breakdown?.state !== 'running') continue
+      p.breakdown = { ...p.breakdown, state: 'error', error: 'Stopped when Techlit Studio closed. Break it down again to finish it.' }
+      fs.writeFileSync(`${this.file(p.id)}.tmp`, JSON.stringify(p, null, 2))
+      fs.renameSync(`${this.file(p.id)}.tmp`, this.file(p.id))
+    }
   }
 
   file = (id) => path.join(this.dir, `${id}.json`)
@@ -813,7 +824,9 @@ export class Productions {
     this.write(p)
     this.onChange(id)
     const run = this.runBreakdown(id, todo, { sketch })
-      .catch((err) => this.patch(id, (q) => (q.breakdown = { ...q.breakdown, state: 'error', error: err.message })))
+      // a project deleted mid-run is gone: the run stops at its next read, and there is no file left to
+      // write the error note to — patching here would throw "No project" as an unhandled rejection
+      .catch((err) => fs.existsSync(this.file(id)) && this.patch(id, (q) => (q.breakdown = { ...q.breakdown, state: 'error', error: err.message })))
       .finally(() => this.running.delete(id))
     this.running.set(id, run)
     return this.get(id)
