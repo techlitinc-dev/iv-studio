@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { media } from '../media'
+import { ask } from './Confirm'
+import { LOOK_NAME, lookChanges, shotLook } from '../../../service/look'
 import { Progress } from './Shot'
 import Failure from './Failure'
 import { FirstRenders } from './Speed'
@@ -105,7 +107,97 @@ function Seg({ value, options, onChange, format = (v) => v }) {
   )
 }
 
-function ShotCard({ shot, i, count, onChange, onMove, onDuplicate, onDelete, writer, focused, sent, seqId }) {
+// A shot's look (look.js): what it inherits from the sequence and what it overrides. Overrides shape the
+// Shot by shot renders (studio.huntShot); a field the sequence locks stays the sequence's own.
+function ShotLook({ shot, seq, characters, onChange }) {
+  const [open, setOpen] = useState(false)
+  const locks = seq.locks || {}
+  const over = shot.look || {}
+  const resolved = shotLook(seq, shot)
+  const set = (f, v) => {
+    const look = { ...over }
+    if (v === '' || v === null || v === undefined) delete look[f]
+    else look[f] = v
+    onChange({ look: Object.keys(look).length ? look : null })
+  }
+  const charName = (id) => (id === 'none' ? 'Nobody' : characters.find((c) => c.id === id)?.name.split(' ')[0] || id)
+  const summary = [charName(resolved.character), resolved.aspect, `${resolved.megapixels} MP`, `${resolved.shotSeconds} s`, resolved.loras.length ? `${resolved.loras.length} LoRA${resolved.loras.length > 1 ? 's' : ''}` : null].filter(Boolean).join(' · ')
+  const field = (f, label, control) => (
+    <label className={`shot-look-field ${over[f] !== undefined ? 'over' : ''}`}>
+      <span className="mono small dim">
+        {label}
+        {locks[f] ? ' · locked' : over[f] !== undefined ? ' · overridden' : ''}
+      </span>
+      {control}
+    </label>
+  )
+  return (
+    <div className="shot-look">
+      <button className="link-btn mono small" onClick={() => setOpen(!open)} aria-expanded={open}>
+        {open ? '▾' : '▸'} Look{resolved.overridden.length ? ` · ${resolved.overridden.length} override${resolved.overridden.length > 1 ? 's' : ''}` : ''}
+      </button>
+      {!open && <span className="dim small shot-look-summary">{summary}</span>}
+      {open && (
+        <div className="shot-look-fields">
+          {field(
+            'character',
+            'Character',
+            <select disabled={!!locks.character} value={over.character ?? ''} onChange={(e) => set('character', e.target.value || null)}>
+              <option value="">Sequence’s ({charName(seq.character)})</option>
+              <option value="none">Nobody</option>
+              {characters.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {field(
+            'aspect',
+            'Shape',
+            <select disabled={!!locks.aspect} value={over.aspect ?? ''} onChange={(e) => set('aspect', e.target.value || null)}>
+              <option value="">Sequence’s ({seq.aspect})</option>
+              {ASPECTS.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+          )}
+          {field(
+            'megapixels',
+            'Size',
+            <select disabled={!!locks.megapixels} value={over.megapixels ?? ''} onChange={(e) => set('megapixels', e.target.value ? Number(e.target.value) : null)}>
+              <option value="">Sequence’s ({seq.megapixels} MP)</option>
+              {SIZES.map((mp) => (
+                <option key={mp} value={mp}>
+                  {mp} MP
+                </option>
+              ))}
+            </select>
+          )}
+          {field(
+            'shotSeconds',
+            'Length',
+            <select disabled={!!locks.shotSeconds} value={over.shotSeconds ?? ''} onChange={(e) => set('shotSeconds', e.target.value ? Number(e.target.value) : null)}>
+              <option value="">Sequence’s ({seq.shotSeconds} s)</option>
+              <option value={10}>10 s</option>
+              <option value={15}>15 s</option>
+            </select>
+          )}
+          <span className="dim small">LoRAs come from the sequence{locks.loras ? ' (locked)' : ''}.</span>
+          {resolved.overridden.length > 0 && (
+            <button className="link-btn mono small" onClick={() => onChange({ look: null })}>
+              Reset to the sequence look
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ShotCard({ shot, i, count, onChange, onMove, onDuplicate, onDelete, writer, focused, sent, seqId, look }) {
   const key = `seq:${seqId}:${shot.id}`
   // open again on what you left: an idea typed, or a write still running
   const [writing, setWriting] = useState(() => !!shot.idea || isWriting(key))
@@ -146,6 +238,7 @@ function ShotCard({ shot, i, count, onChange, onMove, onDuplicate, onDelete, wri
         />
       )}
       <textarea className="prompt seq-prompt" rows={5} value={shot.prompt} placeholder="{char} sits at the kitchen table… and says: <d>[English] …</d>" onChange={(e) => onChange({ prompt: e.target.value })} />
+      {look && <ShotLook shot={shot} {...look} />}
       {sent?.text && (
         <details className="seq-sent">
           <summary className="mono dim">What gets sent</summary>
@@ -470,6 +563,33 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => flush().then(load).catch((err) => notify(err.message)), 500)
   }
+  // A look change (look.js) re-keys every shot that inherits the field: renders already made read as
+  // changed. Say so first (the Director Workspace's "warn before an inherited update"); the controls are
+  // controlled by seq, so not calling edit leaves them as they were.
+  async function editLook(patch) {
+    const changed = lookChanges(seq, patch)
+    const rendered = (view?.shots || []).filter((sh) => sh.raw).length
+    if (changed.length && rendered) {
+      const ok = await ask({
+        title: `Change the ${changed.map((f) => LOOK_NAME[f].toLowerCase()).join(' and ')}?`,
+        message: `${rendered} shot${rendered === 1 ? ' has' : 's have'} renders made with the current look. They stay as they are, but every shot inheriting ${changed.length === 1 ? 'it' : 'them'} reads as changed: re-renders use the new look and the old runs no longer match. Locked and overridden fields aren't touched.`,
+        confirm: 'Change the look'
+      })
+      if (!ok) return
+    }
+    edit(patch)
+  }
+  const locks = seq?.locks || {}
+  const LockBtn = ({ f }) => (
+    <button
+      className={`lock-btn mono small ${locks[f] ? 'on' : ''}`}
+      title={locks[f] ? 'Locked: shots can’t override this. Click to unlock.' : 'Lock it, so no shot overrides it.'}
+      aria-pressed={!!locks[f]}
+      onClick={() => edit({ locks: { ...locks, [f]: !locks[f] } })}
+    >
+      {locks[f] ? 'Locked' : 'Lock'}
+    </button>
+  )
   useEffect(() => () => flush(), [])
   // late writer results land in this editor while it's open (lateWrite)
   const latest = useRef(null)
@@ -526,7 +646,7 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
       changed++
       return { ...s, prompt: `${missing.join(', ')}. ${s.prompt}` }
     })
-    edit({ loras: [...loras, { name, strength, ...(title && { title }) }], ...(changed && { shots: nextShots }) })
+    editLook({ loras: [...loras, { name, strength, ...(title && { title }) }], ...(changed && { shots: nextShots }) })
     notify(changed ? `Added ${title || loraTitle(name)} and its trigger words (${add.join(', ')}) to ${changed} shot${changed === 1 ? '' : 's'}.` : `Added ${title || loraTitle(name)} to every shot.`, 'info')
     reloadYours()
   }
@@ -616,6 +736,8 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
             onDuplicate={() => edit({ shots: [...shots.slice(0, i + 1), { ...s, id: newId() }, ...shots.slice(i + 1)] })}
             onDelete={() => edit({ shots: shots.filter((_, j) => j !== i) })}
             writer={{ notify, go, context: { mode: 'text', seconds: seq.shotSeconds, aspect: seq.aspect, character: seq.character, sequence: true, previous: i > 0 ? shots[i - 1].prompt : null } }}
+            // per-shot look overrides are a Shot by shot thing: a one take renders every shot in one graph
+            look={(seq.method || 'take') === 'take' ? null : { seq, characters: withLora, onChange: (p) => setShot(i, p) }}
             focused={focused === s.id}
             seqId={sequenceId}
             sent={seq.method === 'take' ? { text: view.take?.script?.[i], kind: view.take?.kind, char } : null}
@@ -628,8 +750,10 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
 
       <Step n={3} title="Look and size" sub="Who plays it, its LoRAs, the frame, the size and each shot's length.">
         <div className="row">
-          <span className="row-label">Character</span>
-          <Seg value={seq.character} options={[...withLora.map((c) => [c.id, c.name.split(' ')[0]]), ['none', 'None']]} onChange={(character) => edit({ character })} />
+          <span className="row-label">
+            Character <LockBtn f="character" />
+          </span>
+          <Seg value={seq.character} options={[...withLora.map((c) => [c.id, c.name.split(' ')[0]]), ['none', 'None']]} onChange={(character) => editLook({ character })} />
         </div>
         {refmodOnly.length > 0 && (
           <p className="small dim seq-refmod-note">
@@ -638,7 +762,9 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
           </p>
         )}
         <div className="row seq-loras">
-          <span className="row-label">LoRAs</span>
+          <span className="row-label">
+            LoRAs <LockBtn f="loras" />
+          </span>
           <div className="lora-tray">
             {loras.map((l, i) => {
               const info = loraInfo(l.name)
@@ -650,11 +776,11 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
                       {info?.civitai?.name || l.title || loraTitle(l.name)}
                     </span>
                     <div className="lora-chip-strength">
-                      <input type="range" min={0} max={1.5} step={0.05} value={l.strength} aria-label={`${loraTitle(l.name)} strength`} onChange={(e) => edit({ loras: loras.map((x, j) => (j === i ? { ...x, strength: Number(e.target.value) } : x)) })} />
+                      <input type="range" min={0} max={1.5} step={0.05} value={l.strength} aria-label={`${loraTitle(l.name)} strength`} onChange={(e) => editLook({ loras: loras.map((x, j) => (j === i ? { ...x, strength: Number(e.target.value) } : x)) })} />
                       <span className="mono small">{Number(l.strength).toFixed(2)}</span>
                     </div>
                   </div>
-                  <button className="lora-chip-x" title="Take it out of the sequence" aria-label={`Remove ${loraTitle(l.name)}`} onClick={() => edit({ loras: loras.filter((_, j) => j !== i) })}>
+                  <button className="lora-chip-x" title="Take it out of the sequence" aria-label={`Remove ${loraTitle(l.name)}`} onClick={() => editLook({ loras: loras.filter((_, j) => j !== i) })}>
                     ×
                   </button>
                 </div>
@@ -668,14 +794,23 @@ export function SequenceEditor({ sequenceId, characters, notify, go, jobs: live,
           </div>
         </div>
         {picking && <LoraPicker notify={notify} go={go} onClose={() => setPicking(false)} onPick={addLora} />}
-        <AspectTiles aspects={ASPECTS} value={seq.aspect} onChange={(aspect) => edit({ aspect })} />
         <div className="row">
-          <span className="row-label">Size</span>
-          <Seg value={seq.megapixels} options={SIZES} format={(mp) => `${mp} MP`} onChange={(megapixels) => edit({ megapixels })} />
+          <span className="row-label">
+            Shape <LockBtn f="aspect" />
+          </span>
+        </div>
+        <AspectTiles aspects={ASPECTS} value={seq.aspect} onChange={(aspect) => editLook({ aspect })} />
+        <div className="row">
+          <span className="row-label">
+            Size <LockBtn f="megapixels" />
+          </span>
+          <Seg value={seq.megapixels} options={SIZES} format={(mp) => `${mp} MP`} onChange={(megapixels) => editLook({ megapixels })} />
         </div>
         <div className="row">
-          <span className="row-label">Shot length</span>
-          <Seg value={seq.shotSeconds} options={[[10, '10 s'], [15, '15 s']]} onChange={(shotSeconds) => edit({ shotSeconds })} />
+          <span className="row-label">
+            Shot length <LockBtn f="shotSeconds" />
+          </span>
+          <Seg value={seq.shotSeconds} options={[[10, '10 s'], [15, '15 s']]} onChange={(shotSeconds) => editLook({ shotSeconds })} />
         </div>
         <div className="row">
           <span className="row-label">Seed</span>

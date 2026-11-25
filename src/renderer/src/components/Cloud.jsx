@@ -15,7 +15,7 @@ const clock = (s) => {
   const sec = String(Math.floor(s % 60)).padStart(2, '0')
   return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
 }
-export function CloudMeter({ onOpen }) {
+export function CloudMeter({ onOpen, notify = () => {} }) {
   const [usage, setUsage] = useState(null)
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
@@ -51,17 +51,21 @@ export function CloudMeter({ onOpen }) {
   const ids = new Set(usage.running.map((c) => c.id))
   const seconds = [...seen].reduce((sum, [id, c]) => sum + Math.max(0, ((ids.has(id) ? now : c.last) - c.start) / 1000), 0)
   const cost = (seconds / 3600) * usage.perHour
-  const rate = usage.rate || 11.5
+  const rate = usage.rate || 18
   const inr = (v) => `₹${(v * rate).toFixed(2)}`
+  const perHour = `${inr(usage.perHour)}/h`
   return (
-    <button
-      className={`mono cloud-meter ${on ? 'on' : ''}`}
-      onClick={onOpen}
-      title={`Cloud GPU time and estimated cost since Techlit Studio opened (${usage.gpu} at $${usage.perHour.toFixed(2)} an hour, billed by the second)${usage.today != null ? `. Today: $${usage.today.toFixed(2)} (${inr(usage.today)})` : ''}. Click for the Cloud page.`}
-    >
-      <span className="cloud-meter-dot" />
-      {on ? 'GPU on' : 'GPU off'} · {clock(seconds)} · ${cost.toFixed(2)} · {inr(cost)}
-    </button>
+    <span className="cloud-meter-wrap">
+      <button
+        className={`mono cloud-meter ${on ? 'on' : ''}`}
+        onClick={onOpen}
+        title={`Cloud GPU time and estimated cost since Techlit Studio opened (${usage.gpu} at ${perHour}, billed by the second)${usage.today != null ? `. Today: ${inr(usage.today)}` : ''}. Click for the Cloud page.`}
+      >
+        <span className="cloud-meter-dot" />
+        {on ? `GPU on · ${usage.gpu} · ${perHour} · ${clock(seconds)} · ${inr(cost)}` : `GPU off · ${usage.gpu} ${perHour} when on`}
+      </button>
+      {on && <ShutDownGpu notify={notify} className="btn btn-small cloud-meter-stop" />}
+    </span>
   )
 }
 
@@ -136,7 +140,7 @@ function CloudDash({ notify }) {
   const pod = dash.pod
   const idleLeft = pod?.idleLeft != null ? Math.max(0, pod.idleLeft - (now - dashAt) / 1000) : null
   const pct = dash.budget.on && dash.budget.daily > 0 ? Math.min(100, (dash.today / dash.budget.daily) * 100) : 0
-  const inr = (v) => `₹${(v * (dash.rate || 11.5)).toFixed(2)}`
+  const inr = (v) => `₹${(v * (dash.rate || 18)).toFixed(2)}`
   const list = files?.files ? Object.entries(files.files).sort((a, b) => b[1] - a[1]) : null
   const usedGb = list ? list.reduce((s, [, b]) => s + b, 0) / 1e9 : null
   return (
@@ -144,7 +148,7 @@ function CloudDash({ notify }) {
       <div className="cloud-dash-row">
         <span className={`cloud-status mono small ${pod ? 'on' : ''}`}>
           <span className="cloud-status-dot" />
-          {pod ? `GPU on · ${pod.gpu || ''}${pod.perHour != null ? ` · $${Number(pod.perHour).toFixed(2)}/h` : ''}` : 'GPU off'}
+          {pod ? `GPU on · ${pod.gpu || ''}${pod.perHour != null ? ` · ${inr(Number(pod.perHour))}/h` : ''}` : 'GPU off'}
         </span>
         {pod && idleLeft != null && (
           <span className="small dim">
@@ -156,8 +160,8 @@ function CloudDash({ notify }) {
       </div>
       <div className="cloud-dash-row">
         <span className="small">
-          Today: ${dash.today.toFixed(2)} ({inr(dash.today)})
-          {dash.budget.on ? ` of $${dash.budget.daily.toFixed(2)} (${inr(dash.budget.daily)})` : ''}
+          Today: {inr(dash.today)}
+          {dash.budget.on ? ` of ${inr(dash.budget.daily)}` : ''}
         </span>
         {dash.budget.on && (
           <span className="cloud-dash-bar" title={`${pct.toFixed(0)}% of today's budget spent`}>
@@ -330,14 +334,23 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
   const [freeOnly, setFreeOnly] = useState(true) // only cards free right now, unless the person asks for the whole catalog
   const [sort, setSort] = useState('price') // 'price' | 'vram'
   const [pods, setPods] = useState(null)
+  const [volumeGone, setVolumeGone] = useState(false)
   const [fetching, setFetching] = useState(false)
-  const loadPods = () => window.ivstudio.cloud.runpodPods().then(setPods).catch(() => {})
+  const loadPods = () =>
+    window.ivstudio.cloud.runpodPods().then((r) => {
+      setPods(r.pods)
+      setVolumeGone(!!r.volumeGone)
+      // the dead volume's data center no longer pins the stock list (main cleared it): show the fresh state
+      if (r.volumeGone) refresh()
+    }).catch(() => {})
   const loadGpus = () => window.ivstudio.cloud.runpodAllGpus().then((list) => list.length && setGpus(list)).catch(() => {})
   useEffect(() => {
-    if (rp.hasKey) {
-      loadGpus()
-      loadPods()
-    }
+    if (!rp.hasKey) return
+    loadGpus()
+    loadPods()
+    // stock churns by the minute: keep the dropdown's "free now" fresh while the page is open
+    const t = setInterval(loadGpus, 60000)
+    return () => clearInterval(t)
   }, [rp.hasKey])
   // stock changes by the minute: the button asks RunPod again
   const fetchStock = async () => {
@@ -348,10 +361,12 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
   // the saved card stays selectable while the catalog loads, or if RunPod stops listing it
   const options = gpus.some((g) => g.id === gpu) ? gpus : [{ id: gpu, label: gpu, perHour: rp.gpu === gpu ? rp.gpuPerHour : null, inStock: null }, ...gpus]
   const chosen = options.find((g) => g.id === gpu)
-  // once the volume exists it pins the data center: a card free somewhere else can't help, so stock is judged there
-  const usable = (g) => (rp.dataCenter && g.dataCenters ? g.dataCenters.includes(rp.dataCenter) : g.inStock !== false)
+  // once the volume exists it pins the data center: a card free somewhere else can't help, so stock is judged there.
+  // a card whose data centers RunPod didn't list still falls back to plain stock; a free card names where it's free
+  const usable = (g) => (rp.dataCenter && g.dataCenters?.length ? g.dataCenters.includes(rp.dataCenter) : g.inStock !== false)
   const stockText = (g) => {
-    if (rp.dataCenter && g.dataCenters) return g.dataCenters.includes(rp.dataCenter) ? ` · free now in ${rp.dataCenter}` : ` · none free in ${rp.dataCenter} now`
+    if (rp.dataCenter && g.dataCenters?.length) return g.dataCenters.includes(rp.dataCenter) ? ` · free now in ${rp.dataCenter}` : ` · none free in ${rp.dataCenter} now`
+    if (g.inStock && g.dataCenters?.length) return ` · free now in ${g.dataCenters.slice(0, 2).join(', ')}${g.dataCenters.length > 2 ? ` +${g.dataCenters.length - 2} more` : ''}`
     return g.inStock === false ? ' · busy right now' : g.inStock ? ' · free now' : ''
   }
   // for this project (H3): the cheapest card free now, and the best suited (the curated cards are in recommendation order)
@@ -497,6 +512,11 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
       </Step>
 
       <Step n={3} title="Set up" done={!!rp.ready}>
+        {volumeGone && (
+          <p className="small pink">
+            Your RunPod storage volume no longer exists on your account (deleted on RunPod's site, or the account changed). Set up makes a new one — the first boot reinstalls ComfyUI and the models (20–40 minutes).
+          </p>
+        )}
         <p className="small dim">
           Makes a 100 GB network volume in a RunPod data center that has your GPU, starts a pod that installs ComfyUI and every node pack (matched to this version) and downloads the H3 models onto the volume (about 60 GB, once), then uploads your characters. The first time takes 20–40 minutes of GPU time, under about $1 on an L40S. RunPod bills the volume while it exists (about $7 a month for 100 GB); delete it on RunPod's Storage page when you're done with the cloud.
         </p>
@@ -506,6 +526,15 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
         {rp.volumeId && (
           <p className="mono small dim">
             {options.find((g) => g.id === rp.gpu)?.label || rp.gpu} · shuts down after {Math.round((rp.idleSeconds || 300) / 60)} min · volume {rp.volumeId} in {rp.dataCenter}
+            {' · '}
+            <button
+              className="link-btn mono small"
+              disabled={!!busy || st.target !== 'cloud'}
+              title={st.target !== 'cloud' ? 'Switch rendering to your cloud first (the button above)' : 'Every LoRA and RefMod on this PC to the volume, new and changed ones only. Starts the pod if it’s off. New LoRAs also go up by themselves: when one downloads while the pod is on, and after every wake.'}
+              onClick={() => run('Syncing LoRAs', () => window.ivstudio.cloud.syncLoras())}
+            >
+              Sync LoRAs
+            </button>
           </p>
         )}
       </Step>

@@ -20,6 +20,7 @@ import { probe } from './media.js'
 import { ASPECTS } from './plan.js'
 import { SPEED_IDS, SPEEDS, applySpeed, finishFor, isSpeed } from './speed.js'
 import { LTX, writeLtx } from './ltx.js'
+import { gptModelOk } from './gptimages.js'
 import { DEFAULT_LOCAL_MODEL, jpegOf, writeHarness, writeLocal } from './prompter.js'
 import { askWriter, continuityCheck, writerSees, coverageRules, promptVariants, rewritePrompt, shotListCsv, shotListMarkdown } from './filmcraft.js'
 import { parseScript, sceneText } from './screenplay.js'
@@ -508,7 +509,7 @@ export class Productions {
   // studio: () => the current Studio. voices: () => the voice engine (or null). images: () => Images (sketches).
   // edits: Edits. localCopy(file): an output as a file on this PC. onChange(id): a production changed
   // (breakdown progress, renders).
-  constructor({ dataDir, studio, voices = () => null, images = () => null, previs = () => null, catalog = () => null, edits, localCopy, onChange = () => {}, model = () => DEFAULT_LOCAL_MODEL, writer = () => ({ engine: 'local' }) }) {
+  constructor({ dataDir, studio, voices = () => null, images = () => null, previs = () => null, catalog = () => null, edits, localCopy, onChange = () => {}, model = () => DEFAULT_LOCAL_MODEL, writer = () => ({ engine: 'local' }), sketchPicture = () => 'auto' }) {
     this.dir = path.join(dataDir, 'productions')
     this.studio = studio
     this.voices = voices
@@ -520,6 +521,7 @@ export class Productions {
     this.onChange = onChange
     this.model = model // the local model, for scripts and storyboard plans
     this.writer = writer // the prompt writer chosen in Settings ({ engine, model }), for each shot's H3 prompt
+    this.sketchPicture = sketchPicture // the app-wide panel artist (Settings → Sketches): 'auto', 'gptimage', 'h3image', …
     this.running = new Map() // production id -> breakdown promise
     this.writing = new Set() // production ids whose script is being written
     this.filming = new Map() // production id -> { speaking: shot id or null, waiting: Set of shot ids } while lines are said
@@ -1002,19 +1004,17 @@ export class Productions {
     return c?.characterId || 'none'
   }
 
-  // One shot's H3 prompt from its description, by the local writer (with the shot's character).
-  async writeShotPrompt(id, sceneId, shotId, { cpu } = {}) {
-    const p = this.get(id)
-    const sc = p.scenes.find((s) => s.id === sceneId)
-    const sh = sc?.shots.find((s) => s.id === shotId)
-    if (!sh) throw new Error('No such shot.')
+  // The shot in plain words, exactly as the writer gets it: location, continuity, looks, outfits, action,
+  // staging, camera, the line and the look. Create's "What happens" box shows these same words (createRequest),
+  // so a film shot opened there is 100% prefilled.
+  shotIdea(p, sc, sh) {
     const loc = p.locations.find((l) => l.name.toLowerCase() === (sc.location || '').toLowerCase())
     const others = sh.characters.filter((n) => n.split(/\s+/)[0].toLowerCase() !== (this.character(sh.character)?.name || '').split(/\s+/)[0].toLowerCase())
-    const before = sc.shots[sc.shots.findIndex((s) => s.id === shotId) - 1]
+    const before = sc.shots[sc.shots.findIndex((s) => s.id === sh.id) - 1]
     const dot = (t) => String(t).trim().replace(/[.\s]+$/, '') + '.'
     // a made-up person's looks go in every shot of them, so the words agree with their drawn face
     const looks = [...new Set([sh.speaker, ...sh.characters].filter(Boolean))].map((n) => this.madeUp(p, n)).filter((c) => c?.description)
-    const idea = [
+    return [
       loc ? `${loc.name}${sc.time ? `, ${sc.time.toLowerCase()}` : ''}${loc.description ? `: ${loc.description}` : ''}.` : sc.heading,
       sh.continues && before ? 'This carries straight on from the previous shot as one unbroken take: no cut, the same camera.' : '',
       before?.ends ? `It opens as the previous shot ended: ${dot(before.ends)}` : '',
@@ -1032,6 +1032,15 @@ export class Productions {
     ]
       .filter(Boolean)
       .join(' ')
+  }
+
+  // One shot's H3 prompt from its description, by the local writer (with the shot's character).
+  async writeShotPrompt(id, sceneId, shotId, { cpu } = {}) {
+    const p = this.get(id)
+    const sc = p.scenes.find((s) => s.id === sceneId)
+    const sh = sc?.shots.find((s) => s.id === shotId)
+    if (!sh) throw new Error('No such shot.')
+    const idea = this.shotIdea(p, sc, sh)
     const ch = this.character(sh.character)
     const w = this.writer()
     // an LTX 2.5 film: one plain paragraph in LTX's style, opening on the shot's sketch when it has one (ltx.js)
@@ -1150,7 +1159,9 @@ export class Productions {
         return
       }
       if (patch.add) {
-        const sh = { id: id6(), action: patch.action || '', staging: patch.staging || '', camera: patch.camera || '', ends: patch.ends || '', characters: patch.characters || [], speaker: patch.speaker || '', line: patch.line || '', seconds: patch.seconds || 5, prompt: patch.prompt || '', character: patch.character || 'none', projectId: null, voiceLine: null }
+        const prev = i >= 0 ? sc.shots[i] : sc.shots.at(-1)
+        // a hand-added shot starts where the scene is: it opens as the shot before it ended, with the same people
+        const sh = { id: id6(), action: patch.action || '', staging: patch.staging ?? (prev?.ends || prev?.staging || ''), camera: patch.camera || '', ends: patch.ends || '', characters: patch.characters ?? [...(prev?.characters || [])], speaker: patch.speaker || '', line: patch.line || '', seconds: patch.seconds || 5, prompt: patch.prompt || '', character: patch.character || 'none', projectId: null, voiceLine: null }
         sc.shots.splice(i < 0 ? sc.shots.length : i + 1, 0, sh)
         return
       }
@@ -1350,15 +1361,27 @@ export class Productions {
     const images = this.images()
     if (!images) throw new Error(`${what} need Techlit Studio on this PC.`)
     const st = await images.status()
-    if (st.error) throw new Error(st.error)
-    const ready = (ids, edit) => ids.map((f) => st.families.find((x) => x.id === f && x.ready && x.models.length && (!edit || x.edit))).find(Boolean)
-    const pick = p?.settings?.picture && p.settings.picture !== 'auto' ? p.settings.picture : null
+    const families = st.families || []
+    const gpt = families.find((x) => x.id === 'gptimage')
+    // the film's own pick first, else the app-wide one (Settings → Sketches: GPT Image, MiniMax H3 Image, …)
+    const filmPick = p?.settings?.picture && p.settings.picture !== 'auto' ? p.settings.picture : null
+    const appPick = !filmPick && this.sketchPicture() && this.sketchPicture() !== 'auto' ? this.sketchPicture() : null
+    const pick = filmPick || appPick
     if (pick) {
-      const fam = st.families.find((x) => x.id === pick)
-      if (!fam) throw new Error(`The film's picture model "${pick}" isn't one Techlit Studio knows. Pick another in the film's settings.`)
-      if (!fam.ready || !fam.models.length) throw new Error(`${fam.label || pick} isn't set up on this PC, and this film draws with it. Set it up in Settings → Setup, or pick another picture model in the film's settings.`)
+      let fam = families.find((x) => x.id === pick)
+      // a GPT model picked by name (Settings → Sketches lists them): the GPT Image family drawing with that one
+      if (!fam && gptModelOk(pick) && gpt) fam = { ...gpt, models: [pick, ...(gpt.models || []).filter((m) => m !== pick)] }
+      if (!fam) throw new Error(filmPick ? `The film's picture model "${pick}" isn't one Techlit Studio knows. Pick another in the film's settings.` : `The sketch picture model "${pick}" isn't one Techlit Studio knows. Pick another in Settings → Sketches.`)
+      if (!fam.ready || !fam.models.length) {
+        // a ComfyUI family while ComfyUI is down: say that, not "isn't set up" (an API family has its own status)
+        if (st.error && !fam.engine) throw new Error(`${st.error} ${fam.label || pick} draws there. Start ComfyUI, or draw the panels with GPT Image (API) in Settings → Sketches.`)
+        throw new Error(filmPick ? `${fam.label || pick} isn't set up on this PC, and this film draws with it. Set it up in Settings → Setup, or pick another picture model in the film's settings.` : `${fam.label || pick} isn't set up on this PC, and Settings → Sketches draws every panel with it. Set it up, or pick another there.`)
+      }
       return { images, editor: fam.edit ? fam : null, drawer: fam, st, picked: fam }
     }
+    // auto: the local families, which draw in ComfyUI
+    if (st.error) throw new Error(gpt?.ready ? `${st.error} Or draw the panels with GPT Image (API), no ComfyUI needed: Settings → Sketches.` : st.error)
+    const ready = (ids, edit) => ids.map((f) => families.find((x) => x.id === f && x.ready && x.models.length && (!edit || x.edit))).find(Boolean)
     const editor = ready(['flux2', 'flux3'], true)
     const drawer = ready(['flux2', 'zimage', 'flux3', 'krea2', 'qwen21', 'moss'], false)
     if (!drawer) throw new Error(`${what} need a picture model. Set one up in Settings → Setup (Flux.2 Klein or Z-Image Turbo).`)
@@ -1627,6 +1650,8 @@ export class Productions {
     return {
       request: { ...request, prompt: input.prompt },
       asked: { prompt: input.prompt, mode: input.mode, media: (input.media || []).map((m) => ({ kind: m.kind, file: m.file })), voiceLine: input.voiceLine || null, engine: 'h3' },
+      // the shot's plain words, for Create's "What happens" box: a film shot opens there 100% prefilled
+      idea: this.shotIdea(p, sc, cur),
       projectId,
       projectName: project?.name || '',
       from: 'film',

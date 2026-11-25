@@ -12,11 +12,13 @@ import { Comfy } from './comfy.js'
 import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
 import { applyPatch, planFinish, planPreviews } from './plan.js'
+import { cleanLabel, SHOT_MARKS } from './shotstatus.js'
+import { cleanLocks, cleanShotLook, shotLook } from './look.js'
 import { applyFinishSpeed, applySpeed, withPreviewSize } from './speed.js'
 import { adaptGraph, capabilities, LIVE_NODE, withLivePreview, withLivePreviewAll } from './remote.js'
 import { Cast, resolveMentions, withCast } from './cast.js'
 import { faceOf, h3Request, needsMove, normalize, pictureId, seedancePictures } from './bible.js'
-import { contextIrGraph, fromContextIr, writeHarness, writeLocal, writeStoryLocal } from './prompter.js'
+import { contextIrGraph, fromContextIr, writeHarness, writeIdea, writeLocal, writeStoryLocal } from './prompter.js'
 import { cleanSequenceLoras, MAX_REF_PICTURES, renderOutGraph, retakeGraph, SAVES, SEQUENCE_DEFAULTS, takeGraph, takeKindOf, takeReferences, takeScript, validateSequence } from './sequence.js'
 import { checkSetup, comboOptions, fileBase, modelFileMap, whyUnreached } from './setup.js'
 import { comfyPlace, installPacks, missingPacks, packsNeedingRuntime, packsOutdated } from './nodepacks.js'
@@ -292,6 +294,22 @@ export class Studio {
     writeJson(this.projectFile(id), p)
     return p
   }
+  // The shot's marks (Create's manifest; the Shots page's chips): 'ready', 'approved' or 'locked'
+  // (shotstatus.js), null while it's unmarked. updatedAt stays put: marking isn't editing.
+  setProjectStatus(id, status) {
+    if (status && !SHOT_MARKS.includes(status)) throw new Error(`A shot's mark is one of: ${SHOT_MARKS.join(', ')}.`)
+    const p = this.getProject(id)
+    p.status = status || null
+    writeJson(this.projectFile(id), p)
+    return p
+  }
+  // The shot's manual label ("SC_04_SH_03A", shotstatus.js cleanLabel), shown on its tile and in search.
+  setProjectLabel(id, label) {
+    const p = this.getProject(id)
+    p.label = cleanLabel(label)
+    writeJson(this.projectFile(id), p)
+    return p
+  }
   // A shot and its run history. The rendered videos stay in ComfyUI's output folder.
   deleteProject(id) {
     const p = this.getProject(id)
@@ -473,7 +491,8 @@ export class Studio {
     const { request, notes: said } = resolveMentions(withCast(bible.request, members), members)
     const notes = [...bible.notes, ...said]
     const plan = planPreviews(request, this.characters())
-    const out = { resolved: plan.resolved, groups: plan.groups, notes, mode: request.mode }
+    // compiled: the prompt the model actually reads (the brief plus the beats' timeline), for the manifest panel
+    const out = { resolved: plan.resolved, groups: plan.groups, notes, mode: request.mode, compiled: plan.values['87'] }
     if (finish !== false) out.finish = planFinish(plan, { candidate: 1, ...(finish || {}) }).resolved
     return out
   }
@@ -1012,6 +1031,27 @@ export class Studio {
     return dest
   }
 
+  // A cloud job's outputs downloaded into dir (ComfyUI's subfolder kept, so same-named files from different
+  // runs never collide), each local path written into the job record: the render then plays from this PC
+  // with the pod off. Files already here are kept; one the volume no longer has is skipped, not fatal.
+  async bringHome(id, dir) {
+    const job = this.getJob(id)
+    let changed = false
+    for (const o of job.outputs || []) {
+      if (!o?.url || (o.path && fs.existsSync(o.path))) continue
+      try {
+        const sub = String(o.subfolder || '')
+          .replace(/\\/g, '/')
+          .split('/')
+          .filter((p) => p && p !== '.' && p !== '..')
+        o.path = await this.localCopy(o, path.join(dir, ...sub))
+        changed = true
+      } catch {}
+    }
+    if (changed) writeJson(this.jobFile(id), job)
+    return this.publicJob(job)
+  }
+
   // Every Techlit Studio render, newest first: shot finals and previews, sequence versions and finals.
   library() {
     const items = []
@@ -1141,6 +1181,15 @@ export class Studio {
     throw new Error('Context IR took too long. Try again.')
   }
 
+  // One plain-words idea for the shot, from the same writer ("Think of an idea", and a new shot's auto-idea).
+  // Context IR writes no ideas, so it falls back to the local writer, as a story does.
+  async writeIdea(request, { engine = 'local', model } = {}) {
+    const character = request.character && request.character !== 'none' ? this.characters().find((c) => c.id === request.character) || null : null
+    const media = (request.media || []).map((m) => ({ kind: m.kind, file: m.file || m.path }))
+    const e = engine === 'contextir' ? 'local' : engine
+    return writeIdea({ engine: e, model: e === engine ? model : undefined, mode: request.mode, seconds: request.seconds, character, media, cpu: e === 'local' ? await this.gpuBusy() : false })
+  }
+
   // engine: local, claude or codex (Context IR writes one shot at a time, so a story falls back to local).
   async writeStory({ story, shots = 3, seconds = 10, character: charId = 'none' }, { engine = 'local', model } = {}) {
     if (!story?.trim()) throw new Error('Write the story first.')
@@ -1190,14 +1239,19 @@ export class Studio {
   // Edits name, settings and shots. Renders already made stay; shot-by-shot shots go stale when their inputs change.
   saveSequence(id, patch) {
     const s = this.getSequence(id)
-    const allowed = ['name', 'method', 'character', 'aspect', 'megapixels', 'shotSeconds', 'steps', 'seed', 'voiceRef', 'shots', 'loras', 'takeKind', 'refs', 'startImage', 'story']
+    const allowed = ['name', 'method', 'character', 'aspect', 'megapixels', 'shotSeconds', 'steps', 'seed', 'voiceRef', 'shots', 'loras', 'takeKind', 'refs', 'startImage', 'story', 'locks']
     for (const k of allowed) if (k in (patch || {})) s[k] = patch[k]
     s.loras = cleanSequenceLoras(s.loras)
+    s.locks = cleanLocks(s.locks)
+    if (!Object.keys(s.locks).length) delete s.locks
     if ('takeKind' in (patch || {})) s.takeKind = patch.takeKind === 'refs' ? 'refs' : 'plain'
     if (s.refs) s.refs = { face: s.refs.face !== false, pictures: (Array.isArray(s.refs.pictures) ? s.refs.pictures : []).filter((p) => typeof p === 'string' && p).slice(0, MAX_REF_PICTURES), selfVoice: !!s.refs.selfVoice }
     if (typeof s.story !== 'string') delete s.story
-    // a shot keeps the writer's idea (GitHub #40), so it is there when you come back
-    s.shots = s.shots.map((sh) => ({ id: sh.id || randomUUID().slice(0, 6), prompt: sh.prompt || '', mode: sh.mode || 'text', media: sh.media || [], ...(typeof sh.idea === 'string' && sh.idea ? { idea: sh.idea } : {}) }))
+    // a shot keeps the writer's idea (GitHub #40) and its own look overrides (look.js), so both are there when you come back
+    s.shots = s.shots.map((sh) => {
+      const look = cleanShotLook(sh.look)
+      return { id: sh.id || randomUUID().slice(0, 6), prompt: sh.prompt || '', mode: sh.mode || 'text', media: sh.media || [], ...(typeof sh.idea === 'string' && sh.idea ? { idea: sh.idea } : {}), ...(look ? { look } : {}) }
+    })
     return this.writeSequence(s)
   }
   // Deletes the sequence, its renders' records and its shot-by-shot shots' project, as deleting a shot does
@@ -1261,9 +1315,12 @@ export class Studio {
 
   shotKey(s, i, prevRaw) {
     const sh = s.shots[i]
-    const parts = [sh.prompt, sh.mode, sh.media, s.character, s.aspect, s.megapixels, s.shotSeconds, s.steps, i ? prevRaw : null]
-    // LoRAs only count once a sequence has some, so shots rendered before sequences had LoRAs stay fresh
-    if (s.loras?.length) parts.push(s.loras.map((l) => [l.name, l.strength]))
+    // the look the shot renders with (look.js): the sequence's, plus the shot's own overrides — so changing
+    // either re-keys the shot and its old runs read as changed
+    const look = shotLook(s, sh)
+    const parts = [sh.prompt, sh.mode, sh.media, look.character, look.aspect, look.megapixels, look.shotSeconds, s.steps, i ? prevRaw : null]
+    // LoRAs only count once a shot has some, so shots rendered before sequences had LoRAs stay fresh
+    if (look.loras?.length) parts.push(look.loras.map((l) => [l.name, l.strength]))
     return JSON.stringify(parts)
   }
 
@@ -1375,9 +1432,11 @@ export class Studio {
     const prev = index > 0 ? view.shots[index - 1] : null
     if (prev && !prev.fresh) throw new Error(`Finish shot ${index} first; shot ${index + 1} continues from it.`)
     if (!s.projectId) s.projectId = this.createProject(`${s.name} (sequence)`, s.id).id
-    const base = { prompt: sh.prompt, character: s.character, aspect: s.aspect, seconds: s.shotSeconds, steps: s.steps, seed: seed ?? s.seed + index * 100, extraLoras: s.loras || [] }
+    // the shot's look: the sequence's, with the shot's own overrides where unlocked (look.js)
+    const look = shotLook(s, sh)
+    const base = { prompt: sh.prompt, character: look.character, aspect: look.aspect, seconds: look.shotSeconds, steps: s.steps, seed: seed ?? s.seed + index * 100, extraLoras: look.loras || [] }
     const request = prev
-      ? { ...base, mode: 'continue', media: [{ kind: 'video', file: prev.raw.path }], megapixels: s.megapixels, overlapFrames: 22 }
+      ? { ...base, mode: 'continue', media: [{ kind: 'video', file: prev.raw.path }], megapixels: look.megapixels, overlapFrames: 22 }
       : { ...base, mode: sh.mode || 'text', media: sh.media || [], previews: 3 }
     const j = await this.generatePreviews({ projectId: s.projectId, ...request })
     s.shotJobs[sh.id] = { previews: j.id, finish: null, key: this.shotKey(s, index, prev?.raw?.path || null) }
@@ -1389,7 +1448,7 @@ export class Studio {
     const sh = s.shots[index]
     const rec = s.shotJobs[sh?.id]
     if (!rec?.previews) throw new Error(`Hunt shot ${index + 1} first.`)
-    const j = await this.finishCandidate({ jobId: rec.previews, candidate, megapixels: Math.max(0.5, s.megapixels), audio: 'pass', fps: 0, upscale2x: false })
+    const j = await this.finishCandidate({ jobId: rec.previews, candidate, megapixels: Math.max(0.5, shotLook(s, sh).megapixels), audio: 'pass', fps: 0, upscale2x: false })
     rec.finish = j.id
     return this.sequenceJob(s, j)
   }
@@ -1483,6 +1542,18 @@ export class Studio {
     const job = readJson(this.jobFile(id), null)
     if (!job) throw new Error(`No job ${id}`)
     return refresh ? job : job
+  }
+  // Cloud GPU seconds per project, from the saved jobs: what each shot's renders actually used up there
+  // (billed time, so a failed render's seconds count too). The dashboards turn it into money at the pod's rate.
+  cloudSecondsByProject() {
+    const dir = path.join(this.dataDir, 'jobs')
+    const out = {}
+    for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
+      if (!f.endsWith('.json')) continue
+      const job = readJson(path.join(dir, f), null)
+      if (job?.where === 'cloud' && job.seconds > 0 && job.projectId) out[job.projectId] = (out[job.projectId] || 0) + job.seconds
+    }
+    return out
   }
   // The newest render that failed in the last `withinMs` (30 minutes), for the chat's context: its name, kind,
   // how long ago, and the reason in words (failures.js) or ComfyUI's own first line. Looks at the 40 newest jobs.

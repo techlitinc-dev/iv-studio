@@ -20,7 +20,7 @@ function Field({ label, children }) {
 // rough cost to finish the filming, in dollars and rupees (the rate set on the Cloud page; RunPod's own pod
 // rate when one is up).
 function DirectorsDesk({ f, stats, dash }) {
-  const rate = dash.rate || 11.5
+  const rate = dash.rate || 18
   const inr = (v) => `₹${(v * rate).toFixed(2)}`
   const perHour = dash.pod?.perHour ?? dash.gpuPerHour ?? null
   const left = Math.max(0, stats.total.shots - stats.total.filmed)
@@ -34,13 +34,13 @@ function DirectorsDesk({ f, stats, dash }) {
         {left > 0 ? ` · ${left} shot${left === 1 ? '' : 's'} to film` : ' · filming done'}
       </p>
       <p className="small">
-        Cloud today: ${dash.today.toFixed(2)} ({inr(dash.today)})
-        {dash.budget.on ? ` of $${dash.budget.daily.toFixed(2)} (${inr(dash.budget.daily)}) budget` : ''}
-        {dash.pod ? ` · GPU on at $${Number(dash.pod.perHour).toFixed(2)}/h (${inr(Number(dash.pod.perHour))}/h)` : ' · GPU off'}
+        Cloud today: {inr(dash.today)}
+        {dash.budget.on ? ` of ${inr(dash.budget.daily)} budget` : ''}
+        {dash.pod ? ` · GPU on at ${inr(Number(dash.pod.perHour))}/h` : ' · GPU off'}
       </p>
       {estUsd != null && left > 0 && (
         <p className="small dim">
-          Rough cost to finish filming: {left} × ~4 GPU min ≈ {Math.round(estMin)} min ≈ ${estUsd.toFixed(2)} ({inr(estUsd)}){dash.pod ? '' : ' at your GPU rate'}
+          Rough cost to finish filming: {left} × ~4 GPU min ≈ {Math.round(estMin)} min ≈ {inr(estUsd)}{dash.pod ? '' : ' at your GPU rate'}
           {dash.budget.on && estUsd > Math.max(0, dash.budget.daily - dash.today) ? ' — more than today’s budget has left; expect it over a few days.' : ''}
         </p>
       )}
@@ -48,7 +48,7 @@ function DirectorsDesk({ f, stats, dash }) {
   )
 }
 
-export default function Features({ notify, openSizzle, openEdit, openStoryMap }) {
+export default function Features({ notify, openSizzle, openEdit, openStoryMap, filmShotToCreate, openProject }) {
   const [items, setItems] = useState(null)
   const [openId, setOpenId] = useState(null)
   const [dashId, setDashId] = useState(null) // the film whose movie dashboard is open
@@ -82,7 +82,7 @@ export default function Features({ notify, openSizzle, openEdit, openStoryMap })
     }
   }
   if (dashId) return <MovieDashboard id={dashId} back={() => setDashId(null)} notify={notify} />
-  if (openId) return <FeatureDetail id={openId} back={() => setOpenId(null)} notify={notify} openSizzle={openSizzle} openEdit={openEdit} openStoryMap={openStoryMap} openDashboard={() => setDashId(openId)} />
+  if (openId) return <FeatureDetail id={openId} back={() => setOpenId(null)} notify={notify} openSizzle={openSizzle} openEdit={openEdit} openStoryMap={openStoryMap} openDashboard={() => setDashId(openId)} filmShotToCreate={filmShotToCreate} openProject={openProject} />
 
   return (
     <div className="projects shelf-page features">
@@ -149,10 +149,12 @@ export default function Features({ notify, openSizzle, openEdit, openStoryMap })
   )
 }
 
-function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, openDashboard }) {
+function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, openDashboard, filmShotToCreate, openProject }) {
   const [f, setF] = useState(null)
   const [stats, setStats] = useState(null)
   const [dash, setDash] = useState(null) // the cloud dashboard's numbers: today's spend, budget, GPU rate, ₹ rate
+  const [tree, setTree] = useState(null) // the whole film: acts → sequences → scenes → shots (features.explore)
+  const [costs, setCosts] = useState(null) // cloud GPU seconds per project, for the shots' actual costs
   const [prods, setProds] = useState([])
   const [songs, setSongs] = useState([])
   const [busy, setBusy] = useState('')
@@ -169,16 +171,54 @@ function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, o
     window.ivstudio.cloud.dash().then(setDash, () => setDash(null))
     window.ivstudio.productions.list().then(setProds, () => {})
     window.ivstudio.music.list().then(setSongs, () => {})
+    window.ivstudio.jobs.cloudSeconds().then(setCosts, () => setCosts(null))
   }
   useEffect(() => {
     load()
     return F().onChanged(() => load())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+  // the scenes & shots tree follows the sequences' own writing (a breakdown patches its production per shot)
+  const loadTree = () => F().explore(id).then(setTree, () => setTree(null))
+  useEffect(() => {
+    loadTree()
+    return window.ivstudio.productions.onChanged(() => loadTree())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
   if (!f || !acts) return null
   const act = (fn) => fn().then(load, (e) => notify(e.message))
   const save = (patch) => act(() => F().update(id, patch))
   const seqOf = (actId) => f.sequences.filter((s) => s.actId === actId).sort((a, b) => a.order - b.order)
+  // what a shot's cloud renders actually used, in rupees (its billed GPU seconds at the pod's rate)
+  const gpuPerHour = dash?.pod?.perHour ?? dash?.gpuPerHour ?? null
+  const shotCost = (sh) => {
+    const sec = sh.projectId && costs ? costs[sh.projectId] || 0 : 0
+    return gpuPerHour != null && sec > 0 ? `₹${(((sec / 3600) * gpuPerHour * (dash?.rate || 18))).toFixed(2)}` : null
+  }
+  // a shot straight into Create, 100% prefilled from the story (What happens, prompt, references, settings)
+  async function openInCreate(seqId, shotId) {
+    setBusy(`create:${shotId}`)
+    try {
+      const r = await window.ivstudio.productions.createRequest(seqId, shotId, {})
+      if (r?.projectId) filmShotToCreate(r)
+    } catch (e) {
+      notify(e.message)
+    } finally {
+      setBusy('')
+    }
+  }
+  // previews for every ready shot of a scene (or the whole sequence with sceneId null), straight from the plan
+  async function generate(seqId, sceneId, label) {
+    setBusy(`gen:${sceneId || seqId}`)
+    try {
+      const started = await window.ivstudio.productions.renderScene(seqId, sceneId || null, {})
+      notify(started?.length ? `Rendering ${started.length} shot${started.length === 1 ? '' : 's'} of ${label} — the takes land on its storyboard.` : `${label} has nothing new to render: every shot with a prompt is filmed or in flight.`)
+    } catch (e) {
+      notify(e.message)
+    } finally {
+      setBusy('')
+    }
+  }
   async function addSequence(actId) {
     const form = seqForm[actId] || {}
     const minutes = Math.max(1, Number(form.minutes) || 3)
@@ -295,6 +335,21 @@ function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, o
         {f.targetMinutes} minutes · {f.aspect} · {f.acts.length} acts · {f.sequences.length} sequences
         {stats ? ` · ${Math.round(stats.footageSeconds)} s filmed (${stats.percent}%)` : ''}
       </p>
+      {/* the pipeline, visible at a glance: story → plan → scenes & shots → generate */}
+      <div className="feat-pipe" aria-label="The pipeline">
+        {[
+          { n: 1, label: 'Story', done: !!f.story.trim(), hint: f.story.trim() ? 'written' : 'write it below' },
+          { n: 2, label: 'Plan everything', done: f.sequences.length > 0, hint: f.sequences.length ? `${f.acts.length} acts · ${f.sequences.length} sequences` : 'one click below' },
+          { n: 3, label: 'Scenes & shots', done: (stats?.total.shots || 0) > 0, hint: stats?.total.shots ? `${stats.total.shots} shots, every field filled` : 'written by the plan' },
+          { n: 4, label: 'Generate', done: !!stats && stats.total.shots > 0 && stats.total.filmed >= stats.total.shots, hint: stats?.total.shots ? `${stats.total.filmed} of ${stats.total.shots} filmed` : 'shot by shot, or a scene at once' }
+        ].map((s) => (
+          <div key={s.n} className={`feat-pipe-step ${s.done ? 'done' : ''}`}>
+            <span className="feat-pipe-n mono">{s.done ? '✓' : s.n}</span>
+            <span className="feat-pipe-label">{s.label}</span>
+            <span className="mono small dim">{s.hint}</span>
+          </div>
+        ))}
+      </div>
       {stats && stats.total.shots > 0 && (
         <div className="feat-rollup" aria-label="Progress by act">
           {stats.acts.map((a) => (
@@ -337,6 +392,81 @@ function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, o
           Dashboard
         </button>
       </div>
+      {/* every scene and every shot of the film, with its status; each opens in Create 100% prefilled */}
+      {tree && tree.acts.some((a) => a.sequences.length > 0) && (
+        <section className="feat-tree">
+          <p className="mono label">Scenes &amp; shots — every shot prefilled from the story</p>
+          {tree.acts.map((a) => (
+            <div key={a.id} className="feat-tree-act">
+              <p className="feat-tree-act-title mono small">
+                {a.title} <span className="dim">· {a.minutes} min</span>
+              </p>
+              {a.sequences.map((s) => (
+                <div key={s.id} className="feat-tree-seq">
+                  <div className="feat-tree-seq-head">
+                    <span className="small">
+                      <strong>{s.title}</strong>
+                      {s.logline ? <span className="dim"> — {s.logline}</span> : null}
+                    </span>
+                    <span className="feat-tree-tools">
+                      {s.scenes.length === 0 && (
+                        <button className="link-btn mono small" disabled={!!busy} onClick={() => writeOne(s.id)}>
+                          {busy === `write:${s.id}` ? 'Writing…' : 'Write its shots'}
+                        </button>
+                      )}
+                      <button className="link-btn mono small" disabled={!!busy} title="Renders previews for every ready shot of this sequence" onClick={() => generate(s.id, null, `“${s.title}”`)}>
+                        {busy === `gen:${s.id}` ? 'Starting…' : 'Generate previews'}
+                      </button>
+                      <button className="link-btn mono small" onClick={() => openProject(s.id)}>
+                        Open project
+                      </button>
+                    </span>
+                  </div>
+                  {s.scenes.length === 0 && <p className="small dim feat-tree-empty">No shots yet — Plan everything or Write its shots plans them from the story.</p>}
+                  {s.scenes.map((sc, si) => (
+                    <div key={sc.id} className="feat-tree-scene">
+                      <div className="feat-tree-scene-head">
+                        <span className="mono small dim">
+                          Scene {si + 1}
+                          {sc.heading ? ` · ${sc.heading}` : ''}
+                        </span>
+                        <button className="link-btn mono small" disabled={!!busy} title="Renders previews for every ready shot of this scene" onClick={() => generate(s.id, sc.id, `scene ${si + 1}`)}>
+                          {busy === `gen:${sc.id}` ? 'Starting…' : 'Generate scene'}
+                        </button>
+                      </div>
+                      {sc.shots.map((sh, i) => (
+                        <div key={sh.id} className="feat-tree-shot">
+                          <span className={`feat-tree-status ${sh.status}`} title={sh.status}>
+                            {sh.status === 'finished' ? '●' : sh.status === 'filmed' ? '◐' : '○'}
+                          </span>
+                          <span className="small feat-tree-action">
+                            {i + 1}. {sh.action || '(no action written yet)'}
+                            {sh.line ? <span className="dim"> — “{sh.line}”</span> : null}
+                          </span>
+                          <span className="mono small dim">{sh.seconds}s</span>
+                          {shotCost(sh) && (
+                            <span className="mono small dim" title="What this shot's cloud renders actually used, at your GPU rate">
+                              {shotCost(sh)}
+                            </span>
+                          )}
+                          <button
+                            className="link-btn mono small"
+                            disabled={!!busy}
+                            title="Opens Create 100% prefilled from the story: What happens, the prompt, references, length, shape, seed. The takes land back on the film's storyboard."
+                            onClick={() => openInCreate(s.id, sh.id)}
+                          >
+                            {busy === `create:${sh.id}` ? 'Getting it ready…' : 'Open in Create'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+        </section>
+      )}
       <div className="feat-cols">
         <section className="feat-main">
           <Field label="Logline">

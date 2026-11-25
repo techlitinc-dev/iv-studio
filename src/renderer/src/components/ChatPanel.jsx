@@ -594,6 +594,33 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
       <path d="M5 12l14-7-5 14-2-6z" />
     </svg>
   )
+  // the panel's width: drag its left edge; kept on this PC (the grid's --chat-w, styles.css)
+  useEffect(() => {
+    try {
+      const w = Number(localStorage.getItem('iv.chatW'))
+      if (w >= 300 && w <= 720) document.documentElement.style.setProperty('--chat-w', `${w}px`)
+    } catch {}
+  }, [])
+  const resize = (e) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    const x0 = e.clientX
+    const w0 = document.querySelector('.chat-panel')?.getBoundingClientRect().width || 380
+    const move = (ev) => {
+      const w = Math.min(720, Math.max(300, w0 + (x0 - ev.clientX)))
+      document.documentElement.style.setProperty('--chat-w', `${Math.round(w)}px`)
+    }
+    const up = (ev) => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      const w = Math.min(720, Math.max(300, w0 + (x0 - ev.clientX)))
+      try {
+        localStorage.setItem('iv.chatW', String(Math.round(w)))
+      } catch {}
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
 
   return (
     <aside

@@ -88,7 +88,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
   },
   // The mindmap for anything: a feature, a short film (Project) or a song (src/service/storymap.js)
   storymap: { explore: call('storymap:explore') },
-  settings: { get: call('settings:get'), set: call('settings:set'), setComfyKey: call('settings:setComfyKey'), setCivitaiKey: call('settings:setCivitaiKey'), setOpenaiSecrets: call('settings:setOpenaiSecrets') },
+  settings: { get: call('settings:get'), set: call('settings:set'), setComfyKey: call('settings:setComfyKey'), setCivitaiKey: call('settings:setCivitaiKey'), setImageKey: call('settings:setImageKey'), setOpenaiSecrets: call('settings:setOpenaiSecrets') },
   // where finished videos go: { path, custom, incognito, free }
   folders: { videos: call('folders:videos'), chooseVideos: call('folders:chooseVideos'), resetVideos: call('folders:resetVideos') },
   // The Comfy.org account: credits for paid partner nodes, the key, and what a graph would cost.
@@ -284,6 +284,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
     runpodCatalog: call('cloud:runpodCatalog'),
     runpodAllGpus: call('cloud:runpodAllGpus'),
     runpodPods: call('cloud:runpodPods'),
+    syncLoras: call('cloud:syncLoras'),
     dash: call('cloud:dash'),
     setBudget: call('cloud:setBudget'),
     setRate: call('cloud:setRate'),
@@ -305,7 +306,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
     onPrep: on('cloud:prep'),
     hfToken: call('cloud:hfToken')
   },
-  prompts: { status: call('prompts:status'), write: call('prompts:write'), story: call('prompts:story'), pull: call('prompts:pull'), openai: call('prompts:openai'), onPull: on('prompts:pull') },
+  prompts: { status: call('prompts:status'), write: call('prompts:write'), idea: call('prompts:idea'), story: call('prompts:story'), pull: call('prompts:pull'), openai: call('prompts:openai'), onPull: on('prompts:pull') },
   setup: {
     check: call('setup:check'),
     installNodes: call('setup:installNodes'),
@@ -328,6 +329,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
     create: call('voices:create'),
     update: call('voices:update'),
     delete: call('voices:delete'),
+    saveRecording: call('voices:saveRecording'),
     speak: call('voices:speak'),
     lines: call('voices:lines'),
     deleteLine: call('voices:deleteLine'),
@@ -362,6 +364,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
     status: call('images:status'),
     create: call('images:create'),
     list: call('images:list'),
+    gptSpend: call('images:gptSpend'),
     get: call('images:get'),
     cancel: call('images:cancel'),
     delete: call('images:delete'),
@@ -394,7 +397,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
   turnaround: { status: call('turnaround:status'), list: call('turnaround:list'), make: call('turnaround:make'), delete: call('turnaround:delete') },
   refmods: { list: call('refmods:list'), ready: call('refmods:ready'), make: call('refmods:make'), onStatus: on('refmods:status') },
   characters: { list: call('characters:list'), save: call('characters:save'), catalog: call('characters:catalog'), install: call('characters:install'), loras: call('characters:loras'), onProgress: on('characters:progress'), saveOne: call('characters:saveOne'), addPictures: call('characters:addPictures'), removePicture: call('characters:removePicture') },
-  projects: { list: call('projects:list'), get: call('projects:get'), rename: call('projects:rename'), delete: call('projects:delete') },
+  projects: { list: call('projects:list'), get: call('projects:get'), rename: call('projects:rename'), delete: call('projects:delete'), setStatus: call('projects:status'), setLabel: call('projects:label') },
   sequences: {
     list: call('sequences:list'),
     get: call('sequences:get'),
@@ -419,8 +422,8 @@ contextBridge.exposeInMainWorld('ivstudio', {
   // Create's last setup and saved templates (src/service/createmem.js)
   createMemory: { get: call('createmem:get'), saveLast: call('createmem:saveLast'), clearLast: call('createmem:clearLast'), saveTemplate: call('createmem:saveTemplate'), deleteTemplate: call('createmem:deleteTemplate') },
   cast: { list: call('cast:list'), places: call('cast:places'), savePlace: call('cast:savePlace'), deletePlace: call('cast:deletePlace') },
-  render: { plan: call('render:plan'), planFinish: call('render:planFinish'), price: call('render:price'), priceFinish: call('render:priceFinish'), previews: call('render:previews'), finish: call('render:finish'), enhance: call('render:enhance'), seedanceTiers: call('render:seedanceTiers') },
-  jobs: { watch: call('jobs:watch'), cancel: call('jobs:cancel'), onUpdate: on('jobs:update'), onLive: on('jobs:live') },
+  render: { plan: call('render:plan'), planFinish: call('render:planFinish'), preflight: call('render:preflight'), price: call('render:price'), priceFinish: call('render:priceFinish'), previews: call('render:previews'), finish: call('render:finish'), enhance: call('render:enhance'), seedanceTiers: call('render:seedanceTiers') },
+  jobs: { watch: call('jobs:watch'), cancel: call('jobs:cancel'), cloudSeconds: call('jobs:cloudSeconds'), onUpdate: on('jobs:update'), onLive: on('jobs:live') },
   files: { pick: call('files:pick'), reveal: call('files:reveal'), open: call('files:open') },
   links: { open: call('links:open') },
   terms: { state: call('terms:state'), accept: call('terms:accept'), answer: call('terms:answer'), report: call('terms:report'), openLicense: call('terms:openLicense'), onAsk: on('terms:ask'), onChanged: on('terms:changed') }

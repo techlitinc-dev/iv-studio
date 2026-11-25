@@ -62,7 +62,7 @@ function useLasting(key, onResult, onLate) {
 // previs clip, for the form to add as a video reference (then the words name it as <Video n>).
 // idea + onIdea: the idea kept by the page (a sequence shot saves it). lastingKey + onLate: the write keeps going
 // if the card goes away, and onLate gets the prompt then (see useLasting).
-export default function PromptWriter({ context, current, onWritten, notify, go, compact = false, names = null, onPrevis = null, listen = false, idea: ideaProp, onIdea, lastingKey = null, onLate = null }) {
+export default function PromptWriter({ context, current, onWritten, notify, go, compact = false, names = null, onPrevis = null, listen = false, idea: ideaProp, onIdea, lastingKey = null, onLate = null, autoIdea = false }) {
   const [ideaLocal, setIdeaLocal] = useState('')
   const idea = ideaProp ?? ideaLocal
   const setIdea = onIdea || setIdeaLocal
@@ -103,6 +103,7 @@ export default function PromptWriter({ context, current, onWritten, notify, go, 
   }
   const [status, setStatus] = useState(null)
   const [undo, setUndo] = useState(null)
+  const [ideating, setIdeating] = useState(false)
   const [busy, run] = useLasting(lastingKey, (text) => (setUndo(current || ''), onWritten(text)), onLate)
 
   useEffect(() => {
@@ -143,9 +144,62 @@ export default function PromptWriter({ context, current, onWritten, notify, go, 
     if (writeNow && idea.trim() && status) (setWriteNow(false), write())
   }, [writeNow, idea, status])
 
-  async function write() {
+  // The idea and the prompt as they are right now, read by the auto-idea below after its slow writer call (the
+  // state values in its closure would be stale by then).
+  const ideaNow = useRef(idea)
+  ideaNow.current = idea
+  const promptNow = useRef(current)
+  promptNow.current = current
+
+  // With autoIdea (Create's writer), a new shot writes itself: the writer invents the idea — looking at the
+  // references when there are any, else from the character and the shot's shape — then writes the prompt from
+  // it, so the "What happens" step fills in with nothing typed. Once per form: anything the person typed (an
+  // idea or a prompt), or a form that came prefilled (a film shot, a starter, a line), stops it.
+  const autoTried = useRef(false)
+  useEffect(() => {
+    if (!autoIdea) return
+    if (autoTried.current || !status || blocker || busy || ideating) return
+    if (ideaNow.current.trim() || (promptNow.current || '').trim()) return
+    autoTried.current = true
+    ;(async () => {
+      setIdeating(true)
+      try {
+        const r = await window.ivstudio.prompts.idea({ ...context })
+        const text = String(r?.idea || '').trim()
+        if (!text || ideaNow.current.trim() || (promptNow.current || '').trim()) return
+        setIdea(text)
+        await run(() => window.ivstudio.prompts.write({ ...context, idea: text }), (err) => notify(err.message))
+      } catch (err) {
+        notify(err.message)
+      } finally {
+        setIdeating(false)
+      }
+    })()
+  }, [autoIdea, status, blocker, busy, ideating])
+
+  // "An idea for me": the writer invents the idea (looking at the references when there are any); the person edits
+  // it, then writes the prompt from it.
+  async function thinkIdea() {
+    setIdeating(true)
+    try {
+      const r = await window.ivstudio.prompts.idea({ ...context })
+      const text = String(r?.idea || '').trim()
+      if (text) setIdea(text)
+      else notify('The writer gave no idea. Try again.')
+    } catch (err) {
+      notify(err.message)
+    } finally {
+      setIdeating(false)
+    }
+  }
+
+  // With pictures or clips attached the writer starts from them alone (it looks at them), so the idea may stay empty.
+  const canWrite = !!idea.trim() || visual.length > 0
+  // own: the words to write from instead of the idea box's (the auto-idea's fresh text, not yet in state)
+  async function write(own) {
+    const words = String(own ?? idea).trim() || 'Look at my references and write what happens in the shot.'
     const staged =
-      (board && stage?.people?.length ? `${idea.trim()}\nStaging (follow it exactly): ${stagingWords(stage)}\nCamera: ${cameraWords(stage)}.` : idea) +
+      (board && stage?.people?.length ? `${words}\nStaging (follow it exactly): ${stagingWords(stage)}\nCamera: ${cameraWords(stage)}.` : words) +
       (previsN ? `\n${previsWords(previs.stage, previsN)} Say so in the prompt, with these words.` : '')
     await run(() => window.ivstudio.prompts.write({ ...context, idea: staged }), (err) => notify(err.message))
   }
@@ -154,11 +208,25 @@ export default function PromptWriter({ context, current, onWritten, notify, go, 
     <div className={`writer ${compact ? 'compact' : ''}`}>
       <div className="writer-head">
         <span className="mono label writer-label">✦ Write it for me</span>
+        <button className="link-btn mono small writer-idea" disabled={ideating || busy || !!blocker} onClick={thinkIdea} title="The writer invents the idea, looking at your references when there are any">
+          {ideating ? 'Thinking of an idea…' : 'An idea for me'}
+        </button>
         <span className="mono dim small">{engine === 'contextir' ? `MiniMax Context IR · ${status?.contextIrPrice?.split(' (')[0] || 'paid'}` : harness ? `${HARNESS_NAME[engine]} · your plan` : engine === 'openai' ? `${status?.openai?.model || 'OpenAI-compatible'} · your server` : `Local writer · free`}{context.engine === 'seedance' ? ' · Seedance guide' : ''}</span>
       </div>
       <div className="writer-row">
-        <textarea rows={compact ? 2 : 2} value={idea} placeholder={context.sequence ? 'What happens in this shot, in plain words' : 'Your idea in plain words, e.g. Tess in a parked car at night admits she kept the letter'} onChange={(e) => setIdea(e.target.value)} />
-        <button className="btn btn-primary" disabled={busy || !idea.trim() || !!blocker} onClick={write}>
+        <textarea
+          rows={compact ? 2 : 2}
+          value={idea}
+          placeholder={visual.length ? 'Your idea in plain words — or leave it empty and the writer writes from your references' : context.sequence ? 'What happens in this shot, in plain words' : 'Your idea in plain words, e.g. Tess in a parked car at night admits she kept the letter'}
+          onChange={(e) => setIdea(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              if (!busy && !blocker && canWrite) write()
+            }
+          }}
+        />
+        <button className="btn btn-primary" disabled={busy || !canWrite || !!blocker} onClick={() => write()} title="Write the prompt (Enter; Shift+Enter for a new line)">
           {busy ? 'Writing…' : current?.trim() ? 'Rewrite prompt' : 'Write my prompt'}
         </button>
       </div>

@@ -8,6 +8,7 @@ import ChatPanel, { ChatButton, useChat } from './components/ChatPanel'
 import { spotTour } from './tours'
 import { CharacterList, CharacterTrainer } from './components/Characters'
 import Create from './components/Create'
+import { sendIdea } from './components/PromptWriter'
 import tlMark from './assets/tl-mark.svg'
 import tlMarkClosed from './assets/tl-mark-closed.svg'
 import { ConfirmHost, ask } from './components/Confirm'
@@ -464,8 +465,10 @@ export default function App() {
     setPage('create')
   }
   // GitHub #35: a film shot opened in Create with everything Film it would send; Create renders into the shot's
-  // own project, so the takes land back on the film's storyboard
+  // own project, so the takes land back on the film's storyboard. Its plain words fill "What happens" too (no
+  // writing: the shot's prompt comes along already written), so the form is 100% prefilled from the story.
   const filmShotToCreate = (r) => {
+    if (r?.idea) sendIdea(r.idea, false)
     setRunForCreate(r)
     pickCreateKind('video')
     switchSection('video')
@@ -669,7 +672,7 @@ export default function App() {
           {/* on a Mac the cloud comes first; Start ComfyUI stays on Settings → Setup */}
           {comfyDown && info?.platform !== 'darwin' && <StartComfy notify={notify} recheck={recheck} className="btn btn-small engine-start" />}
           <SetupPill onOpen={() => setPage('cloud')} />
-          {setup?.remote ? <CloudMeter onOpen={() => setPage('cloud')} /> : setup && <SystemMeter notify={notify} />}
+          {setup?.remote ? <CloudMeter onOpen={() => setPage('cloud')} notify={notify} /> : setup && <SystemMeter notify={notify} />}
           <BalanceChip />
         </div>
       </header>

@@ -14,7 +14,7 @@ import { spawn } from 'node:child_process'
 import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { DIRECTING, DIRECTING_SOURCE } from './directing.js'
 import { loadGuide } from './h3guide.js'
-import { harnessJson, onPath } from './harness.js'
+import { harnessJson, isHarness, onPath } from './harness.js'
 import { FIRST_FRAME_LINE, firstLastLine, lintPrompt, withLine } from './lint.js'
 import { isPrevis } from './staging.js'
 import { llmConfig, openaiChat, openaiModels } from './llm.js'
@@ -619,6 +619,45 @@ export async function writeHarness({ engine, model, idea, mode = 'text', seconds
 }
 
 const UNREADABLE = 'The writer returned something unreadable. Try again.'
+
+// One idea for the shot, in plain words, from the same writer that writes the prompt ("Think of an idea", and a new
+// shot whose references arrive with the idea box empty). The writer looks at the references when it can, so the idea
+// is about them; the person edits it or has the prompt written from it.
+const IDEA_SCHEMA = { type: 'object', properties: { idea: { type: 'string' } }, required: ['idea'], additionalProperties: false }
+function ideaSystem({ mode, seconds, character }) {
+  const first = firstName(character)
+  const from =
+    mode === 'frames'
+      ? 'The shot opens exactly on the attached first picture (and may land on a second one): the idea is what happens between.'
+      : mode === 'continue'
+        ? 'The shot carries on from the attached clip: its last frame is shown, and the idea is what happens next.'
+        : mode === 'reference'
+          ? 'The attached references star in the shot: the idea is about them, in a new place (not a picture’s own background).'
+          : ''
+  return `You invent one idea for a ${seconds}-second video shot and answer with JSON only: {"idea": "..."}.
+The idea is one or two plain sentences, said the way a person would say it: who is in it, what happens, where, and one short spoken line in quotes when a line fits. No camera jargon, no prompt sections, no lists.
+${from}${first ? ` The character ${first} is in the shot: name them, but never describe their face, hair or voice (their picture carries those).` : ''} Never phrase anything as what must not appear: say what is there.`
+}
+export async function writeIdea({ engine = 'local', model, mode = 'text', seconds = 5, character = null, media = [], cpu = false }) {
+  const system = ideaSystem({ mode, seconds, character })
+  let user = 'Invent the idea now.'
+  if (isHarness(engine)) {
+    const images = (await imagesFor(media, mode)).map((s, i) => ({ ...s, name: `reference-${i + 1}.jpg` }))
+    if (images.length) user += `\n\nThe images attached to this message are the references, listed below. The idea is about what you see in them.\n${images.map((s, i) => `Image ${i + 1} (${s.name}): ${s.label}`).join('\n')}${engine === 'claude' ? '\nOpen each one with the Read tool before you answer.' : ''}`
+    const data = await harnessJson({ engine, model, system, user, schema: IDEA_SCHEMA, images })
+    const idea = String(data?.idea || '').trim()
+    if (!idea) throw new Error('The writer gave no idea. Try again.')
+    return { idea }
+  }
+  const info = await localWriterModel(engine === 'local' ? model : undefined)
+  const shown = info.vision ? await imagesFor(media, mode) : []
+  const message = { role: 'user', content: shown.length ? `${user}\n\nThe images attached to this message are the references, listed below. The idea is about what you see in them.\n${shown.map((s, i) => `Image ${i + 1}: ${s.label}`).join('\n')}` : user }
+  if (shown.length) message.images = shown.map((s) => s.data)
+  const content = await localChat({ model: info.name, system, messages: [message], schema: IDEA_SCHEMA, temperature: 0.9, ctx: 8192, maxTokens: 300, cpu, raw: true })
+  const idea = String(parseJson(content)?.idea || '').trim()
+  if (!idea) throw new Error('The writer gave no idea. Try again.')
+  return { idea }
+}
 
 // The JSON object in a writer's reply. <think> blocks, ```json fences and words around the object are dropped
 // (OpenAI-compatible servers that can't hold the schema answer like that).

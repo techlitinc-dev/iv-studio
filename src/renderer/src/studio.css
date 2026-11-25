@@ -1154,6 +1154,16 @@ input.mini {
   color: var(--ink);
 }
 /* the cloud GPU meter in the title bar (time and cost; opens the Cloud page) */
+.cloud-meter-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cloud-meter-stop {
+  padding: 3px 9px;
+  font-size: 11px;
+  white-space: nowrap;
+}
 .cloud-meter {
   display: inline-flex;
   align-items: center;
@@ -9465,6 +9475,252 @@ button.nav-update:hover {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+/* Create's timed beats (the Shot Control Timeline) and the beat chips under a take */
+.beat-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.beat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.beat-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.beat-more {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+.beat-detail-toggle {
+  white-space: nowrap;
+}
+.beat-times {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.beat-times input {
+  width: 56px;
+}
+.beat-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.beat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+.beat-chip {
+  padding: 3px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: var(--paper-dim);
+  font-size: 11px;
+  cursor: pointer;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.beat-chip:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+/* the Shot manifest & pre-flight panel (Create's shot card) */
+.manifest {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 8px 10px;
+  margin: 10px 0;
+}
+.manifest summary {
+  cursor: pointer;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.manifest[open] summary {
+  margin-bottom: 8px;
+}
+.manifest-rows {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 8px;
+}
+.manifest-rows div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px;
+}
+.manifest-rows dt {
+  color: var(--paper-dim);
+}
+.manifest-rows dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.manifest-label {
+  margin: 8px 0 4px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.manifest-prompt {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px;
+  margin: 0 0 8px;
+}
+.manifest-issues {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+/* the shot's director marks and label (Create's manifest, shotstatus.js) */
+.mark-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 0 0 8px;
+}
+.mark-chip {
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: var(--paper-dim);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.mark-chip.on {
+  border-color: var(--red);
+  color: var(--red);
+}
+.label-input {
+  flex: 1;
+  min-width: 130px;
+  letter-spacing: 0.08em;
+}
+/* the mark, label and missing-file flags on a Shots-page tile */
+.shelf-flags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.shelf-mark {
+  padding: 1px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--paper-dim);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.shelf-mark.ready {
+  border-color: var(--red);
+  color: var(--red);
+}
+.shelf-mark.approved {
+  border-color: #6fae6f;
+  color: #6fae6f;
+}
+.shelf-missing {
+  padding: 1px 7px;
+  border: 1px solid var(--pink);
+  color: var(--pink);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.shelf-label {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 1px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--paper-dim);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+/* sequence look locks and per-shot overrides (look.js) */
+.lock-btn {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: var(--paper-dim);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.lock-btn.on {
+  border-color: var(--red);
+  color: var(--red);
+}
+.shot-look {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0 2px;
+}
+.shot-look-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shot-look-fields {
+  flex-basis: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 8px 0 2px;
+}
+.shot-look-field {
+  display: grid;
+  gap: 3px;
+}
+.shot-look-field.over select {
+  border-color: var(--red);
+}
+/* Create's structured camera picks (camera.js) and the microphone take */
+.camera-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.camera-line {
+  margin: 2px 0 0;
+}
+.record-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.record-line audio {
+  height: 32px;
+  max-width: 280px;
 }
 .create-field.inline {
   grid-template-columns: auto minmax(0, 1fr);
@@ -19800,6 +20056,99 @@ html.chat-window body {
 .feat-desk p {
   margin: 3px 0;
 }
+/* the pipeline strip (story → plan → scenes & shots → generate) */
+.feat-pipe {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0 4px;
+}
+.feat-pipe-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 12px;
+}
+.feat-pipe-step.done {
+  border-color: var(--line-strong);
+}
+.feat-pipe-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  font-size: 11px;
+}
+.feat-pipe-step.done .feat-pipe-n {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: var(--ink-1, #100c0e);
+}
+.feat-pipe-label {
+  font-weight: 600;
+}
+/* the scenes & shots tree: every shot of the film with its status and its Create button */
+.feat-tree {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 0 0 18px;
+}
+.feat-tree-act + .feat-tree-act {
+  margin-top: 12px;
+}
+.feat-tree-act-title {
+  margin: 4px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.feat-tree-seq {
+  border-top: 1px solid var(--line);
+  padding: 8px 0;
+}
+.feat-tree-seq-head,
+.feat-tree-scene-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.feat-tree-tools {
+  display: inline-flex;
+  gap: 12px;
+  white-space: nowrap;
+}
+.feat-tree-scene {
+  margin: 4px 0 2px 12px;
+}
+.feat-tree-shot {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 2px 0 2px 12px;
+}
+.feat-tree-action {
+  flex: 1;
+  min-width: 0;
+}
+.feat-tree-status.written {
+  color: var(--dim, #8a8494);
+}
+.feat-tree-status.filmed {
+  color: var(--pink);
+}
+.feat-tree-status.finished {
+  color: var(--red);
+}
+.feat-tree-empty {
+  margin: 4px 0 2px 12px;
+}
 
 /* ---------- the movie dashboard (components/MovieDashboard.jsx): timeline, cost, analytics ---------- */
 .mdash-title {
@@ -20830,4 +21179,92 @@ html.chat-window body {
   .chat-head .spacer {
     display: none;
   }
+}
+/* the Gantt is the date UI (FilmPlan.jsx): bars drag to move, edges resize, empty track clicks schedule */
+.filmplan-track {
+  overflow: hidden;
+  cursor: copy;
+}
+.filmplan-bar {
+  cursor: grab;
+  touch-action: none;
+}
+.filmplan-bar.dragging {
+  cursor: grabbing;
+  z-index: 3;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.filmplan-grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  z-index: 2;
+}
+.filmplan-grip.l {
+  left: 0;
+  border-radius: 6px 0 0 6px;
+}
+.filmplan-grip.r {
+  right: 0;
+  border-radius: 0 6px 6px 0;
+}
+.filmplan-bar:hover .filmplan-grip {
+  background: rgba(255, 255, 255, 0.28);
+}
+.filmplan-drag-dates {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--cream);
+  font-size: 10.5px;
+  font-weight: 400;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* the native date picker's icon, visible on the dark theme */
+.filmplan-date input::-webkit-calendar-picker-indicator,
+.filmplan-tools input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 0.65;
+  filter: invert(0.75);
+  cursor: pointer;
+}
+.filmplan-date input:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
+/* ---------- popped-out chat: the header keeps clear of the real window buttons, whatever the OS ---------- */
+/* It kept a fixed 150 px free on the right for the overlay's window buttons; where there are none (Linux) that dead
+   space helped wrap the header onto two rows at the window's narrow default width. The overlay's own titlebar-area-*
+   now say how much room to leave: Windows keeps its buttons' width on the right, a Mac's lights move the left padding
+   instead, and a window with no overlay leaves none. */
+.chat-panel.popped .chat-head {
+  padding-left: calc(14px + env(titlebar-area-x, 0px));
+  padding-right: calc(10px + 100vw - env(titlebar-area-width, 100vw) - env(titlebar-area-x, 0px));
+}
+/* the narrow-width rule hides the spacer, which left the icons stranded beside the tabs; the window wants them right */
+.chat-panel.popped .chat-head .spacer {
+  display: block;
+}
+
+/* the writer's "An idea for me": sits by its label, the engine note stays right (PromptWriter.jsx) */
+.writer-head .writer-idea {
+  margin-right: auto;
+}
+
+/* ---------- long headings render small (longheads.js tags h1–h3 over 42 characters with .h-long) ---------- */
+/* zoom, not a px size: each kind of header keeps its own size relationship, and the Accessibility text size
+   (the window's zoom) still multiplies on top. */
+h1.h-long,
+h2.h-long,
+h3.h-long {
+  zoom: 0.72;
+  line-height: 1.25;
+  overflow-wrap: break-word;
 }

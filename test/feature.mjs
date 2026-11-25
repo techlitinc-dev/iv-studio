@@ -344,10 +344,15 @@ ok('the trailer and songs are linked on the feature', () => {
             { title: 'The door', logline: 'The door he left open.', minutes: 6 }
           ] }
         ] }
-      : { characters: [
-          { name: 'The Keeper', who: 'an old lighthouse keeper', looks: 'A gray man in a yellow oilskin.' },
-          { name: 'Mara', who: 'his granddaughter', looks: 'A girl in a red hat.' }
-        ] }
+      : schema.properties.characters
+        ? { characters: [
+            { name: 'The Keeper', who: 'an old lighthouse keeper', looks: 'A gray man in a yellow oilskin.' },
+            { name: 'Mara', who: 'his granddaughter', looks: 'A girl in a red hat.' }
+          ] }
+        : { people: [
+            { name: 'The Keeper', prompt: 'A man in his seventies, tall and bent, with white stubble and pale wary eyes. He wears a yellow oilskin worn shiny at the cuffs over a wool jumper.' },
+            { name: 'Mara', prompt: 'A girl of about ten with dark braids under a red wool hat. She swims in her grandfather’s oversized gloves and a green duffel coat.' }
+          ] }
   const r = await feats2.planAll(f2.id, { ask })
   assert.deepEqual(r, { acts: 2, sequences: 3, characters: 2 })
   const got = feats2.get(f2.id)
@@ -356,7 +361,8 @@ ok('the trailer and songs are linked on the feature', () => {
   assert.equal(got.cast.length, 2)
   assert.equal(created.length, 3)
   assert.equal(updated['pp1'].cast[0].as, 'The Keeper')
-  assert.equal(updated['pp1'].cast[0].description, 'A gray man in a yellow oilskin.')
+  assert.match(updated['pp1'].cast[0].description, /seventies, tall and bent/, 'the sequence cast carries the full character prompt written from the story')
+  assert.match(got.cast[1].looks, /red wool hat/, 'and the feature cast keeps it too')
   assert.equal(updated['pp3'].targetSeconds ?? 0, 0) // untouched; create carried the length
   assert.equal(fakeP.get('pp3').targetSeconds, 360)
   // the cast flows into auto()'s script idea

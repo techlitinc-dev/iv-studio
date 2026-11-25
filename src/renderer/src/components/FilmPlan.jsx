@@ -15,6 +15,8 @@ export default function FilmPlan({ v, act, goShot }) {
   const [start, setStart] = useState(today())
   const [perDay, setPerDay] = useState(20)
   const [open, setOpen] = useState(() => new Set(v.scenes.map((s) => s.id)))
+  // a bar being dragged on the Gantt: { key, plan } — the preview; committed on release
+  const [drag, setDrag] = useState(null)
   const toggle = (id) => setOpen((cur) => (cur.has(id) ? new Set([...cur].filter((x) => x !== id)) : new Set([...cur, id])))
   const nums = useMemo(() => {
     const m = new Map()
@@ -59,6 +61,43 @@ export default function FilmPlan({ v, act, goShot }) {
     if (next && next.end < next.start) next[which === 'start' ? 'end' : 'start'] = value
     if (r.type === 'scene') act(() => P().editScene(v.id, r.sc.id, { plan: next }))
     else act(() => P().editShot(v.id, r.sc.id, r.sh.id, { plan: next }))
+  }
+  const commitPlan = (r, plan) => (r.type === 'scene' ? act(() => P().editScene(v.id, r.sc.id, { plan })) : act(() => P().editShot(v.id, r.sc.id, r.sh.id, { plan })))
+  const rowKey = (r) => (r.type === 'scene' ? `sc:${r.sc.id}` : `sh:${r.sh.id}`)
+  // The Gantt is the date UI: drag a bar to move it, drag an edge to change one end, click an empty day on a
+  // row's track to schedule it there. The preview follows the pointer; the plan saves on release.
+  const dragBar = (e, r, mode) => {
+    if (!r.plan || e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    const track = e.currentTarget.closest('.filmplan-track')
+    const dayW = track.getBoundingClientRect().width / span
+    const x0 = e.clientX
+    const orig = r.plan
+    const move = (ev) => {
+      const dd = Math.round((ev.clientX - x0) / dayW)
+      let next
+      if (mode === 'move') next = { start: iso(day(orig.start) + dd * DAY), end: iso(day(orig.end) + dd * DAY) }
+      else if (mode === 'start') next = { start: iso(Math.min(day(orig.start) + dd * DAY, day(orig.end))), end: orig.end }
+      else next = { start: orig.start, end: iso(Math.max(day(orig.end) + dd * DAY, day(orig.start))) }
+      setDrag({ key: rowKey(r), plan: next })
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      setDrag((d) => {
+        if (d && (d.plan.start !== orig.start || d.plan.end !== orig.end)) commitPlan(r, d.plan)
+        return null
+      })
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  const clickTrack = (e, r) => {
+    if (e.target.closest('.filmplan-bar')) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const d = iso(min + Math.max(0, Math.min(span - 1, Math.floor(((e.clientX - rect.left) / rect.width) * span))) * DAY)
+    commitPlan(r, { start: d, end: d })
   }
   const autoPlan = () => act(() => P().autoPlan(v.id, { start, perDay }), (p) => `Planned: ${plural(p.scenes.flatMap((s) => s.shots).length, 'shot')} at ${perDay} a day.`)
 
@@ -119,8 +158,27 @@ export default function FilmPlan({ v, act, goShot }) {
                 ))}
               </span>
             </div>
-            {rows.map((r) =>
-              r.type === 'scene' ? (
+            {rows.map((r) => {
+              const dragging = drag?.key === rowKey(r)
+              const shown = dragging ? drag.plan : r.plan
+              const bar = shown && (
+                <span
+                  className={`filmplan-bar ${r.type === 'scene' ? 'filmplan-bar-scene' : ''} ${dragging ? 'dragging' : ''}`}
+                  style={{ left: `${pos(shown.start)}%`, width: `${width(shown)}%`, ...(r.type === 'shot' ? { background: STATUS_COLOR[statusOf(r.sh)] } : {}) }}
+                  title={`${shown.start === shown.end ? shown.start : `${shown.start} → ${shown.end}`}${r.type === 'shot' ? ` · ${FILM_STATE[statusOf(r.sh)]?.[0] || ''}` : ''} · ${r.pct}% · drag to move, the edges to resize`}
+                  onPointerDown={(e) => dragBar(e, r, 'move')}
+                >
+                  <i className="filmplan-grip l" onPointerDown={(e) => dragBar(e, r, 'start')} aria-hidden="true" />
+                  <span style={{ width: `${r.pct}%` }} />
+                  <i className="filmplan-grip r" onPointerDown={(e) => dragBar(e, r, 'end')} aria-hidden="true" />
+                  {dragging && (
+                    <b className="filmplan-drag-dates mono">
+                      {shown.start === shown.end ? shown.start : `${shown.start} → ${shown.end}`}
+                    </b>
+                  )}
+                </span>
+              )
+              return r.type === 'scene' ? (
                 <div key={r.sc.id} className="filmplan-row filmplan-scene" role="row">
                   <span className="filmplan-name">
                     <button className="filmplan-caret" aria-expanded={open.has(r.sc.id)} onClick={() => toggle(r.sc.id)}>
@@ -137,18 +195,14 @@ export default function FilmPlan({ v, act, goShot }) {
                     <input type="date" value={r.plan?.end || ''} onChange={(e) => setPlan(r, 'end', e.target.value)} aria-label="Scene end" />
                   </span>
                   <span className="filmplan-pct mono small dim">{r.pct}%</span>
-                  <span className="filmplan-track">
-                    {r.plan && (
-                      <span className="filmplan-bar filmplan-bar-scene" style={{ left: `${pos(r.plan.start)}%`, width: `${width(r.plan)}%` }} title={`${r.plan.start} → ${r.plan.end} · ${r.pct}%`}>
-                        <span style={{ width: `${r.pct}%` }} />
-                      </span>
-                    )}
+                  <span className="filmplan-track" onClick={(e) => clickTrack(e, r)} title="Click a day to schedule the scene there, or drag its bar">
+                    {bar}
                     {nowLeft != null && <i className="filmplan-today" style={{ left: `${nowLeft}%` }} />}
                   </span>
                 </div>
               ) : (
-                <div key={r.sh.id} className="filmplan-row filmplan-shot" role="row" onDoubleClick={() => goShot?.(r.sc.id, r.sh.id, statusOf(r.sh))} title="Double-click to open the shot">
-                  <span className="filmplan-name filmplan-shot-name">
+                <div key={r.sh.id} className="filmplan-row filmplan-shot" role="row">
+                  <span className="filmplan-name filmplan-shot-name" onDoubleClick={() => goShot?.(r.sc.id, r.sh.id, statusOf(r.sh))} title="Double-click to open the shot">
                     <span className="mono small dim">№{nums.get(r.sh.id)}</span> {r.sh.action || <span className="dim">Say what happens.</span>}
                   </span>
                   <span className="filmplan-secs mono small dim">{r.sh.seconds}s</span>
@@ -159,21 +213,13 @@ export default function FilmPlan({ v, act, goShot }) {
                     <input type="date" value={r.plan?.end || ''} onChange={(e) => setPlan(r, 'end', e.target.value)} aria-label={`Shot ${r.i + 1} end`} />
                   </span>
                   <span className="filmplan-pct mono small dim">{r.pct}%</span>
-                  <span className="filmplan-track">
-                    {r.plan && (
-                      <span
-                        className="filmplan-bar"
-                        style={{ left: `${pos(r.plan.start)}%`, width: `${width(r.plan)}%`, background: STATUS_COLOR[statusOf(r.sh)] }}
-                        title={`${r.plan.start === r.plan.end ? r.plan.start : `${r.plan.start} → ${r.plan.end}`} · ${FILM_STATE[statusOf(r.sh)]?.[0] || ''} · ${r.pct}%`}
-                      >
-                        <span style={{ width: `${r.pct}%` }} />
-                      </span>
-                    )}
+                  <span className="filmplan-track" onClick={(e) => clickTrack(e, r)} title="Click a day to schedule the shot there, or drag its bar">
+                    {bar}
                     {nowLeft != null && <i className="filmplan-today" style={{ left: `${nowLeft}%` }} />}
                   </span>
                 </div>
               )
-            )}
+            })}
           </div>
         </>
       )}

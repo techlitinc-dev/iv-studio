@@ -14,6 +14,8 @@ export default function MovieDashboard({ id, back, notify }) {
   const [tree, setTree] = useState(null)
   const [dash, setDash] = useState(null)
   const [days, setDays] = useState(null) // the last two weeks' cloud spend, one number a day
+  const [costs, setCosts] = useState(null) // cloud GPU seconds per project (the shots' actual billed time)
+  const [pics, setPics] = useState(null) // what GPT Image panels cost, per film tag (images.gptSpend)
   useEffect(() => {
     const load = () => {
       F().get(id).then(setF, (e) => notify(e.message))
@@ -21,6 +23,8 @@ export default function MovieDashboard({ id, back, notify }) {
       F().explore(id).then(setTree, () => setTree(null))
       window.ivstudio.cloud.dash().then(setDash, () => setDash(null))
       window.ivstudio.cloud.spendDays().then(setDays, () => setDays(null))
+      window.ivstudio.jobs.cloudSeconds().then(setCosts, () => setCosts(null))
+      window.ivstudio.images.gptSpend().then(setPics, () => setPics(null))
     }
     load()
     const off = F().onChanged(load)
@@ -35,10 +39,21 @@ export default function MovieDashboard({ id, back, notify }) {
   }, [id])
   if (!f || !stats) return null
 
-  const rate = dash?.rate || 11.5
-  const inr = (v) => `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+  const rate = dash?.rate || 18
+  const inr = (v) => `₹${(Number(v) * rate).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
   const perHour = dash?.pod?.perHour ?? dash?.gpuPerHour ?? null
   const costOf = (shots) => (perHour != null ? ((shots * GPU_MIN_PER_SHOT) / 60) * perHour : null)
+  // what the filming actually used: the shots' own cloud GPU seconds, at the pod's rate
+  const spentOf = (shots) => {
+    if (perHour == null || !costs) return null
+    const sec = (shots || []).reduce((t, sh) => t + (sh.projectId ? costs[sh.projectId] || 0 : 0), 0)
+    return sec > 0 ? (sec / 3600) * perHour : null
+  }
+  const shotsOf = (a) => (a?.sequences || []).flatMap((s) => s.scenes.flatMap((sc) => sc.shots))
+  const spentTotal = spentOf((tree?.acts || []).flatMap(shotsOf))
+  // the film's GPT Image panels: sketches, places and faces are tagged film:<sequence> (productions.js)
+  const picUsd = (f?.sequences || []).reduce((t, s) => t + (pics?.byTag?.[`film:${s.id}`]?.usd || 0), 0)
+  const picCount = (f?.sequences || []).reduce((t, s) => t + (pics?.byTag?.[`film:${s.id}`]?.pictures || 0), 0)
 
   // each sequence's completion, from the story tree (shots: written → filmed → finished)
   const seqStats = new Map()
@@ -90,7 +105,7 @@ export default function MovieDashboard({ id, back, notify }) {
       <h1 className="mdash-title">{f.name}</h1>
       <p className="small dim">
         Director's dashboard · {f.targetMinutes} min · {f.aspect} · {f.acts.length} acts · {f.sequences.length} sequences
-        {dash && (dash.pod ? ` · GPU on at $${Number(dash.pod.perHour).toFixed(2)}/h (${inr(Number(dash.pod.perHour))}/h)` : ' · GPU off')}
+        {dash && (dash.pod ? ` · GPU on at ${inr(Number(dash.pod.perHour))}/h` : ' · GPU off')}
       </p>
 
       <p className="mono label">The timeline</p>
@@ -173,8 +188,8 @@ export default function MovieDashboard({ id, back, notify }) {
       <div className="mdash-cards">
         <div className="mdash-card">
           <span className="mono small dim">Spent today</span>
-          <strong>{dash ? `$${dash.today.toFixed(2)}` : '—'}</strong>
-          <span className="small dim">{dash ? `${inr(dash.today)}${dash.budget.on ? ` of $${dash.budget.daily.toFixed(2)} (${inr(dash.budget.daily)})` : ' · no daily budget'}` : ''}</span>
+          <strong>{dash ? inr(dash.today) : '—'}</strong>
+          <span className="small dim">{dash ? `${dash.budget.on ? `of ${inr(dash.budget.daily)}` : 'no daily budget'}` : ''}</span>
           {dash?.budget.on && (
             <span className="cloud-dash-bar">
               <span style={{ width: `${Math.min(100, (dash.today / dash.budget.daily) * 100)}%` }} className={dash.today >= dash.budget.daily ? 'over' : ''} />
@@ -183,14 +198,24 @@ export default function MovieDashboard({ id, back, notify }) {
         </div>
         <div className="mdash-card">
           <span className="mono small dim">GPU rate</span>
-          <strong>{perHour != null ? `$${Number(perHour).toFixed(2)}/h` : '—'}</strong>
-          <span className="small dim">{perHour != null ? `${inr(Number(perHour))}/h${dash?.pod ? ' · billed now' : ' · your last pod'}` : 'set up the cloud to see it'}</span>
+          <strong>{perHour != null ? `${inr(Number(perHour))}/h` : '—'}</strong>
+          <span className="small dim">{perHour != null ? (dash?.pod ? 'billed now' : 'your last pod') : 'set up the cloud to see it'}</span>
+        </div>
+        <div className="mdash-card">
+          <span className="mono small dim">Spent filming</span>
+          <strong>{spentTotal != null ? inr(spentTotal) : '—'}</strong>
+          <span className="small dim">{spentTotal != null ? 'the shots’ actual cloud GPU time' : 'no cloud renders yet'}</span>
+        </div>
+        <div className="mdash-card">
+          <span className="mono small dim">Panels &amp; pictures</span>
+          <strong>{picCount ? inr(picUsd) : '—'}</strong>
+          <span className="small dim">{picCount ? `${picCount} GPT Image picture${picCount === 1 ? '' : 's'}, at OpenAI's list price` : 'no GPT Image panels yet'}</span>
         </div>
         <div className="mdash-card">
           <span className="mono small dim">To finish filming</span>
-          <strong>{estTotal != null ? `$${estTotal.toFixed(2)}` : '—'}</strong>
+          <strong>{estTotal != null ? inr(estTotal) : '—'}</strong>
           <span className="small dim">
-            {left > 0 ? `${left} shot${left === 1 ? '' : 's'} × ~${GPU_MIN_PER_SHOT} GPU min ≈ ${Math.round(left * GPU_MIN_PER_SHOT)} min${estTotal != null ? ` · ${inr(estTotal)}` : ''}` : 'every shot is filmed'}
+            {left > 0 ? `${left} shot${left === 1 ? '' : 's'} × ~${GPU_MIN_PER_SHOT} GPU min ≈ ${Math.round(left * GPU_MIN_PER_SHOT)} min` : 'every shot is filmed'}
           </span>
         </div>
         <div className="mdash-card">
@@ -207,7 +232,7 @@ export default function MovieDashboard({ id, back, notify }) {
           <p className="mono label">Cloud spend by day</p>
           <div className="mdash-days">
             {days.map((d, i) => (
-              <div key={i} className="mdash-day" title={`${d.label}: $${d.usd.toFixed(2)} (${inr(d.usd)})`}>
+              <div key={i} className="mdash-day" title={`${d.label}: ${inr(d.usd)}`}>
                 <span className="mdash-day-track">
                   <span className="mdash-day-bar" style={{ height: `${maxDay ? (d.usd / maxDay) * 100 : 0}%` }} />
                 </span>
@@ -215,7 +240,7 @@ export default function MovieDashboard({ id, back, notify }) {
               </div>
             ))}
           </div>
-          <p className="small dim mdash-legend">the last two weeks of GPU spend, from the app's own ledger · hover a bar for dollars and rupees</p>
+          <p className="small dim mdash-legend">the last two weeks of GPU spend, from the app's own ledger · hover a bar for the day's cost</p>
         </>
       )}
 
@@ -230,12 +255,14 @@ export default function MovieDashboard({ id, back, notify }) {
             <th>Footage</th>
             <th>Planned</th>
             <th>Progress</th>
+            <th>Spent</th>
             <th>Cost left</th>
           </tr>
         </thead>
         <tbody>
           {stats.acts.map((a) => {
             const cost = costOf(Math.max(0, a.shots - a.filmed))
+            const spent = spentOf(shotsOf(tree?.acts.find((x) => x.id === a.id)))
             const pct = a.shots ? Math.round((a.finished / a.shots) * 100) : 0
             return (
               <tr key={a.id} className="small">
@@ -252,7 +279,8 @@ export default function MovieDashboard({ id, back, notify }) {
                   </span>{' '}
                   <span className="dim">{pct}%</span>
                 </td>
-                <td>{cost != null && a.shots - a.filmed > 0 ? `$${cost.toFixed(2)} · ${inr(cost)}` : '—'}</td>
+                <td>{spent != null ? inr(spent) : '—'}</td>
+                <td>{cost != null && a.shots - a.filmed > 0 ? inr(cost) : '—'}</td>
               </tr>
             )
           })}
@@ -265,7 +293,8 @@ export default function MovieDashboard({ id, back, notify }) {
             <td>{Math.round(stats.total.seconds)} s</td>
             <td>{f.targetMinutes} min</td>
             <td>{stats.percent}%</td>
-            <td>{estTotal != null && left > 0 ? `$${estTotal.toFixed(2)} · ${inr(estTotal)}` : '—'}</td>
+            <td>{spentTotal != null ? inr(spentTotal) : '—'}</td>
+            <td>{estTotal != null && left > 0 ? inr(estTotal) : '—'}</td>
           </tr>
         </tbody>
       </table>

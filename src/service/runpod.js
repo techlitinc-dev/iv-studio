@@ -83,13 +83,14 @@ export class RunPod {
     return { volumes: vols.length }
   }
 
-  // The curated GPUs with RunPod's live price and stock, and which data centers have each.
+  // The curated GPUs with RunPod's live price and stock, and which data centers have each (null when RunPod
+  // doesn't list them: it omits the field for some cards, and an empty list read as "free nowhere").
   async catalog() {
     const body = await this.req('/catalog/gpus?include=AVAILABILITY&product=POD&cloud=SECURE&minCudaVersion=12.8')
     const live = new Map(RunPod.list(body, 'gpus').map((g) => [g.id, g]))
     return GPUS.map((g) => {
       const l = live.get(g.id)
-      return { ...g, perHour: l?.price?.secure || g.perHour, inStock: !!l && l.availability !== 'NONE', dataCenters: (l?.dataCenters || []).map((d) => d.id) }
+      return { ...g, perHour: l?.price?.secure || g.perHour, inStock: !!l && l.availability !== 'NONE', dataCenters: Array.isArray(l?.dataCenters) ? l.dataCenters.map((d) => d.id) : null }
     })
   }
 
@@ -98,41 +99,71 @@ export class RunPod {
   // without a secure price can't be shown (its fallback cap couldn't be worked out either). MIG slices are out:
   // a slice is a partition of a card, not a card — H3 wants the whole thing, and a pod for one can't be started
   // like a pod for a whole GPU (setup died on a "MIG 1g.24gb" pick with nothing to fall back to).
+  // "Free now" is cross-checked against the data-center list: a card counts only where a data center with
+  // network storage lists it free. The GPU list's own availability disagrees with that both ways — a card "in
+  // stock" with no storage data center has nowhere to put the volume (the RTX 4090 showed that), and setup
+  // needs a storage data center anyway. dataCenters is where it's free (empty: nowhere).
   async allGpus() {
-    const body = await this.req('/catalog/gpus?include=AVAILABILITY&product=POD&cloud=SECURE&minCudaVersion=12.8')
+    const [body, dcBody] = await Promise.all([this.req('/catalog/gpus?include=AVAILABILITY&product=POD&cloud=SECURE&minCudaVersion=12.8'), this.req('/catalog/datacenters?include=GPU_AVAILABILITY')])
+    const freeIn = new Map()
+    for (const d of RunPod.list(dcBody, 'dataCenters')) {
+      if (!(d.networkVolumeTypes || []).length) continue
+      for (const g of d.gpuAvailability || []) {
+        if (g.availability === 'NONE') continue
+        if (!freeIn.has(g.id)) freeIn.set(g.id, [])
+        freeIn.get(g.id).push(d.id)
+      }
+    }
     const curated = new Map(GPUS.map((g) => [g.id, g]))
     return RunPod.list(body, 'gpus')
-      .filter((g) => (g.memory ?? 0) >= MIN_VRAM_GB && (g.price?.secure ?? curated.get(g.id)?.perHour) != null && !/mig/i.test(`${g.id} ${g.name || ''}`))
+      .filter((g) => (g.memory ?? 0) >= MIN_VRAM_GB && (g.price?.secure ?? curated.get(g.id)?.perHour ?? 0) > 0 && !/mig/i.test(`${g.id} ${g.name || ''}`))
       .map((g) => {
         const c = curated.get(g.id)
+        const dataCenters = freeIn.get(g.id) || []
         return {
           id: g.id,
           label: c?.label || `${g.name || g.id.replace(/^NVIDIA /, '')} · ${g.memory} GB`,
           vram: g.memory ?? c?.vram ?? null,
           perHour: g.price?.secure ?? c?.perHour,
           note: c?.note || null,
-          inStock: g.availability !== 'NONE',
-          dataCenters: (g.dataCenters || []).map((d) => d.id)
+          inStock: dataCenters.length > 0,
+          dataCenters
         }
       })
       .sort((a, b) => a.perHour - b.perHour)
   }
 
-  // A data center that can hold a network volume and has the chosen GPU now (or, failing that, another of
-  // ours), preferring the one with the most of our GPUs so later wakes have somewhere to fall back to.
-  async pickDataCenter(gpu) {
+  // The data centers that can hold a network volume and have an H3-ready GPU now, best first: ones with the
+  // chosen GPU before ones without, then by how many of our GPUs they have (later wakes have somewhere to fall
+  // back to). cap (a $/h price): count only GPUs at or under it — with it, a data center whose only free cards
+  // cost far more than the chosen one drops out instead of failing the pod later.
+  async pickDataCenters(gpu, { cap = null } = {}) {
     const dcs = RunPod.list(await this.req('/catalog/datacenters?include=GPU_AVAILABILITY'), 'dataCenters')
+    const fits = (id) => id === gpu || cap == null || (GPUS.find((g) => g.id === id)?.perHour ?? Infinity) <= cap
     const ours = new Set([...GPUS.map((g) => g.id), gpu])
     const scored = dcs
       .filter((d) => (d.networkVolumeTypes || []).length)
       .map((d) => {
         const have = (d.gpuAvailability || []).filter((g) => g.availability !== 'NONE').map((g) => g.id)
-        return { id: d.id, hasChosen: have.includes(gpu), count: have.filter((id) => ours.has(id)).length }
+        return { id: d.id, hasChosen: have.includes(gpu), count: have.filter((id) => ours.has(id) && fits(id)).length }
       })
       .filter((d) => d.count > 0)
       .sort((a, b) => b.hasChosen - a.hasChosen || b.count - a.count)
-    if (!scored.length) throw new Error('No RunPod data center with network storage has an H3-ready GPU free right now. Try again in a few minutes.')
-    return scored[0].id
+    if (!scored.length) throw new Error('No RunPod data center with network storage has an H3-ready GPU free right now. Try again in a few minutes, or pick another graphics card.')
+    return scored.map((d) => d.id)
+  }
+
+  // A data center that can hold a network volume and has the chosen GPU now (or, failing that, another of
+  // ours), preferring the one with the most of our GPUs so later wakes have somewhere to fall back to.
+  async pickDataCenter(gpu) {
+    return (await this.pickDataCenters(gpu))[0]
+  }
+
+  // Removes a network volume. Setup calls it only for a volume it made moments ago (still empty) when no pod
+  // would start in its data center — an older volume may hold the models and renders, and is the person's to delete.
+  async deleteVolume(id) {
+    this.onLog(`Deleting the empty network volume ${id}…`)
+    return this.req(`/network-volumes/${id}`, { method: 'DELETE' })
   }
 
   // The account's iv-studio volume, or a new one (VOLUME_GB in dataCenter). Storage bills until it's deleted.
@@ -261,7 +292,7 @@ export class RunPod {
       this.onHealth?.(h)
       if (h?.stage === 'ready') return { seconds: Math.round((Date.now() - t0) / 1000) }
       if (h?.stage === 'error') throw new Error(`The cloud pod stopped: ${h.detail}`)
-      if (Date.now() - t0 > timeoutMs) throw new Error('The cloud pod took too long to start.')
+      if (Date.now() - t0 > timeoutMs) throw new Error(`The cloud pod took too long to start.${said ? ` Last sign of it: ${said}` : ''}`)
       await new Promise((r) => setTimeout(r, 5000))
     }
   }

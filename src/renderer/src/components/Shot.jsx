@@ -111,6 +111,25 @@ export function Progress({ job }) {
 // plays the take from there), the fix, and the revised prompt to run again.
 const VERDICT = { usable: 'Usable as it is', usable_with_fixes: 'Usable, with fixes', redo: 'Redo it' }
 const ENGINE = { claude: 'Claude', codex: 'ChatGPT', hermes: 'Hermes', local: 'the local writer' }
+// The shot's timed beats (Create's Timeline, beats.js) under a take: a click plays the take from the beat.
+function BeatStrip({ beats, videoKey }) {
+  if (!beats?.length) return null
+  const seek = (t) => {
+    const v = document.querySelector(`video[data-take="${videoKey}"]`)
+    if (v) (v.currentTime = t, v.play().catch(() => {}))
+  }
+  const tip = (b) =>
+    [b.camera, b.action, b.dialogue && `“${b.dialogue.replace(/<\/?d>/g, '')}”`, b.expression, b.lighting, b.sound && `sound: ${b.sound}`].filter(Boolean).join(' · ') || undefined
+  return (
+    <div className="beat-strip">
+      {beats.map((b, i) => (
+        <button key={i} className="beat-chip mono small" title={tip(b)} onClick={() => seek(b.from)}>
+          {b.from}–{b.to}s{b.camera ? ` · ${b.camera}` : ''}
+        </button>
+      ))}
+    </div>
+  )
+}
 function ReviewCard({ review, title, videoKey, before, onRun }) {
   const seek = (t) => {
     const v = document.querySelector(`video[data-take="${videoKey}"]`)
@@ -643,6 +662,7 @@ function VersionsCard({ run, finishes, jobs, remote, ownCloud, caps, notify, mar
         <Progress job={v.job} />
         {v.job.status === 'error' && <Failure job={v.job} notify={notify} />}
         {v.out?.url && <video key={v.key} className="final-video" data-take={`${f.id}:final`} src={media(v.out.url)} controls preload="metadata" />}
+        <BeatStrip beats={run.plan?.request?.beats} videoKey={`${f.id}:final`} />
         <div className="version-actions">
           {v.out?.path && (
             <button className="link-btn mono" onClick={() => window.ivstudio.files.reveal(v.out).catch((err) => notify(err.message))}>
@@ -1105,6 +1125,7 @@ export default function Shot({ projectId, jobs: live, setJobs, notify, go, caps,
                       </div>
                     )}
                     <video src={media(o.url)} data-take={`${run.id}:${o.candidate}`} controls loop preload="metadata" />
+                    <BeatStrip beats={run.plan?.request?.beats} videoKey={`${run.id}:${o.candidate}`} />
                     <figcaption>
                       <span className="take-id">
                         <span className="take-n">Take {o.candidate}</span>

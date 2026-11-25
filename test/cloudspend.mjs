@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { CLOUD_BUDGET_DEFAULTS, CloudSpend, cloudBudgetCheck, cloudBudgetOf, cloudSpendByDay, cloudSpentToday, cloudTodayLabel, readCloudLedger } from '../src/service/cloudspend.js'
+import { Studio } from '../src/service/studio.js'
 
 let pass = 0
 let fail = 0
@@ -42,6 +43,19 @@ ok(cloudTodayLabel({ on: true, daily: 5 }, 1.234) === 'Today: $1.23 of $5.00' &&
 
 const days = cloudSpendByDay(readCloudLedger(dir), 7, now)
 ok(days.length === 7 && Math.abs(days[6].usd - today) < 1e-9 && days.slice(0, 6).every((d) => d.usd === 0), 'spend by day: the last 7 days, today last, the earlier days zero-filled')
+
+// per-shot cloud costs: the saved jobs' billed GPU seconds summed per project (Studio.cloudSecondsByProject)
+const jobsDir = path.join(dir, 'jobs')
+fs.mkdirSync(jobsDir, { recursive: true })
+const job = (id, patch) => fs.writeFileSync(path.join(jobsDir, `${id}.json`), JSON.stringify({ id, projectId: 'p1', where: 'cloud', status: 'success', seconds: 60, ...patch }))
+job('j1', {})
+job('j2', { seconds: 30 })
+job('j3', { projectId: 'p2', seconds: 10, status: 'error' }) // billed time counts, failed or not
+job('j4', { where: 'local', seconds: 500 }) // a local render costs no cloud time
+job('j5', { seconds: 0 })
+job('j6', { projectId: null, seconds: 40 })
+const secs = Studio.prototype.cloudSecondsByProject.call({ dataDir: dir })
+ok(secs.p1 === 90 && secs.p2 === 10 && Object.keys(secs).length === 2, `cloud seconds per project: ${JSON.stringify(secs)}`)
 
 fs.rmSync(dir, { recursive: true, force: true })
 console.log(`\n${pass} passed, ${fail} failed`)

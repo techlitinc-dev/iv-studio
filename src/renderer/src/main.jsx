@@ -12,6 +12,10 @@ import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChatWindow from './components/ChatWindow'
 import StoryRefine from './components/StoryRefine'
+import { watchLongHeadings } from './longheads'
+
+// headers carrying long texts render small (longheads.js), in every window
+watchLongHeadings()
 
 // the chat popped out into its own window opens this page at #chat (main process openChatWindow);
 // a film's story-refine window opens at #story-refine/<production id> (openStoryWindow)

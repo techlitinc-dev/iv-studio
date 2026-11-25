@@ -1,4 +1,5 @@
 import { isHarness } from './harness.js'
+import { compileBeats } from './beats.js'
 // Reviews one take against its brief, the last step of Matthew Hollis's directing method (directing.js): a writer
 // looks at frames from the take (and what Whisper heard, when the take was ranked), names each problem with the
 // stretch it happens in, says what worked, and picks the fix: revise the prompt, change a reference, split the
@@ -146,7 +147,9 @@ export class Reviewer {
 
   // What was said in the take: the ranking's Whisper, else the voice engine's, else null (not heard).
   async heard(t, job) {
-    const lines = spokenLines(t.brief.plan?.asked?.prompt ?? t.brief.plan?.request?.prompt)
+    const req = t.brief.plan?.request || {}
+    // the prompt's lines, plus every beat's dialogue (beats.js): all of it is meant to be heard
+    const lines = [...spokenLines(t.brief.plan?.asked?.prompt ?? req.prompt), ...(req.beats || []).map((b) => String(b?.dialogue || '').replace(/<\/?d>/g, '').trim()).filter(Boolean)]
     if (!lines.length) return { lines, text: null }
     const ranked = t.brief.ranking?.takes?.find((x) => String(x.candidate) === (job.kind === 'finish' ? String(job.plan?.finish?.candidate) : t.key))?.raw?.heard
     if (ranked) return { lines, text: ranked }
@@ -192,7 +195,9 @@ export class Reviewer {
             .map((r, i) => `Run ${i + 1}, made ${r.how}, ${r.revised ? 'with an earlier prompt' : 'with this same prompt'}:\n${r.takes.map((x) => `  ${take(x)}: ${x.unmet.map((u) => `${u.kind}: ${u.what}`).join('; ') || 'nothing unmet'}${x.fix ? ` (fix chosen: ${x.fix})` : ''}`).join('\n')}`)
             .join('\n')}\n`
         : ''
-      const brief = `The take is ${duration} seconds long, made ${madeWith(req)}.\n${named}${refs}${said}${before}\nThe prompt (the brief):\n${prompt}`
+      // the shot's timed beats (beats.js), when it was directed with a timeline: each one judged, with its times
+      const beats = req.beats?.length ? `\nThe brief directs the shot in timed beats:\n${compileBeats(req.beats)}\nSay for each beat whether it landed, naming its times.\n` : ''
+      const brief = `The take is ${duration} seconds long, made ${madeWith(req)}.\n${named}${refs}${said}${before}${beats}\nThe prompt (the brief):\n${prompt}`
       const images = shots.map((s, i) => ({ name: `frame-${i + 1}-at-${s.at}s.jpg`, data: s.data, label: `frame at ${s.at} s` }))
       const list = images.map((im) => `${im.name}: ${im.label}`).join('\n')
       let data

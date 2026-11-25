@@ -397,6 +397,37 @@ await (async (name, fn) => (await fn(), n++, console.log(`ok  ${name}`)))('the f
   assert.equal(z.editor, null, 'Z-Image draws from words, so no face is kept')
   await assert.rejects(films.pictureModels('Sketches', { settings: { picture: 'qwen21' } }), /Qwen Image 2\.1 isn't set up/)
 })
+await (async (name, fn) => (await fn(), n++, console.log('ok  ' + name)))('Settings → Sketches picks the panel artist when the film leaves its own on auto', async () => {
+  const fams = [
+    { id: 'flux2', label: 'Flux.2 Klein 9B', ready: true, edit: true, models: ['f2'] },
+    { id: 'gptimage', label: 'GPT Image (API)', ready: true, edit: true, models: ['gpt-image-1-mini'] },
+    { id: 'h3image', label: 'MiniMax H3 Image', ready: false, edit: true, models: [] }
+  ]
+  const images = () => ({ status: async () => ({ families: fams }) })
+  const gpt = new Productions({ dataDir: tmp(), studio: () => null, images, sketchPicture: () => 'gptimage' })
+  const r = await gpt.pictureModels('Sketches', { settings: { picture: 'auto' } })
+  assert.equal(r.drawer.id, 'gptimage', 'the app setting draws every panel')
+  assert.equal(r.editor.id, 'gptimage', 'an editing pick keeps faces and places in the panels')
+  assert.equal((await gpt.pictureModels('Sketches', { settings: { picture: 'flux2' } })).drawer.id, 'flux2', 'the film\'s own pick wins over the app setting')
+  const h3 = new Productions({ dataDir: tmp(), studio: () => null, images, sketchPicture: () => 'h3image' })
+  await assert.rejects(h3.pictureModels('Sketches', null), /MiniMax H3 Image isn't set up on this PC, and Settings → Sketches/)
+})
+await (async (name, fn) => (await fn(), n++, console.log('ok  ' + name)))('with ComfyUI down, a GPT Image pick still sketches (it needs no ComfyUI); auto and ComfyUI picks say so', async () => {
+  const fams = [
+    { id: 'flux2', label: 'Flux.2 Klein 9B', ready: false, edit: true, models: [] },
+    { id: 'h3image', label: 'MiniMax H3 Image', ready: false, edit: true, models: [] },
+    { id: 'gptimage', label: 'GPT Image (API)', engine: 'gptimage', ready: true, edit: true, models: ['gpt-image-2.6-flare'] }
+  ]
+  const images = () => ({ status: async () => ({ error: 'ComfyUI is not running at http://127.0.0.1:8188', families: fams }) })
+  const gpt = new Productions({ dataDir: tmp(), studio: () => null, images, sketchPicture: () => 'gptimage' })
+  assert.equal((await gpt.pictureModels('Sketches', null)).drawer.id, 'gptimage', 'the API pick draws without ComfyUI')
+  const named = new Productions({ dataDir: tmp(), studio: () => null, images, sketchPicture: () => 'gpt-image-2.6-sunburst' })
+  assert.equal((await named.pictureModels('Sketches', null)).drawer.models[0], 'gpt-image-2.6-sunburst', 'a GPT model picked by name draws with that one')
+  const auto = new Productions({ dataDir: tmp(), studio: () => null, images })
+  await assert.rejects(auto.pictureModels('Sketches', null), /ComfyUI is not running[\s\S]*GPT Image/, 'auto names the API way out')
+  const h3 = new Productions({ dataDir: tmp(), studio: () => null, images, sketchPicture: () => 'h3image' })
+  await assert.rejects(h3.pictureModels('Sketches', null), /ComfyUI is not running[\s\S]*MiniMax H3 Image draws there/, 'a ComfyUI pick says ComfyUI is the missing piece')
+})
 
 
 // ---------- GitHub #35: a film shot opened in Create ----------
@@ -419,6 +450,9 @@ await (async (name, fn) => (await fn(), n++, console.log(`ok  ${name}`)))('a fil
   assert.equal(r.asked.mode, 'reference', 'a made-up face comes along in References mode')
   assert.deepEqual(r.asked.media.map((m) => m.file), [sketch, face], 'the sketch first, then Tom\'s face')
   assert.match(r.asked.prompt, /Tom wears a dark green button-up shirt throughout/)
+  assert.match(r.idea, /Tom reads his phone\./, 'the idea (Create\'s "What happens") carries the shot\'s action')
+  assert.match(r.idea, /TOM says exactly these words: "Code six\."/, 'and its spoken line')
+  assert.match(r.idea, /one continuous take/, 'and the one-take rule, as the writer got it')
   assert.equal(r.request.seed, 777)
   assert.equal(r.request.aspect, '9:16')
   assert.equal(r.request.megapixels, 0.4)
@@ -426,6 +460,20 @@ await (async (name, fn) => (await fn(), n++, console.log(`ok  ${name}`)))('a fil
   assert.equal(r.request.speed, 'balanced')
   films.patch(p.id, (q) => (q.scenes[0].shots[0].prompt = ''))
   await assert.rejects(films.createRequest(p.id, 'a'), /no prompt yet/)
+  fs.rmSync(dir, { recursive: true, force: true })
+})
+
+
+await (async (name, fn) => (await fn(), n++, console.log('ok  ' + name)))('a hand-added shot starts prefilled from the scene: where the last shot ended, with its people', async () => {
+  const dir = tmp()
+  const films = new Productions({ dataDir: dir, studio: () => ({ characters: () => [] }) })
+  const p = films.create({ name: 'X', aspect: '16:9' })
+  films.patch(p.id, (q) => (q.scenes = [{ id: 's1', heading: 'INT. A - DAY', shots: [{ id: 'a', action: 'Tess pours tea.', staging: 'Tess screen-left.', ends: 'Tess at the window, cup in hand.', characters: ['TESS'], seconds: 5, prompt: 'x', character: 'none' }] }]))
+  films.editShot(p.id, 's1', 'a', { add: true })
+  const added = films.get(p.id).scenes[0].shots[1]
+  assert.equal(added.staging, 'Tess at the window, cup in hand.', 'staging carries on from the previous shot\'s ending')
+  assert.deepEqual(added.characters, ['TESS'], 'the same people stay in the scene')
+  assert.equal(added.action, '', 'the action stays the person\'s to write')
   fs.rmSync(dir, { recursive: true, force: true })
 })
 

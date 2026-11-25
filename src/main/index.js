@@ -79,6 +79,8 @@ import { SOUND_ENGINE, SOUND_KINDS, SOUND_LIMITS, Sounds } from '../service/soun
 import { Images } from '../service/images'
 import { RefMods } from '../service/refmods'
 import { Civitai, CIVITAI_SITES, LORA_FAMILIES, LORA_SORTS, LORA_TAGS } from '../service/civitai'
+import { preflight } from '../service/preflight'
+import { shotState } from '../service/shotstatus'
 import { Comfy } from '../service/comfy'
 import { afterPrompt, getBalance } from '../service/comfyaccount'
 import { budgetOf, readLedger, spentToday, startSpendDesk, todayLabel } from '../service/spending'
@@ -164,12 +166,15 @@ let pendingWorkspaceArgs = process.argv
 app.on('open-url',(event,url)=>{event.preventDefault();pendingWorkspaceArgs=[url];ivWorkspace?.capture([url])})
 // Downloads and exports: Videos\Techlit Studio, or a folder inside the Incognito data
 const videosDir = () => videosFolderOf(readSettings(BASE), { incognito: INCOGNITO, dataDir: DATA, videos: app.getPath('videos') })
+// Cloud renders brought home (studio.bringHome): <Finished videos>/Cloud renders/<ComfyUI's subfolder>/<file>
+const cloudHomeDir = () => path.join(videosDir(), 'Cloud renders')
 let win = null
 let studio = null
 // Settings → Accessibility → Text size: the whole window scales, like browser zoom
 const TEXT_SIZES = { normal: 1, large: 1.15, larger: 1.3 }
 let refitZoom = () => {}
 let stopWatch = null
+let stopCloudPodsOnQuit = null // set with the cloud handlers: deletes RunPod pods, so quitting never leaves one billing
 let installer = null
 let recInstaller = null // the Recommended LoRAs shelf (recommended.js), into this PC's ComfyUI
 let turnarounds = null // turnaround sheets (turnaround.js)
@@ -415,6 +420,8 @@ async function pump() {
         noteJob(before, job)
         send('jobs:update', job)
         if (['success', 'error', 'cancelled'].includes(job.status)) pending.delete(id)
+        // a finished cloud render downloads to this PC right away, so it plays with the pod off
+        if (job.status === 'success' && job.where === 'cloud') send('jobs:update', await studio.bringHome(id, cloudHomeDir()))
         // a SeedVR2 finish starts its enhance step (Studio.refreshJob): watch that too
         if (job.enhanceJob && !pending.has(job.enhanceJob)) pending.add(job.enhanceJob)
         // finished previews are ranked in the background (ranking.js); the window hears when it's done
@@ -428,6 +435,20 @@ async function pump() {
   }
 }
 setInterval(pump, 4000)
+
+// Every finished cloud job's outputs onto this PC (studio.bringHome), for renders that finished while no pod
+// was up to send them home. Runs in the background after a pod wakes; files the volume has lost are skipped.
+async function bringHomeCloudJobs() {
+  for (const p of studio.listProjects()) {
+    if (p.trainingId) continue // a character training's test renders stay in the cloud
+    for (const j of studio.listJobs(p.id)) {
+      if (j.where !== 'cloud' || j.status !== 'success') continue
+      if (!(j.outputs || []).some((o) => o.url && !(o.path && fs.existsSync(o.path)))) continue
+      const updated = await studio.bringHome(j.id, cloudHomeDir()).catch(() => null)
+      if (updated) send('jobs:update', updated)
+    }
+  }
+}
 
 function savedBounds() {
   const b = readSettings(BASE).window
@@ -618,6 +639,12 @@ app.whenReady().then(() => {
   protocol.handle('ivmedia', (req) => {
     const u = new URL(req.url)
     if (u.hostname !== 'view') return new Response('Not found', { status: 404 })
+    // a cloud render brought home (studio.bringHome) plays from this PC — pod asleep, or rendering on This PC
+    if ((u.searchParams.get('type') || 'output') === 'output') {
+      const parts = [...String(u.searchParams.get('subfolder') || '').replace(/\\/g, '/').split('/'), u.searchParams.get('filename') || ''].filter((p) => p && p !== '.' && p !== '..')
+      const home = parts.length && path.join(cloudHomeDir(), ...parts)
+      if (home && fs.existsSync(home) && fs.statSync(home).isFile()) return serveFile(new Request(`ivfile://local/?p=${encodeURIComponent(home)}`, { headers: req.headers }))
+    }
     const range = req.headers.get('range')
     return fetch(`${studio.comfy.url}/view${u.search}`, { headers: studio.comfy.headers(range ? { Range: range } : {}) })
   })
@@ -632,8 +659,8 @@ app.whenReady().then(() => {
   handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, dataDir: DATA, dataSource: LOCATION.missing ? 'default' : LOCATION.source, portable: PORTABLE, mcp: mcpCommand(), testCopy: TEST_COPY, incognito: INCOGNITO, links }))
   // The window never sees the Comfy.org or Civitai key, only whether one is saved.
   const publicSettings = (s) => {
-    const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, comfyCloudKey: _ck, hfToken, openaiKey, openaiAltKey, openaiHeaders, ...rest } = s
-    return { ...rest, hasComfyKey: !!comfyApiKey, hasCloudToken: !!cloudToken, hasCivitaiKey: !!civitaiKey, hasRunpodKey: !!runpodKey, hasHfToken: !!hfToken, hasOpenaiKey: !!openaiKey, hasOpenaiAltKey: !!openaiAltKey, hasOpenaiHeaders: !!openaiHeaders }
+    const { comfyApiKey, cloudToken, civitaiKey, runpodKey, runpodToken, comfyCloudKey: _ck, hfToken, openaiKey, openaiAltKey, openaiHeaders, imageApiKey, ...rest } = s
+    return { ...rest, hasComfyKey: !!comfyApiKey, hasCloudToken: !!cloudToken, hasCivitaiKey: !!civitaiKey, hasRunpodKey: !!runpodKey, hasHfToken: !!hfToken, hasOpenaiKey: !!openaiKey, hasOpenaiAltKey: !!openaiAltKey, hasOpenaiHeaders: !!openaiHeaders, hasImageApiKey: !!imageApiKey }
   }
   const comfyKey = () => unseal(readSettings(BASE).comfyApiKey)
   // Anonymous usage counting and the cloud beta signup (usage.js): both off until the person says yes. A test copy
@@ -752,6 +779,12 @@ app.whenReady().then(() => {
     const k = String(key || '').trim()
     if (k && !keysSafe()) throw new Error(KEY_STORE_MISSING)
     return publicSettings(writeSettings({ civitaiKey: seal(k) }, BASE))
+  })
+  // GPT Image's OpenAI API key (gptimages.js), sealed like the others
+  handle('settings:setImageKey', (key) => {
+    const k = String(key || '').trim()
+    if (k && !keysSafe()) throw new Error(KEY_STORE_MISSING)
+    return publicSettings(writeSettings({ imageApiKey: seal(k) }, BASE))
   })
   // ---------- Comfy.org account (credits for partner nodes) ----------
   // account: { hasKey, balance, error, checking }. The balance is read on open, on a click and after each paid run.
@@ -872,6 +905,19 @@ app.whenReady().then(() => {
   handle('voices:lines', (voiceId) => voices.lines(voiceId))
   handle('voices:deleteLine', (id) => voices.deleteLine(id))
   handle('voices:transcribe', (file) => voices.transcribe(file))
+  // The Create page's microphone take (RecordLine): webm from the window, kept as a mono wav the
+  // voice-line and lip-sync paths read like any picked recording.
+  handle('voices:saveRecording', async (buf) => {
+    const dir = path.join(DATA, 'recordings')
+    fs.mkdirSync(dir, { recursive: true })
+    const at = Date.now()
+    const webm = path.join(dir, `line-${at}.webm`)
+    fs.writeFileSync(webm, Buffer.from(buf))
+    const wav = path.join(dir, `line-${at}.wav`)
+    await new Promise((resolve, reject) => execFile(edits.ffmpeg, ['-v', 'error', '-y', '-i', webm, '-ac', '1', wav], (err) => (err ? reject(new Error(`Couldn't save the recording: ${err.message}`)) : resolve())))
+    fs.rmSync(webm, { force: true })
+    return wav
+  })
   // ---------- Audio: music (MiniMax Music 3 and ACE-Step 1.5 on this PC's ComfyUI) ----------
   music = new Music({ studio, dataDir: DATA, probe: (f) => edits.probe(f), decode: monoDecoder((a) => edits.run(a)) })
   handle('music:meta', () => ({ engines: MUSIC_ENGINES, defaults: MUSIC_DEFAULTS, keys: ACE_KEYS, remix: REMIX }))
@@ -930,13 +976,15 @@ app.whenReady().then(() => {
     return putOnEdit(f.file, s.files.length > 1 ? `${s.name} (take ${take + 1})` : s.name, editId, 'sound')
   })
   // ---------- Create -> Image: pictures from the person's own image models ----------
-  images = new Images({ studio, dataDir: DATA })
+  images = new Images({ studio, dataDir: DATA, imageKey: () => unseal(readSettings(BASE).imageApiKey), imageUrl: () => readSettings(BASE).imageApiUrl, imageModel: () => readSettings(BASE).imageApiModel || 'gpt-image-1-mini' })
   handle('images:status', () => images.status())
   handle('images:create', async (opts) => {
     await voices.release()
     return images.create(opts)
   })
   handle('images:list', () => images.list())
+  // What GPT Image pictures cost on the person's OpenAI account (per film tag and in all), for the dashboards
+  handle('images:gptSpend', () => images.gptSpend())
   handle('images:get', (id) => images.get(id))
   handle('images:cancel', (id) => images.cancel(id))
   handle('images:delete', (id) => images.delete(id))
@@ -953,7 +1001,17 @@ app.whenReady().then(() => {
   handle('loras:meta', () => ({ tags: LORA_TAGS, sorts: LORA_SORTS, families: LORA_FAMILIES, sites: CIVITAI_SITES, mature: !!readSettings(BASE).civitaiMature, hasKey: !!readSettings(BASE).civitaiKey }))
   handle('loras:search', (opts) => civitai.search(opts))
   handle('loras:model', (id) => civitai.model(id))
-  handle('loras:download', (opts) => civitai.download(opts))
+  handle('loras:download', (opts) =>
+    civitai.download(opts).then((r) => {
+      // a LoRA that landed while the cloud pod is up goes straight to its volume, so the next render has it
+      const s = readSettings(BASE)
+      if (s.target === 'cloud' && (s.cloudProvider || 'modal') === 'runpod' && s.runpod?.url)
+        cloudPrepFor('runpod', null)
+          .syncLocal()
+          .catch(() => {})
+      return r
+    })
+  )
   handle('loras:downloads', () => civitai.downloadState())
   handle('loras:yours', () => civitai.yours())
   handle('loras:identify', (name) => civitai.identify(name))
@@ -1288,7 +1346,7 @@ app.whenReady().then(() => {
   })
   handle('editgen:cancel', (id, genId) => editgen.cancel(id, genId))
   // ---------- Projects (a short film from script to rough cut) ----------
-  const productions = new Productions({ dataDir: DATA, studio: () => studio, voices: () => voices, images: () => images, previs: () => previs, catalog: () => catalog, edits, localCopy, onChange: (id) => send('productions:changed', { id }), model: () => readSettings(BASE).ollamaModel || undefined, writer: () => writerOf(readSettings(BASE)) })
+  const productions = new Productions({ dataDir: DATA, studio: () => studio, voices: () => voices, images: () => images, previs: () => previs, catalog: () => catalog, edits, localCopy, onChange: (id) => send('productions:changed', { id }), model: () => readSettings(BASE).ollamaModel || undefined, writer: () => writerOf(readSettings(BASE)), sketchPicture: () => readSettings(BASE).sketchPicture || 'auto' })
   const customFlows = new CustomFlows({ dataDir: DATA, studio: () => studio })
   // Feature films (feature.js): acts and sequences over the productions above, with the trailer (a Sizzle) and songs (Music)
   const features = new Features({ dataDir: DATA, productions: () => productions, edits: () => edits, studio: () => studio, writer: () => writerOf(readSettings(BASE)), onChange: (id) => send('features:changed', { id }) })
@@ -1631,6 +1689,14 @@ app.whenReady().then(() => {
   handle('cloud:uploadCharacters', () => cloudTask('uploading characters', async () => (await uploadModalCharacters()) || []))
   // ---------- cloud on RunPod (the user's own account; runpod.js) ----------
   const runpod = new RunPod({ resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')), key: () => unseal(readSettings(BASE).runpodKey), onLog: (line) => send('cloud:log', line) })
+  // Closing the window (an accidental close too) never leaves a pod billing: before-quit waits on this, 8 s at
+  // most. A power cut can't run it — the pod's own idle timer covers that (gate.py). Training pods (iv-train)
+  // are the training flow's to stop; stopAll only touches render pods (iv-studio).
+  stopCloudPodsOnQuit = () => {
+    const s = readSettings(BASE)
+    if (!s.runpodKey || !(s.runpod?.podId || s.runpod?.url)) return null
+    return Promise.race([runpod.stopAll().catch(() => {}), new Promise((r) => setTimeout(r, 8000))])
+  }
   // The cloud GPU spend ledger behind the daily budget (cloudspend.js): the meter's 30 s polls feed it.
   const cloudSpend = new CloudSpend({ dataDir: DATA })
   const cloudBudget = () => cloudBudgetOf(readSettings(BASE))
@@ -1650,7 +1716,7 @@ app.whenReady().then(() => {
   }
   const overBudgetError = () => new Error(`Today's cloud budget is spent ($${cloudBudget().daily.toFixed(2)} a day). Raise it on the Cloud page, or wait for tomorrow.`)
   // The director's display rate: rupees per $1, shown beside every cloud cost (topbar meter, dashboard, feature page)
-  const RUPEES_PER_USD = 11.5
+  const RUPEES_PER_USD = 18
   const rateOf = (s) => (Number(s.rupeesPerUsd) > 0 ? Number(s.rupeesPerUsd) : RUPEES_PER_USD)
   // character training on RunPod uses the same account
   if (trainings) trainings.runpod = runpod
@@ -1667,8 +1733,35 @@ app.whenReady().then(() => {
   handle('cloud:runpodCatalog', () => runpod.catalog())
   // every catalog GPU with room for H3 (not only the curated six): the Cloud page's graphics-card dropdown
   handle('cloud:runpodAllGpus', () => runpod.allGpus())
-  // every pod on the account (the person's own too): the Cloud page's compatible-pods list
-  handle('cloud:runpodPods', () => runpod.myPods())
+  // every pod on the account (the person's own too): the Cloud page's compatible-pods list. Also whether the
+  // stored volume still exists: one deleted on RunPod's side (or an account change) left the page judging every
+  // GPU's stock by the dead volume's data center — every card read "none free in …". Clear it, so stock shows
+  // everywhere again and Set up makes a new volume. A failed check (offline) clears nothing.
+  handle('cloud:runpodPods', async () => {
+    const s = readSettings(BASE)
+    const pods = await runpod.myPods()
+    let volumeGone = false
+    if (s.runpod?.volumeId) {
+      const vol = await runpod.volume(s.runpod.volumeId).catch(() => undefined)
+      if (vol === null) {
+        volumeGone = true
+        saveRunpod({ volumeId: null, dataCenter: null, url: null, podId: null, modelsAt: null, charactersAt: null, voiceAt: null })
+        send('cloud:log', `Your network volume ${s.runpod.volumeId} is no longer on your RunPod account — Set up makes a new one (the first boot reinstalls the models).`)
+      }
+    }
+    return { pods, volumeGone }
+  })
+  // The Cloud page's Sync LoRAs button: every LoRA and RefMod on this PC to the volume, new and changed ones only.
+  // Starts the pod when it's off (the person asked); after a fresh start the wake's own sync has already run, and
+  // this one finds nothing left (the ledger), so it costs nothing.
+  handle('cloud:syncLoras', () =>
+    cloudTask('syncing LoRAs to your cloud', async () => {
+      const s = readSettings(BASE)
+      if (s.target !== 'cloud' || (s.cloudProvider || 'modal') !== 'runpod') throw new Error('Syncing LoRAs is for your own RunPod cloud: set it up and switch rendering to it on the Cloud page.')
+      await wakeRunpod()
+      return cloudPrepFor('runpod', null).syncLocal()
+    })
+  )
   // A running pod's address: the current one when its ComfyUI answers, else a booting one of ours, else a new
   // pod in the volume's data center. Single flight: the window and a render asking at once start one pod.
   let waking = null
@@ -1691,6 +1784,12 @@ app.whenReady().then(() => {
         saveRunpod({ url, podId: pod.id, podGpu: pod.gpu, podStamp: cloudStamp() })
       } else saveRunpod({ url })
       await runpod.waitReady(url)
+      // the pod is up: push any new or changed LoRAs to the volume in the background, so no render waits on them
+      cloudPrepFor('runpod', null)
+        .syncLocal()
+        .catch(() => {})
+      // and bring home, in the background, the renders that finished while no pod was up to send them
+      bringHomeCloudJobs().catch(() => {})
       return url
     })().finally(() => (waking = null)))
   // For the ComfyUI client: null when the pod it talks to still answers, else the address of one that does.
@@ -1977,19 +2076,42 @@ app.whenReady().then(() => {
       if (!known) send('cloud:log', 'Finding a data center with network storage and a free GPU…')
       if (known) t.skip('storage', `Already made, in ${known.dataCenter}`)
       else t.start('storage', 'Finding a data center with network storage and a free GPU')
-      const volume = known || (await runpod.ensureVolume(await runpod.pickDataCenter(gpu)))
-      t.start('pod', `Starting a ${RUNPOD_GPUS.find((g) => g.id === gpu)?.label.split(' ·')[0] || (gpu || 'GPU').replace(/^NVIDIA /, '')} in ${volume.dataCenter}`)
       // A new gate token each time. The old pods (which know only the old token) are shut down once the new pod
       // exists — not before — so a setup that finds no free GPU leaves the pod you had running, not nothing.
       writeSettings({ runpodToken: seal(randomBytes(24).toString('base64url')) }, BASE)
-      saveRunpod({ gpu, gpuPerHour: perHour ?? null, idleSeconds, volumeId: volume.id, dataCenter: volume.dataCenter, url: null, podId: null })
-      send('cloud:log', `Starting a pod in ${volume.dataCenter}. The first time, it installs ComfyUI and downloads the H3 models onto your volume (20–40 minutes).`)
-      const pod = await runpod.createPod({ gpu: gpu || RUNPOD_GPUS[0].id, perHour: perHour ?? null, volume: { id: volume.id, dataCenter: volume.dataCenter }, token: runpodToken(), idleSeconds: idleSeconds || 300, hf: hfToken(), ask: askGpu }).catch((e) => {
-        // a stored volume pins the data center: a GPU elsewhere can't attach to it, so "pick another GPU" alone
-        // can be a dead end — say what the real choices are
-        const pinned = known ? ` Your storage is in ${volume.dataCenter}, and only a GPU there can use it: pick a card that's free in ${volume.dataCenter}, or delete the "iv-studio" volume on RunPod's Storage page and set up again to start fresh in another data center.` : ''
-        throw new Error(`${e.message}${pinned} Your storage and any running pod are untouched.`)
-      })
+      saveRunpod({ gpu, gpuPerHour: perHour ?? null, idleSeconds, url: null, podId: null })
+      const label = RUNPOD_GPUS.find((g) => g.id === gpu)?.label.split(' ·')[0] || (gpu || 'GPU').replace(/^NVIDIA /, '')
+      // A volume pins the setup to its data center, and RunPod's per-data-center stock is optimistic (a card listed
+      // free there can still refuse the pod — "There are no instances…"). A volume this setup just made is empty, so
+      // it costs nothing to delete: walk the best data centers until one takes a pod, instead of stopping in the
+      // first and leaving an empty volume billing in a data center with no GPUs. A stored volume stays pinned.
+      const cap = (RUNPOD_GPUS.find((g) => g.id === gpu)?.perHour ?? perHour ?? 0) * 1.25 || null
+      const dcs = known ? [known.dataCenter] : await runpod.pickDataCenters(gpu, { cap })
+      let volume = known
+      let pod = null
+      let lastErr = null
+      for (const [i, dc] of dcs.slice(0, 5).entries()) {
+        volume = known || (await runpod.ensureVolume(dc))
+        if (!known) saveRunpod({ volumeId: volume.id, dataCenter: volume.dataCenter })
+        t.start('pod', `Starting a ${label} in ${volume.dataCenter}`)
+        send('cloud:log', `Starting a pod in ${volume.dataCenter}. The first time, it installs ComfyUI and downloads the H3 models onto your volume (20–40 minutes).`)
+        try {
+          pod = await runpod.createPod({ gpu: gpu || RUNPOD_GPUS[0].id, perHour: perHour ?? null, volume: { id: volume.id, dataCenter: volume.dataCenter }, token: runpodToken(), idleSeconds: idleSeconds || 300, hf: hfToken(), ask: askGpu })
+          break
+        } catch (e) {
+          lastErr = e
+          if (known) {
+            // a stored volume pins the data center: a GPU elsewhere can't attach to it, so "pick another GPU"
+            // alone can be a dead end — say what the real choices are
+            throw new Error(`${e.message} Your storage is in ${volume.dataCenter}, and only a GPU there can use it: pick a card that's free in ${volume.dataCenter}, or delete the "iv-studio" volume on RunPod's Storage page and set up again to start fresh in another data center. Your storage and any running pod are untouched.`)
+          }
+          await runpod.deleteVolume(volume.id).catch(() => {})
+          saveRunpod({ volumeId: null, dataCenter: null })
+          volume = null
+          send('cloud:log', `No pod would start in ${dc} — the empty volume is deleted again${i + 1 < Math.min(5, dcs.length) ? ', trying the next data center' : ''}.`)
+        }
+      }
+      if (!pod) throw new Error(`${lastErr?.message || 'No pod would start.'} No data center with network storage could start a GPU within its price just now; nothing was kept and nothing is billing. Try again in a few minutes, or pick another graphics card.`)
       await runpod.stopAll(pod.id)
       saveRunpod({ url: pod.url, podId: pod.id, podGpu: pod.gpu, podStamp: cloudStamp() })
       runpod.onHealth = (h) => t.fromHealth(h)
@@ -2143,6 +2265,11 @@ app.whenReady().then(() => {
     const s = readSettings(BASE)
     const w = writerFor(s, request)
     return studio.writePrompt(request, { engine: w.engine, apiKey: w.engine === 'contextir' ? comfyKey() : null, model: w.model })
+  })
+  handle('prompts:idea', (request) => {
+    const s = readSettings(BASE)
+    const w = writerFor(s, request)
+    return studio.writeIdea(request, { engine: w.engine, model: w.model })
   })
   handle('prompts:story', (request) => {
     const w = writerOf(readSettings(BASE))
@@ -3124,11 +3251,14 @@ app.whenReady().then(() => {
       const jobs = studio.listJobs(p.id)
       const finals = jobs.flatMap((j) => j.outputs.filter((o) => o.kind === 'final'))
       const previews = jobs.flatMap((j) => j.outputs.filter((o) => o.kind === 'preview'))
-      // the latest run's request, for Shots' filters (kind of shot, who's in it, its shape)
+      // the latest run's request, for Shots' filters (kind of shot, who's in it, its shape) and its warnings
       const req = [...jobs].reverse().find((j) => j.plan?.request)?.plan.request || {}
-      return { ...p, jobCount: jobs.length, cover: (finals.at(-1) || previews.at(-1))?.url || null, finals: finals.length, running: jobs.some((j) => !['success', 'error', 'cancelled'].includes(j.status)), mode: req.mode || null, character: req.character || 'none', aspect: req.aspect || null }
+      // references or a voice line picked for the latest run that have moved or gone since (shotstatus/preflight)
+      const missing = (req.media || []).filter((m) => m?.file && !fs.existsSync(m.file)).length + (req.voiceLine && !fs.existsSync(req.voiceLine) ? 1 : 0)
+      return { ...p, jobCount: jobs.length, cover: (finals.at(-1) || previews.at(-1))?.url || null, finals: finals.length, running: jobs.some((j) => !['success', 'error', 'cancelled'].includes(j.status)), mode: req.mode || null, character: req.character || 'none', aspect: req.aspect || null, state: shotState(p, jobs), missing }
     })
   )
+  handle('projects:label', (id, label) => studio.setProjectLabel(id, label))
   handle('sequences:list', () => studio.listSequences())
   handle('sequences:get', (id) => studio.refreshSequence(id))
   handle('sequences:create', (init) => studio.createSequence(init))
@@ -3232,6 +3362,15 @@ app.whenReady().then(() => {
   handle('projects:rename', (id, name) => studio.renameProject(id, name))
   handle('projects:delete', (id) => studio.deleteProject(id))
   handle('render:plan', (request, finish) => studio.planRender(request, finish))
+  // The manifest panel's pre-flight (preflight.js): what only a disk can say — picked files that have gone,
+  // LoRAs no folder here or on the volume has. The plan itself (render:plan) refuses the rest.
+  handle('render:preflight', async (request) => {
+    const names = await localNames().catch(() => ({ loras: [] }))
+    const known = new Set((names.loras || []).map((n) => String(n).replace(/\\/g, '/')))
+    return preflight(request, { fileExists: (f) => fs.existsSync(f), loraKnown: (n) => known.has(n) || cloudCatalogList.some((e) => e.root === 'loras' && e.rel === n) })
+  })
+  // The shot's approval mark (the manifest panel's Ready for server; storyboard statuses later)
+  handle('projects:status', (id, status) => studio.setProjectStatus(id, status))
   handle('render:planFinish', (jobId, finish) => studio.planFinishJob(jobId, finish))
   // A voice engine still holding the GPU would slow H3 down: let it go before a render on this PC.
   const freeVoices = () => (readSettings(BASE).target === 'cloud' ? null : voices.release())
@@ -3321,6 +3460,8 @@ app.whenReady().then(() => {
     return true
   })
   handle('jobs:cancel', (id) => studio.cancelJob(id))
+  // Cloud GPU seconds per project (from the saved jobs), for the dashboards' per-shot costs
+  handle('jobs:cloudSeconds', () => studio.cloudSecondsByProject())
   // The sidebar's render queue, and its cancel (only for Techlit Studio's own work, never someone else's).
   handle('queue:list', () => studio.renderQueue())
   handle('queue:cancel', async (promptId) => {
@@ -3499,5 +3640,15 @@ app.on('second-instance', (_event,args) => {
   }
 })
 app.on('window-all-closed', () => app.quit())
+// Quitting deletes the cloud pod (stopCloudPodsOnQuit): hold the quit for it once, then go.
+let cloudStoppedOnQuit = false
+app.on('before-quit', (e) => {
+  if (cloudStoppedOnQuit) return
+  const stopping = stopCloudPodsOnQuit?.()
+  if (!stopping) return
+  cloudStoppedOnQuit = true
+  e.preventDefault()
+  stopping.finally(() => app.quit())
+})
 // the voice engine is a Python process of ours: stop it with the app
 app.on('will-quit', () => voices?.release())

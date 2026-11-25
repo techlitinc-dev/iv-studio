@@ -13,6 +13,7 @@ import { AccountCard } from './ComfyAccount'
 import Credits from './Credits'
 import { openH3Terms, reportMisuse, useH3Terms } from './H3Terms'
 import { SAFEGUARDS_URL } from '../../../service/terms'
+import { GPT_MODELS } from '../../../service/gptimages'
 import { FirstRenders, SpeedCards } from './Speed'
 import { savedSpeed } from '../../../service/speed'
 import { PrivacyCard } from './Privacy'
@@ -36,6 +37,8 @@ const SECTIONS = [
   ['writer', 'Prompt writer'],
   ['account', 'Comfy account'],
   ['civitai', 'Civitai'],
+  ['gptimage', 'GPT Image'],
+  ['sketches', 'Sketches'],
   ['agents', 'Agents'],
   ['privacy', 'Privacy'],
   ['newsletter', 'Newsletter'],
@@ -103,6 +106,131 @@ function PcCard({ n, settings, setSettings, notify }) {
       <SetField label="First renders" hint="How big the takes are that every hunt makes before you finish one: Create, Sequences, films, music videos, keyframes, sizzles, rebuilds and Generate in Edit. Auto uses the speed above. The same picker sits on each of those pages.">
         <FirstRenders compact />
       </SetField>
+    </SetCard>
+  )
+}
+
+// GPT Image (gptimages.js): the person's own OpenAI API key for Create → Image's "GPT Image (API)" family, and
+// the address (OpenAI, or a gateway that serves the same routes). The key is sealed like the others.
+function GptImageCard({ n, settings, setSettings, notify }) {
+  const [key, setKey] = useState('')
+  const [addr, setAddr] = useState(settings.imageApiUrl || '')
+  useEffect(() => setAddr(settings.imageApiUrl || ''), [settings.imageApiUrl])
+  const addrChanged = addr.trim() !== (settings.imageApiUrl || '')
+  async function saveKey(k) {
+    try {
+      setSettings(await window.ivstudio.settings.setImageKey(k))
+      setKey('')
+    } catch (err) {
+      notify(err.message)
+    }
+  }
+  async function saveUrl(u) {
+    try {
+      setSettings(await window.ivstudio.settings.set({ imageApiUrl: u.trim() }))
+    } catch (err) {
+      notify(err.message)
+    }
+  }
+  async function saveModel(m) {
+    try {
+      setSettings(await window.ivstudio.settings.set({ imageApiModel: m }))
+    } catch (err) {
+      notify(err.message)
+    }
+  }
+  return (
+    <SetCard id="gptimage" n={n} title="GPT Image API" sub="OpenAI’s gpt-image for Create → Image and the storyboard panels, on your own API key: no ComfyUI or graphics card needed, billed per picture by OpenAI.">
+      <SetField label="API key">
+        {settings.hasImageApiKey ? (
+          <div className="set-inline">
+            <Pill tone="ok">Saved · encrypted on this PC</Pill>
+            <button className="link-btn" onClick={() => saveKey('')}>
+              Remove
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="set-inline grow">
+              <input type="password" value={key} placeholder="sk-…" onChange={(e) => setKey(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && key.trim() && saveKey(key)} autoComplete="off" />
+              <button className="btn btn-small" disabled={!key.trim()} onClick={() => saveKey(key)}>
+                Save
+              </button>
+            </div>
+            <p className="set-hint">
+              From{' '}
+              <button className="link-btn" onClick={() => open('https://platform.openai.com/api-keys')}>
+                platform.openai.com
+              </button>{' '}
+              (API keys, with billing on). This is separate from the prompt writer’s key, which can point anywhere. The key stays on this PC.
+            </p>
+          </>
+        )}
+      </SetField>
+      <SetField label="Model" hint="The default for new pictures and storyboard panels; Create → Image can still pick per set. Flare is the cheapest; Sunburst the best quality. What the pictures cost shows in the movie dashboard.">
+        <select value={settings.imageApiModel || GPT_MODELS[0].id} onChange={(e) => saveModel(e.target.value)} aria-label="GPT Image model">
+          {GPT_MODELS.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+              {m.id === GPT_MODELS[0].id ? ' — cheapest (default)' : m.id === GPT_MODELS.at(-1).id ? ' — best quality' : ''}
+            </option>
+          ))}
+        </select>
+      </SetField>
+      <SetField label="Address" hint="Leave empty for OpenAI. Set it only for a gateway or proxy that serves the same /v1/images routes.">
+        <div className="set-inline grow">
+          <input value={addr} placeholder="https://api.openai.com/v1" onChange={(e) => setAddr(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addrChanged && saveUrl(addr)} aria-label="Image API address" />
+          <button className="btn btn-small" disabled={!addrChanged} onClick={() => saveUrl(addr)}>
+            Save
+          </button>
+        </div>
+      </SetField>
+    </SetCard>
+  )
+}
+
+// Storyboard sketches (productions.js pictureModels): which picture model draws every film panel — the shot
+// sketches, the places and the made-up faces — when a film leaves its own "Draw with" on auto. GPT Image bills
+// per picture on the OpenAI key above; MiniMax H3 Image draws in ComfyUI (this PC or your cloud) from Setup.
+function SketchesCard({ n, settings, setSettings, notify }) {
+  const [fams, setFams] = useState(null)
+  useEffect(() => {
+    window.ivstudio.images.status().then((s) => setFams(s?.families || []), () => setFams([]))
+  }, [])
+  const value = settings.sketchPicture || 'auto'
+  // an app whose main process predates this setting: it can't save it, and the dropdown would just snap back
+  const stale = settings.sketchPicture === undefined
+  const isGpt = value === 'gptimage' || GPT_MODELS.some((m) => m.id === value)
+  const picked = fams?.find((f) => f.id === value) || (isGpt ? fams?.find((f) => f.id === 'gptimage') : null)
+  const save = async (v) => {
+    try {
+      const s = await window.ivstudio.settings.set({ sketchPicture: v })
+      setSettings(s)
+      if (s?.sketchPicture !== v) notify('Quit Techlit Studio fully and open it again — the running app is older than this setting, so it can’t save it yet.')
+    } catch (err) {
+      notify(err.message)
+    }
+  }
+  return (
+    <SetCard id="sketches" n={n} title="Sketches" sub="The artist for every storyboard panel: a film's shot sketches, its places and the faces it makes up. A film can still pick its own (its settings → Draw with).">
+      <SetField
+        label="Draw every panel with"
+        hint="The GPT Image models need your OpenAI key (the card above) and bill per picture — no ComfyUI, no GPU. MiniMax H3 Image draws in ComfyUI (this PC or your cloud) and keeps each face and place in every panel; set it up in Settings → Setup."
+      >
+        <select value={value} onChange={(e) => save(e.target.value)} aria-label="Picture model for storyboard sketches">
+          <option value="auto">Best on this PC (Flux Klein first)</option>
+          {GPT_MODELS.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label} — {m.id === GPT_MODELS[0].id ? 'cheapest' : m.id === GPT_MODELS.at(-1).id ? 'best quality' : 'GPT Image'}, per picture
+            </option>
+          ))}
+          <option value="gptimage">GPT Image (API) — the model from the GPT Image card</option>
+          <option value="h3image">MiniMax H3 Image — big panels in your H3 look</option>
+          {value !== 'auto' && !isGpt && value !== 'h3image' && <option value={value}>{picked?.label || value}</option>}
+        </select>
+      </SetField>
+      {stale && <p className="set-hint">Quit Techlit Studio fully and open it again to use this — the running app is older than this page, so the choice can’t be saved yet.</p>}
+      {picked && !picked.ready && <p className="set-hint">{picked.label} isn't set up yet{picked.missing?.length ? `: it needs ${picked.missing.join(', ')}` : ' — set it up in Settings → Setup'}.</p>}
     </SetCard>
   )
 }
@@ -1398,6 +1526,8 @@ export default function Settings({ info, recheck, notify, go, setup, openSetupWi
           <WriterCard n={n('writer')} {...common} />
           <AccountCard n={n('account')} notify={notify} />
           <CivitaiCard n={n('civitai')} {...common} />
+          <GptImageCard n={n('gptimage')} {...common} />
+          <SketchesCard n={n('sketches')} {...common} />
           <AgentCard n={n('agents')} mcp={info?.mcp} {...common} />
           <PrivacyCard n={n('privacy')} notify={notify} />
           <SetCard id="newsletter" n={n('newsletter')} title="The Techlit Newsletter" sub="Optional. Nothing is sent unless you join here.">

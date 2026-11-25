@@ -35,6 +35,10 @@ PY = VENV / "bin" / "python"
 COMFY = W / "comfy"
 MODELS = Path("/workspace/models")
 STATUS = Path("/tmp/iv-status.json")
+COMFY_LOG = Path(os.environ.get("IV_COMFY_LOG", "/tmp/iv-comfy.log"))
+COMFY_URL = os.environ.get("IV_COMFY_URL", "http://127.0.0.1:8188")  # settable for tests
+# a ComfyUI that hangs while loading is killed after this and the boot fails with its log, not waited on forever
+START_TIMEOUT = int(os.environ.get("IV_COMFY_START_TIMEOUT", "900"))
 CLOUD, MANIFEST = ivcloud.load(HERE)
 PACKS = ivcloud.cloud_packs(MANIFEST)
 
@@ -135,6 +139,18 @@ def fetch_models():
     ivcloud.fetch([m for m in models if not ivcloud.target(MODELS, m).exists()], MODELS, token=token, progress=say)
 
 
+def comfy_log_lines():
+    """ComfyUI's own output, one entry per line (its \\r progress updates included)."""
+    try:
+        return [line.strip() for line in COMFY_LOG.read_text(errors="replace").splitlines() if line.strip()]
+    except OSError:
+        return []
+
+
+def log_tail(count=8, chars=1200):
+    return "\n".join(comfy_log_lines()[-count:])[-chars:]
+
+
 def start_comfy():
     for p in PACKS:  # the packs that ship inside IV Studio (its own, Viggle Remake's), this version's, every boot
         if p.get("bundled") and (HERE / p["dir"]).exists():
@@ -146,22 +162,39 @@ def start_comfy():
     if not Path("/models").exists():
         os.symlink(MODELS, "/models")
     status("starting", "ComfyUI is loading")
+    # its own log, so a ComfyUI that won't come up can say why (it used to vanish into the container log)
+    log = open(COMFY_LOG, "w", encoding="utf-8", errors="replace")
     return subprocess.Popen(
         [str(PY), str(COMFY / "main.py"), "--listen", "127.0.0.1", "--port", "8188", "--disable-auto-launch", "--preview-method", "none",
          "--input-directory", str(W / "data" / "input"), "--output-directory", str(W / "data" / "output"),
-         "--extra-model-paths-config", str(HERE / "extra_model_paths.yaml")]
+         "--extra-model-paths-config", str(HERE / "extra_model_paths.yaml")],
+        stdout=log, stderr=subprocess.STDOUT,
     )
 
 
 def wait_ready(proc):
+    """Waits for ComfyUI's first answer, mirroring its latest log line into the status so IV Studio shows the
+    load happening. A ComfyUI that hangs loading (a stuck node pack, a stalled CUDA init) is killed after
+    START_TIMEOUT and the boot fails with the end of its log — before, this waited forever and setup hung."""
+    t0, said = time.time(), ""
     while proc.poll() is None:
         try:
-            with urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=5):
+            with urllib.request.urlopen(f"{COMFY_URL}/system_stats", timeout=5):
                 status("ready", "ComfyUI is ready", pod=os.environ.get("RUNPOD_POD_ID"))
                 return True
         except Exception:  # noqa: BLE001 - not up yet
-            time.sleep(3)
-    status("error", f"ComfyUI stopped while starting (exit {proc.returncode})")
+            pass
+        lines = comfy_log_lines()
+        if lines and lines[-1] != said:
+            said = lines[-1]
+            status("starting", f"ComfyUI is loading: {said[:140]}")
+        if time.time() - t0 > START_TIMEOUT:
+            proc.kill()
+            proc.wait()
+            status("error", f"ComfyUI didn't answer within {max(1, START_TIMEOUT // 60)} minutes, so it was stopped. The end of its log:\n{log_tail() or '(it wrote nothing)'}")
+            return False
+        time.sleep(3)
+    status("error", f"ComfyUI stopped while starting (exit {proc.returncode}). The end of its log:\n{log_tail() or '(it wrote nothing)'}")
     return False
 
 
@@ -174,9 +207,10 @@ def main():
         install()
         fetch_models()
         comfy = start_comfy()
-        wait_ready(comfy)
-        comfy.wait()
-        status("error", f"ComfyUI stopped (exit {comfy.returncode})")
+        # only a ComfyUI that came up and then died gets the plain "stopped" line; a failed start keeps its own
+        if wait_ready(comfy):
+            comfy.wait()
+            status("error", f"ComfyUI stopped (exit {comfy.returncode})")
     except Exception as e:  # noqa: BLE001 - the gate stays up so IV Studio can show what went wrong
         status("error", str(e)[:400])
     gate.wait()

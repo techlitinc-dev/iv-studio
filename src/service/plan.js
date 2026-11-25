@@ -1,5 +1,7 @@
 // Turns a render request (from the studio or an agent) into the groups and node values of the Techlit Studio
 // graph, and resolves the real pixel size, frame count and duration before anything runs.
+import { cleanBeats, withBeats } from './beats.js'
+import { cleanCamera, withCamera } from './camera.js'
 
 export const MODES = {
   text: { group: 'mode1', label: 'Text to video', model: 'fl2va' },
@@ -81,6 +83,10 @@ export const DEFAULTS = {
   refmods: [],
   retention: 1,
   extraLoras: [],
+  // timed beats (beats.js): the shot's direction split into moments, compiled into the prompt
+  beats: [],
+  // the structured camera pick (camera.js), compiled into the prompt as the camera sentence
+  camera: null,
   // the speed preset the shot was made with (speed.js), kept so its finish starts from the preset's finish
   speed: null
 }
@@ -115,7 +121,16 @@ export function planPreviews(request, characters) {
   if (r.mode === 'continue' && videos.length !== 1) errors.push('Continue a video needs exactly one source video.')
   if (r.mode === 'continue' && ![5, 22, 39, 56].includes(r.overlapFrames)) errors.push('Overlap frames must be 5, 22, 39 or 56.')
   if (refmods.length > 8) errors.push(refChar ? 'At most 7 RefMods with a RefMod character (it takes the first).' : 'At most 8 RefMods.')
+  // timed beats (beats.js): cleaned here, kept on the request, and compiled into the prompt the model reads
+  let beats = []
+  try {
+    beats = cleanBeats(r.beats, r.seconds)
+  } catch (e) {
+    errors.push(e.message)
+  }
   if (errors.length) throw Object.assign(new Error(errors.join(' ')), { errors })
+  r.beats = beats
+  r.camera = cleanCamera(r.camera)
 
   // Continue makes one take for the app's own chains (Extend, one-take film shots, sequences); a shot from Create
   // (continueFull) hunts 1-3 takes like any other and finishes at full size (planFinish)
@@ -128,7 +143,8 @@ export function planPreviews(request, characters) {
   if (refmods.length) groups.push('refmods')
 
   const values = {
-    '87': r.prompt,
+    // what the model reads: the camera sentence, then the brief, then the beats' timeline
+    '87': withBeats(withCamera(r.prompt, r.camera), beats),
     '501.aspect_ratio': ASPECTS[r.aspect],
     '501.megapixels': r.megapixels,
     '82': r.seconds,

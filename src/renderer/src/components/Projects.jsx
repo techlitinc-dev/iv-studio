@@ -811,7 +811,7 @@ function FilmSettings({ v, act }) {
       <label className="small" title="The picture model that draws this film's sketches, places and made-up faces. One that edits keeps each person's face and the place in every sketch.">
         <span className="dim">Draw with</span>
         <select value={s.picture || 'auto'} onChange={(e) => save({ picture: e.target.value }, 'Saved. Redraw sketches to see the new model.')} aria-label="Picture model for sketches">
-          <option value="auto">Best on this PC (Flux Klein)</option>
+          <option value="auto">Auto (Settings → Sketches)</option>
           {(fams || []).filter((f) => f.ready && f.models?.length).map((f) => (
             <option key={f.id} value={f.id}>
               {f.label}{f.edit ? '' : ' (from words: faces not kept)'}

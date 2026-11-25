@@ -684,7 +684,11 @@ frame the action) are Matthew Hollis's own method, built into `src/service/direc
 ### Write it for me
 
 You don't need to know H3's prompt format. Type the idea in plain words, for example "Tess in a parked
-car at night admits she kept the letter", and press **Write my prompt**. You get a finished H3 prompt
+car at night admits she kept the letter", and press **Write my prompt** (or Enter). With pictures or
+clips attached you can leave the idea empty: the writer looks at them and writes what it sees. Or press
+**An idea for me** and the writer invents the idea too — on a new shot, attaching references writes the
+idea and the prompt on its own. You get a
+finished H3 prompt
 back to edit, keep or undo. It always uses your mode, length, aspect, character and media. Choose the
 writer under **Settings → Prompt writer**:
 

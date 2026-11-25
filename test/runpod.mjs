@@ -42,6 +42,7 @@ function mockApi() {
           { id: 'NVIDIA L40S', name: 'L40S', memory: 48, availability: 'NONE', price: { secure: 1.09 } },
           { id: 'NVIDIA RTX 6000 Ada Generation', name: 'RTX 6000 Ada', memory: 48, availability: 'LOW', price: { secure: 0.99 }, dataCenters: [{ id: 'US-WA-1' }] },
           { id: 'NVIDIA A100-SXM4-80GB', name: 'A100 SXM', memory: 80, availability: 'HIGH', price: { secure: 1.99 }, dataCenters: [{ id: 'US-NC-1' }] },
+          { id: 'NVIDIA GeForce RTX 4090', name: 'RTX 4090', memory: 24, availability: 'HIGH', price: { secure: 2.49 }, dataCenters: [{ id: 'US-MO-1' }] },
           { id: 'NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 1g.24gb', name: 'RTX PRO 6000 Blackwell Server Edition MIG 1g.24gb', memory: 24, availability: 'HIGH', price: { secure: 0.69 }, dataCenters: [{ id: 'AP-IN-1' }] },
           { id: 'NVIDIA GeForce RTX 3080', name: 'RTX 3080', memory: 10, availability: 'HIGH', price: { secure: 0.17 } },
           { id: 'NVIDIA B200', name: 'B200', memory: 180, availability: 'NONE', price: {} }
@@ -87,9 +88,11 @@ async function serviceTests() {
   ok(cat.length === GPUS.length && cat[0].inStock === false && cat[1].inStock === true && cat[1].dataCenters[0] === 'US-WA-1', 'catalog: live stock and data centers for our GPUs')
 
   const all = await rp.allGpus()
-  ok(all.map((g) => g.id).join('|') === 'NVIDIA RTX 6000 Ada Generation|NVIDIA L40S|NVIDIA A100-SXM4-80GB', 'graphics-card list: every catalog GPU with room for H3, cheapest first; the 10 GB 3080, the MIG slice and the priceless B200 are out')
+  ok(all.map((g) => g.id).join('|') === 'NVIDIA RTX 6000 Ada Generation|NVIDIA L40S|NVIDIA A100-SXM4-80GB|NVIDIA GeForce RTX 4090', 'graphics-card list: every catalog GPU with room for H3, cheapest first; the 10 GB 3080, the MIG slice and the priceless B200 are out')
   ok(all[0].label === 'RTX 6000 Ada · 48 GB' && !!all[0].note && all[0].inStock === true, 'graphics-card list: a curated card keeps its label, note and stock')
-  ok(all[2].label === 'A100 SXM · 80 GB' && all[2].vram === 80 && all[2].note === null && all[2].inStock === true && all[2].dataCenters[0] === 'US-NC-1', 'graphics-card list: any other card goes by RunPod’s name and memory')
+  ok(all[1].inStock === true && all[1].dataCenters.join() === 'US-NC-1', 'graphics-card list: free where a storage data center lists it, even when the GPU list says NONE (the two disagree)')
+  ok(all[2].label === 'A100 SXM · 80 GB' && all[2].vram === 80 && all[2].note === null && all[2].inStock === true && all[2].dataCenters[0] === 'EUR-IS-1', 'graphics-card list: any other card goes by RunPod’s name and memory, free where the data centers say')
+  ok(all[3].inStock === false && all[3].dataCenters.length === 0, 'graphics-card list: "in stock" on the GPU list but in no data center with storage reads as busy (nowhere to put the volume)')
 
   ok((await rp.pickDataCenter('NVIDIA L40S')) === 'US-NC-1', 'data center: has the chosen GPU and network storage (not US-MO-1, which has no storage)')
   ok((await rp.pickDataCenter('NVIDIA H100 80GB HBM3')) === 'US-NC-1', 'data center: without the chosen GPU, the one with most of ours')

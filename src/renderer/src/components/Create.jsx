@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSelection } from '../selection'
+import { SHOT_MARKS, STATE_NAME } from '../../../service/shotstatus'
+import { ANGLES, cameraText, cleanCamera, MOVEMENTS, PACES, SHOT_SIZES } from '../../../service/camera'
 import Stage from './Stage'
 import QuickBar, { showBelow } from './AudioQuick'
 import { sendIdea } from './PromptWriter'
@@ -123,8 +125,11 @@ const FRESH_FORM = {
   voiceLine: null,
   refmods: [],
   retention: 1,
-  extraLoras: []
+  extraLoras: [],
+  beats: [], // timed beats (beats.js): the shot directed moment by moment, compiled into the prompt
+  camera: null // the structured camera pick (camera.js): size, angle, movement, pace
 }
+const MAX_BEATS = 5 // beats.js MAX_BEATS
 // the parts of a form a speed preset sets; they don't count as a change of setup
 const SPEED_KEYS = ['megapixels', 'steps', 'previews']
 const setupOf = (f) => JSON.stringify(Object.fromEntries(Object.entries(f).filter(([k]) => !['projectId', 'projectName', 'voiceItem', ...SPEED_KEYS].includes(k)).map(([k, v]) => [k, k === 'media' ? (v || []).map((m) => m.path) : v])))
@@ -134,6 +139,74 @@ const DIALOGUE = /<d>\[([^\]]+)\][^<]*<\/d>/
 const withLine = (prompt, text) => {
   const m = DIALOGUE.exec(prompt)
   return m ? prompt.replace(m[0], `<d>[${m[1]}] ${text}</d>`) : prompt
+}
+
+// Record a line from the microphone (the Director Workspace's dialogue recording, first pass): record,
+// listen, keep — the take lands as the shot's voice line, a mono wav (voices:saveRecording). Multiple
+// takes, waveforms and per-character tracks come later.
+function RecordLine({ onDone, notify }) {
+  const [recording, setRecording] = useState(false)
+  const [url, setUrl] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const chunks = useRef([])
+  const rec = useRef(null)
+  async function start() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const r = new MediaRecorder(stream)
+      chunks.current = []
+      r.ondataavailable = (e) => e.data.size && chunks.current.push(e.data)
+      r.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop())
+        setUrl(URL.createObjectURL(new Blob(chunks.current, { type: r.mimeType || 'audio/webm' })))
+      }
+      r.start()
+      rec.current = r
+      setUrl(null)
+      setRecording(true)
+    } catch {
+      notify('The microphone isn’t available — check the system’s microphone permission for Techlit Studio.')
+    }
+  }
+  const stop = () => (rec.current?.stop(), setRecording(false))
+  async function keep() {
+    setBusy(true)
+    try {
+      const path = await window.ivstudio.voices.saveRecording(await new Blob(chunks.current).arrayBuffer())
+      setUrl(null)
+      chunks.current = []
+      await onDone(path)
+    } catch (err) {
+      notify(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <span className="record-line">
+      {!recording && !url && (
+        <button className="btn btn-small" onClick={start} title="Record a line from the microphone, in any language">
+          ● Record
+        </button>
+      )}
+      {recording && (
+        <button className="btn btn-small btn-primary" onClick={stop}>
+          ■ Stop
+        </button>
+      )}
+      {url && (
+        <>
+          <audio src={url} controls />
+          <button className="btn btn-small btn-primary" disabled={busy} onClick={keep}>
+            {busy ? 'Saving…' : 'Use this line'}
+          </button>
+          <button className="link-btn mono small" onClick={() => (setUrl(null), (chunks.current = []))}>
+            Again
+          </button>
+        </>
+      )}
+    </span>
+  )
 }
 
 export default function Create({ setup, characters, notify, openShot, go, incomingLine, clearIncomingLine, incomingLora, clearIncomingLora, incomingPicture, clearIncomingPicture, incomingCharacter, clearIncomingCharacter, incomingRun, clearIncomingRun, kindSwitch }) {
@@ -336,6 +409,50 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
     }
   }, [request, savedId])
 
+  // The manifest panel's pre-flight (preflight.js): files gone from this PC, LoRAs no folder has, heavy
+  // stacking, lines too long for the shot — debounced like the price
+  const [pre, setPre] = useState([])
+  useEffect(() => {
+    let live = true
+    const t = setTimeout(
+      () =>
+        window.ivstudio.render
+          .preflight(request)
+          .then((x) => live && setPre(x))
+          .catch(() => live && setPre([])),
+      300
+    )
+    return () => ((live = false), clearTimeout(t))
+  }, [request])
+
+  // The shot's director marks and manual label (shotstatus.js), kept on its project record
+  const [mark, setMark] = useState(null)
+  const [label, setLabel] = useState('')
+  useEffect(() => {
+    let live = true
+    if (!form.projectId) {
+      setMark(null)
+      setLabel('')
+      return
+    }
+    window.ivstudio.projects
+      .get(form.projectId)
+      .then(({ project }) => live && (setMark(project?.status || null), setLabel(project?.label || '')))
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [form.projectId])
+  async function pickMark(m) {
+    const next = mark === m ? null : m
+    setMark(next)
+    await window.ivstudio.projects.setStatus(form.projectId, next).catch(() => setMark(mark))
+  }
+  async function saveLabel() {
+    const p = await window.ivstudio.projects.setLabel(form.projectId, label).catch(() => null)
+    if (p) setLabel(p.label || '')
+  }
+
   async function addMedia(kind) {
     addFiles((await window.ivstudio.files.pick(kind)).map((path) => ({ kind, path })))
   }
@@ -418,7 +535,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
     // from a finished version (Continue from this, or its last frame): a new shot that starts where it ended
     if (incomingRun.from === 'continue') notify('A new shot that carries the finished version on. Say what happens next, or let Write it for me look at its last frame.', 'info')
     else if (incomingRun.from === 'frames') notify('A new shot that opens on the last frame. Say what happens next, or let Write it for me look at it.', 'info')
-    else if (incomingRun.from === 'film' && incomingRun.film) notify(`Scene ${incomingRun.film.scene}, shot ${incomingRun.film.shot} of ${incomingRun.film.name}, with everything Film it would use. Change anything and hunt: the takes go back to the film's storyboard.`, 'info')
+    else if (incomingRun.from === 'film' && incomingRun.film) notify(`Scene ${incomingRun.film.scene}, shot ${incomingRun.film.shot} of ${incomingRun.film.name} — What happens and the prompt are filled from the story, with everything Film it would use. Change anything and hunt: the takes go back to the film's storyboard.`, 'info')
     clearIncomingRun?.()
   }, [incomingRun])
   // Start from an example (starters.js): the row on this page, or the welcome wizard's "Make your first shot"
@@ -476,6 +593,11 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
     clearIncomingPicture?.()
   }, [incomingPicture])
 
+  // a microphone take (RecordLine) becomes the voice line like a picked recording
+  async function useRecording(file) {
+    const info = await window.ivstudio.media.probe(file).catch(() => null)
+    set({ voiceLine: file, voiceItem: { kind: 'audio', path: file, info } })
+  }
   async function pickVoice() {
     const [file] = await window.ivstudio.files.pick('audio')
     if (file) set({ voiceLine: file, voiceItem: { kind: 'audio', path: file, info: await window.ivstudio.media.probe(file).catch(() => null) } })
@@ -518,6 +640,21 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
       return { ...f, engine, mode, seconds, ...(mode !== f.mode ? { media: [] } : {}) }
     })
   }
+
+  // Timed beats: the first pair splits the shot in two; another beat starts where the last ends
+  const [beatOpen, setBeatOpen] = useState({}) // which beats show their detail fields (dialogue, expression, …)
+  const beatHasMore = (b) => !!(b.dialogue || b.expression || b.lighting || b.sound)
+  const startBeats = () => {
+    const half = Math.round(form.seconds) / 2
+    set({ beats: [{ from: 0, to: half, camera: '', action: '' }, { from: half, to: form.seconds, camera: '', action: '' }] })
+  }
+  const addBeat = () => {
+    const from = Math.min(form.beats[form.beats.length - 1]?.to ?? 0, form.seconds)
+    set({ beats: [...form.beats, { from, to: Math.min(form.seconds, from + 2), camera: '', action: '' }] })
+  }
+  const setBeat = (i, patch) => set({ beats: form.beats.map((b, j) => (j === i ? { ...b, ...patch } : b)) })
+  // The camera pick (camera.js): one field at a time, tidied — picking nothing left is no camera at all
+  const setCam = (f, v) => set({ camera: cleanCamera({ ...(form.camera || {}), [f]: v || undefined }) })
 
   async function hunt() {
     setBusy(true)
@@ -855,7 +992,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
                 </div>
               )}
               <p className="dim small mode-writer-hint">
-                ✦ Add them first: <b>Write it for me</b> looks at {form.mode === 'continue' ? 'the last frame' : 'them'} and writes what it sees into the prompt.
+                ✦ The idea and the prompt write themselves — <b>Write it for me</b> {form.media.some((m) => m.kind === 'picture' || m.kind === 'video') ? `looks at ${form.mode === 'continue' ? 'the last frame' : 'them'} and writes what it sees` : 'invents the idea from your character and writes the prompt from it'}.
               </p>
             </section>
           )}
@@ -865,6 +1002,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
             <StepHead n={steps.what} title="What happens" sub={sd ? 'Who, what happens, where, the camera and the sound, in plain sentences. Give every reference a job.' : 'Clothes, place, camera, action and the lines. Never the face or voice: the character carries those.'} subPlain={sd ? 'Say who is there, what happens, where, how the camera moves and what we hear. Say what each of your pictures is for.' : 'Describe the clothes, the place, the camera, what happens and what is said. Skip the face and voice: the character already has those.'} />
             <PromptWriter
               listen
+              autoIdea
               context={{ engine: form.engine, mode: form.mode, seconds: form.seconds, aspect: form.aspect, character: form.character ?? 'none', with: sd ? [] : form.with || [], media: form.media.map((m) => ({ kind: m.kind, file: m.path })), voiceLine: form.voiceLine || null }}
               current={form.prompt}
               names={char ? [char.name, ...characters.filter((c) => c.id !== char.id).map((c) => c.name), 'Someone'] : ['Someone', ...characters.map((c) => c.name)]}
@@ -896,6 +1034,91 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
             />
             <MentionNotes notes={plan?.notes} />
             {form.prompt.trim() && <Findings findings={findings} onFix={(prompt) => set({ prompt })} />}
+            <div className="create-field" data-tour="create-beats">
+              <span className="create-label mono">Timeline</span>
+              {form.beats.length === 0 ? (
+                <div className="beat-empty">
+                  <button className="btn btn-small" onClick={startBeats}>
+                    + Time the beats
+                  </button>
+                  <span className="dim small">Direct the shot moment by moment: up to {MAX_BEATS} beats, each with its camera and action — and, under detail, its dialogue, expression, lighting and sound — compiled into the prompt. Character, look and camera direction stay locked across beats.</span>
+                </div>
+              ) : (
+                <div className="beat-list">
+                  {form.beats.map((b, i) => {
+                    const more = beatOpen[i] ?? beatHasMore(b)
+                    return (
+                      <div key={i} className="beat-row">
+                        <span className="beat-times mono small">
+                          <input type="number" min={0} max={form.seconds} step={0.5} value={b.from} aria-label={`Beat ${i + 1} starts (seconds)`} onChange={(e) => setBeat(i, { from: Number(e.target.value) })} />
+                          –
+                          <input type="number" min={0} max={form.seconds} step={0.5} value={b.to} aria-label={`Beat ${i + 1} ends (seconds)`} onChange={(e) => setBeat(i, { to: Number(e.target.value) })} />
+                          s
+                        </span>
+                        <input className="beat-camera" value={b.camera} placeholder="Shot size and camera: wide, slow dolly in…" onChange={(e) => setBeat(i, { camera: e.target.value })} />
+                        <input className="beat-action" value={b.action} placeholder="What happens: she reaches for the string…" onChange={(e) => setBeat(i, { action: e.target.value })} />
+                        <button className={`link-btn mono small beat-detail-toggle ${more ? 'pink' : ''}`} title="This beat's dialogue, expression, lighting and sound" aria-expanded={more} onClick={() => setBeatOpen({ ...beatOpen, [i]: !more })}>
+                          {more ? '▾' : '▸'} detail
+                        </button>
+                        <button className="lora-chip-x" title="Take this beat out" aria-label={`Remove beat ${i + 1}`} onClick={() => set({ beats: form.beats.filter((_, j) => j !== i) })}>
+                          ×
+                        </button>
+                        {more && (
+                          <div className="beat-more">
+                            <input value={b.dialogue || ''} placeholder="Dialogue: the exact line, any language" onChange={(e) => setBeat(i, { dialogue: e.target.value })} />
+                            <input value={b.expression || ''} placeholder="Expression and eyeline: doubt hardening into resolve" onChange={(e) => setBeat(i, { expression: e.target.value })} />
+                            <input value={b.lighting || ''} placeholder="Lighting or atmosphere: dusk deepens, a lamp flickers on" onChange={(e) => setBeat(i, { lighting: e.target.value })} />
+                            <input value={b.sound || ''} placeholder="Sound: rain on tin, a distant bell" onChange={(e) => setBeat(i, { sound: e.target.value })} />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  <div className="beat-actions">
+                    {form.beats.length < MAX_BEATS && (
+                      <button className="btn btn-small" onClick={addBeat}>
+                        + Add beat
+                      </button>
+                    )}
+                    <button className="link-btn mono small" onClick={() => set({ beats: [] })}>
+                      Clear the timeline
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="create-field" data-tour="create-camera">
+              <span className="create-label mono">Camera</span>
+              <div className="camera-row">
+                {[
+                  ['size', 'Shot size', SHOT_SIZES],
+                  ['angle', 'Angle', ANGLES],
+                  ['movement', 'Movement', MOVEMENTS],
+                  ['pace', 'Pace', PACES]
+                ].map(([f, label, list]) => (
+                  <select
+                    key={f}
+                    value={form.camera?.[f] || ''}
+                    aria-label={`Camera ${label.toLowerCase()}`}
+                    disabled={f === 'pace' && (!form.camera?.movement || form.camera.movement === 'static')}
+                    onChange={(e) => setCam(f, e.target.value)}
+                  >
+                    <option value="">{label}</option>
+                    {Object.entries(list).map(([id, text]) => (
+                      <option key={id} value={id}>
+                        {f === 'size' || f === 'movement' ? text : `${label}: ${text}`}
+                      </option>
+                    ))}
+                  </select>
+                ))}
+                {form.camera && (
+                  <button className="link-btn mono small" onClick={() => set({ camera: null })}>
+                    Clear
+                  </button>
+                )}
+              </div>
+              {cameraText(form.camera) && <p className="dim small camera-line">“{cameraText(form.camera)}.” — the sentence the model reads first</p>}
+            </div>
             {h3 && (
               <div className="create-craft" data-tour="create-craft">
                 <CinemaChips
@@ -959,6 +1182,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
                     <button className="btn btn-small" onClick={pickVoice}>
                       {sd ? '+ Voice recording' : '+ Recording to lip-sync'}
                     </button>
+                    <RecordLine notify={notify} onDone={useRecording} />
                   </>
                 )}
               </div>
@@ -1206,6 +1430,103 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
               <dd>{sd ? `${TIERS.find(([id]) => id === form.tier)?.[1]} · ${form.audio ? 'with sound' : 'silent'}` : `${QUALITY.find(([s]) => s === form.steps)?.[1] || `${form.steps} steps`} · seed ${form.seed}`}</dd>
             </div>
           </dl>
+          <details className="manifest" data-tour="create-manifest">
+            <summary className="mono small">
+              Shot manifest{' '}
+              {pre.some((i) => i.level === 'error') ? <span className="pink">· needs fixing</span> : pre.length ? <span className="dim">· {pre.length} note{pre.length > 1 ? 's' : ''}</span> : <span className="dim">· checked</span>}
+            </summary>
+            <dl className="manifest-rows small">
+              <div>
+                <dt>Engine</dt>
+                <dd>
+                  {sd ? 'Seedance 2.5' : lx ? 'LTX 2.5' : 'MiniMax H3'}
+                  {plan?.mode && plan.mode !== form.mode ? ' · renders in References mode' : ''}
+                </dd>
+              </div>
+              <div>
+                <dt>Shape</dt>
+                <dd>
+                  {form.aspect} · {r ? `${r.width}×${r.height}` : `${form.megapixels} MP`} · {form.seconds} s
+                </dd>
+              </div>
+              <div>
+                <dt>Takes</dt>
+                <dd>
+                  {r?.previews ?? form.previews} preview{(r?.previews ?? form.previews) > 1 ? 's' : ''}, the pick finished at full size
+                </dd>
+              </div>
+              <div>
+                <dt>Seed</dt>
+                <dd className="mono">
+                  {form.seed} · {form.steps} steps · {form.sampler} / {form.scheduler}
+                </dd>
+              </div>
+              <div>
+                <dt>Camera</dt>
+                <dd>{cameraText(form.camera) || 'not directed: the prompt’s own words decide'}</dd>
+              </div>
+              <div>
+                <dt>Character</dt>
+                <dd>{char ? `${char.name}${char.lora ? ' · their LoRA' : ''}` : 'none'}</dd>
+              </div>
+              {form.extraLoras.length > 0 && (
+                <div>
+                  <dt>LoRAs</dt>
+                  <dd>{form.extraLoras.map((l) => `${loraTitle(l.name)} @ ${Number(l.strength).toFixed(2)}`).join(', ')}</dd>
+                </div>
+              )}
+              {form.refmods.length > 0 && (
+                <div>
+                  <dt>RefMods</dt>
+                  <dd>{form.refmods.map((m) => m.name).join(', ')}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Timeline</dt>
+                <dd>{form.beats.length ? `${form.beats.length} beats · ${form.beats.map((b) => `${b.from}–${b.to}s`).join(', ')}` : 'none: one brief for the whole shot'}</dd>
+              </div>
+              <div>
+                <dt>References</dt>
+                <dd>{form.media.length ? form.media.map((m) => m.kind).join(', ') : 'none'}</dd>
+              </div>
+              <div>
+                <dt>Voice line</dt>
+                <dd>{form.voiceLine ? 'yes' : 'no'}</dd>
+              </div>
+            </dl>
+            {plan?.compiled && (
+              <>
+                <p className="mono small dim manifest-label">What the model reads{form.beats.length ? ' (your prompt + the compiled timeline)' : ''}</p>
+                <pre className="manifest-prompt small">{plan.compiled}</pre>
+              </>
+            )}
+            {pre.length > 0 && (
+              <ul className="manifest-issues small">
+                {pre.map((i, x) => (
+                  <li key={x} className={i.level === 'error' ? 'pink' : 'dim'}>
+                    {i.text}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </details>
+          {form.projectId && (
+            <div className="mark-row">
+              <span className="mono small dim">Marks</span>
+              {SHOT_MARKS.map((m) => (
+                <button
+                  key={m}
+                  className={`mark-chip mono small ${mark === m ? 'on' : ''}`}
+                  aria-pressed={mark === m}
+                  title={{ ready: 'The setup is final: ready for the server', approved: 'The take is chosen; this shot is done creatively', locked: 'Hands off: no re-renders or restyles' }[m]}
+                  onClick={() => pickMark(m)}
+                >
+                  {STATE_NAME[m]}
+                </button>
+              ))}
+              <input className="label-input mono small" value={label} placeholder="Label: SC_04_SH_03A" aria-label="Shot label" onChange={(e) => setLabel(e.target.value)} onBlur={saveLabel} onKeyDown={(e) => e.key === 'Enter' && saveLabel()} />
+            </div>
+          )}
           {!r && planError && <p className="shot-card-error small">{planError}</p>}
           {h3 && plan?.mode && plan.mode !== form.mode && <p className="dim small">Renders in References mode, for the @ pictures.</p>}
           {errors.length > 0 && !anyway && (

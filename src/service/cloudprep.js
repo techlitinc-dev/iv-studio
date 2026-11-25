@@ -256,6 +256,52 @@ export class CloudPrep {
     return run
   }
 
+  // Every LoRA and RefMod on this PC pushed to the volume, new or changed ones only: after a pod wakes, after a
+  // Civitai download lands, or from the Cloud page's Sync button, so a render never waits for an upload the app
+  // could have done earlier. "Changed" is the file's size against the upload ledger (a new version of a LoRA is a
+  // different size); the SHA-256 is still checked on the way up, and the ledger remembers it.
+  syncLocal() {
+    const run = this.queue.then(() => this.syncLocalNow())
+    this.queue = run.catch(() => {})
+    return run
+  }
+  async syncLocalNow() {
+    const names = await this.localNames().catch(() => ({ loras: [], refmods: [] }))
+    const uploads = this.ledger().uploads || {}
+    const todo = []
+    for (const [kind, list] of [['loras', names.loras || []], ['refmods', names.refmods || []]]) {
+      for (const name of list) {
+        // a catalog model under the same name is the volume's own download, never this PC's to push
+        if (kind === 'loras' && this.catalog.find((x) => x.rel === name)) continue
+        const remote = kind === 'refmods' ? `refmods/${name}.safetensors` : `loras/${name}`
+        const file = await this.localFile(kind, name)
+        if (!file) continue
+        const size = fs.statSync(file).size
+        const rec = uploads[remote]
+        if (rec && rec.size === size) continue // unchanged since it went up
+        todo.push({ name, kind, remote, file, size })
+      }
+    }
+    if (!todo.length) return { uploaded: [] }
+    const bytes = todo.reduce((s, f) => s + f.size, 0)
+    const grow = (await this.provider.room?.(bytes)) || null
+    if (grow) {
+      const ok = await this.ask({ downloads: todo.map((f) => ({ id: f.remote, label: f.name, size: f.size })), bytes, grow, provider: this.provider.name })
+      if (!ok) throw Object.assign(new Error('Not synced: the LoRAs need more room on your cloud storage.'), { code: 'declined' })
+      await this.provider.grow(grow.toGb)
+    }
+    for (const [i, f] of todo.entries()) {
+      this.onEvent({ state: 'uploading', label: f.name, index: i + 1, count: todo.length })
+      const sha256 = await sha256Of(f.file)
+      await this.provider.upload(f.file, f.remote, sha256)
+      this.record({ [f.remote]: true })
+      this.saveLedger({ uploads: { ...this.ledger().uploads, [f.remote]: { sha256, size: f.size, at: new Date().toISOString() } } })
+    }
+    await this.provider.changed?.()
+    this.onEvent({ state: 'done' })
+    return { uploaded: todo.map((f) => f.name) }
+  }
+
   async prepareNow(graph) {
     let { download, upload } = planFor(graph, { catalog: this.catalog, have: this.have() })
     if (!download.length && !upload.length) return { downloaded: [], uploaded: [] }

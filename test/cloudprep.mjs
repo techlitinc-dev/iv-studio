@@ -265,7 +265,47 @@ async function pythonTests() {
 
 catalogTests()
 graphTests()
+
+async function syncTests() {
+  console.log('syncing this PC\u2019s LoRAs to the volume')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iv-sync-'))
+  const a = path.join(dir, 'a.safetensors')
+  const b = path.join(dir, 'b.safetensors')
+  fs.writeFileSync(a, Buffer.alloc(2048, 1))
+  fs.writeFileSync(b, Buffer.alloc(1024, 2))
+  const calls = []
+  const provider = {
+    name: 'runpod',
+    download: async () => {},
+    upload: async (file, remote, sha) => calls.push(['upload', remote, sha]),
+    changed: async () => calls.push(['changed']),
+    room: async () => null
+  }
+  const prep = new CloudPrep({
+    dataDir: dir,
+    provider,
+    catalog,
+    stamp: 's1',
+    ask: async () => true,
+    localFile: async (kind, name) => (name === 'a.safetensors' ? a : name === 'b.safetensors' || name === 'face' ? b : null),
+    localNames: async () => ({ loras: ['a.safetensors', 'b.safetensors'], refmods: ['face'] }),
+    hfToken: () => null,
+    fetchInfo: async () => snapshot,
+    onEvent: () => {}
+  })
+  const r1 = await prep.syncLocal()
+  ok(r1.uploaded.sort().join() === 'a.safetensors,b.safetensors,face', 'sync: everything new goes up, RefMods too')
+  ok(calls.filter((c) => c[0] === 'upload').every((c) => /^[0-9a-f]{64}$/.test(c[2])), 'sync: each upload carries its SHA-256')
+  const r2 = await prep.syncLocal()
+  ok(r2.uploaded.length === 0 && calls.filter((c) => c[0] === 'upload').length === 3, 'sync: unchanged files are not sent again')
+  fs.writeFileSync(a, Buffer.alloc(4096, 3))
+  const r3 = await prep.syncLocal()
+  ok(r3.uploaded.join() === 'a.safetensors', 'sync: a changed file (its size moved) goes up again')
+  fs.rmSync(dir, { recursive: true, force: true })
+}
+
 await prepTests()
+await syncTests()
 await comfyTests()
 bundleTests()
 await pythonTests()

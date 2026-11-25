@@ -181,8 +181,9 @@ export class Features {
   }
 
   // The AI plans the whole feature from its story: the act structure, the sequences each act needs (created
-  // and attached as Projects, in order), and the cast (names, roles and looks — written into every sequence's
-  // cast so all scripts speak of the same people). Pass redo to re-plan one that already has sequences.
+  // and attached as Projects, in order), and the cast (names, roles, looks — then each one's full visual
+  // character prompt from the story, written into every sequence's cast so all scripts and shots speak of the
+  // same people). Pass redo to re-plan one that already has sequences.
   // ask/writer are injectable for tests. Returns { acts, sequences, characters }.
   async planAll(id, { redo = false, ask = askWriter, writer = null } = {}) {
     const f = this.get(id)
@@ -239,6 +240,19 @@ export class Features {
       }
     })
     const cast = (castOut?.characters || []).filter((c) => c && String(c.name || '').trim()).map((c) => ({ name: String(c.name).trim(), who: String(c.who || '').trim(), looks: String(c.looks || '').trim() }))
+    // each one's full character prompt, written from the story: the visual sheet every sequence's cast, shot
+    // prompt and drawn face speaks from (the one-line "looks" alone gave thin, drifting characters)
+    const sheets = await ask(writer || this.writer?.() || { engine: 'local' }, {
+      system: `You are the casting director of the same film, writing each character's visual prompt for an AI video studio. For every person listed, describe how they LOOK in two or three concrete sentences: apparent age, build, face, hair, skin, and the overall impression of their clothes, consistent with the story's place, era and weather. Keep each person recognizable across the whole film. No backstory, no other people's names, no camera words.`,
+      user: `${brief}\n\nThe cast:\n${cast.map((c) => `- ${c.name}: ${c.who}${c.looks ? ` (${c.looks})` : ''}`).join('\n')}`,
+      schema: { type: 'object', properties: { people: { type: 'array', minItems: 1, maxItems: 12, items: { type: 'object', properties: { name: { type: 'string', maxLength: 60 }, prompt: { type: 'string', maxLength: 600 } }, required: ['name', 'prompt'] } } }, required: ['people'] }
+    }).catch(() => null)
+    const sheetOf = (name) => {
+      const n = String(name || '').trim().toLowerCase()
+      const people = (sheets?.people || []).filter((x) => String(x?.prompt || '').trim())
+      return String(people.find((x) => String(x.name || '').trim().toLowerCase() === n)?.prompt || people.find((x) => String(x.name || '').trim().toLowerCase().split(/\s+/)[0] === n.split(/\s+/)[0])?.prompt || '').trim().replace(/\s+/g, ' ')
+    }
+    for (const c of cast) c.looks = sheetOf(c.name) || c.looks
     // apply: acts, then a Project per sequence, then the cast on the feature and on every sequence
     this.setActs(id, acts.map((a) => ({ title: a.title, logline: a.logline, minutes: Math.max(1, Math.round(Number(a.minutes))) })))
     const prod = this.productions()

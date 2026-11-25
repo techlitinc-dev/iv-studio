@@ -14,6 +14,7 @@ import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { probe } from './media.js'
 import { DEPTH_OUTPUTS, PICTURE_TOOLS, RELIGHT, depthGraph, inpaintGraph, relightGraph, relightText, removeBgGraph, upscaleGraph } from './picturetools.js'
 import { CODEX_MODEL, codexHome, codexImage, codexImageStatus } from './codeximages.js'
+import { DEFAULT_GPT_MODEL, GPT_MODEL, GPT_MODELS, gptImage, gptImageStatus, gptModelOk, gptPicturePrice } from './gptimages.js'
 import { codexConfigured } from './harness.js'
 
 // the bundled ffprobe, outside the asar in a packaged app (an upscale reads the picture's size)
@@ -44,6 +45,23 @@ const alive = (pid) => {
 // The family as the window and agents see it: ready when Codex is installed and signed in.
 export function codexFamilyStatus(st = codexImageStatus()) {
   return { ...CODEX_FAMILY, models: st.ready ? [CODEX_MODEL] : [], ready: st.ready, missing: st.missing, edit: st.ready, canEdit: true, editNote: null, loraPattern: null, steps: null, cfg: null, sizes: null, noNegative: true, setup: [] }
+}
+
+// GPT Image through OpenAI's API (gptimages.js): the person's own API key, pay per picture, no ComfyUI, no GPU,
+// no Codex install. Makes and edits (the one to change, then references). Three fixed sizes; aspect picks the nearest.
+export const GPT_FAMILY = {
+  id: 'gptimage',
+  label: 'GPT Image (API)',
+  engine: 'gptimage',
+  maxRefs: 4,
+  licence: 'OpenAI’s usage policies; billed per picture on your OpenAI API account',
+  note: 'Made by OpenAI’s gpt-image on your own API key: no ComfyUI or graphics card needed, about half a minute a picture, billed per picture.',
+  tips: 'Plain sentences: the subject, the place, the light, the style. Lettering is strong: put exact words in quotes. To edit, say what changes and what stays; call the pictures <Picture 1>, <Picture 2> in order.'
+}
+// chosen: the default model from Settings (imageApiModel), listed first so Create starts on it
+export function gptFamilyStatus(st, chosen = DEFAULT_GPT_MODEL) {
+  const order = [...GPT_MODELS.map((m) => m.id)].sort((a, b) => (a === chosen ? -1 : b === chosen ? 1 : 0))
+  return { ...GPT_FAMILY, models: st.ready ? order : [], ready: st.ready, missing: st.missing, edit: st.ready, canEdit: true, editNote: null, loraPattern: null, steps: null, cfg: null, sizes: null, noNegative: true, setup: [] }
 }
 
 // A picture at exactly this aspect: kept when it's within 3% of it, otherwise cropped evenly from the middle.
@@ -410,14 +428,39 @@ export function imageGraph({ family, mode = 'generate', unet, te, vae, loras = [
 }
 
 export class Images {
-  constructor({ studio, dataDir }) {
+  constructor({ studio, dataDir, imageKey = () => null, imageUrl = () => '', imageModel = () => DEFAULT_GPT_MODEL }) {
     this.studio = studio
     this.dir = path.join(dataDir, 'images')
+    this.imageKey = imageKey
+    this.imageUrl = imageUrl
+    this.imageModel = imageModel
   }
 
   file = () => path.join(this.dir, 'images.json')
   all = () => readJson(this.file(), [])
   saveAll = (list) => writeJson(this.file(), list)
+
+  // What GPT Image pictures cost on the person's OpenAI account, from the saved sets: one billed picture per
+  // file made, at gptimages.js's list prices. { usd, pictures, byTag: { 'film:<id>': { usd, pictures } } } —
+  // the movie dashboard reads a film's panels (its sequences' tags) from this.
+  gptSpend() {
+    const out = { usd: 0, pictures: 0, byTag: {} }
+    for (const rec of this.all()) {
+      if (rec.engine !== 'gptimage') continue
+      const price = gptPicturePrice(rec.model)
+      const made = (rec.files || []).length
+      if (price == null || !made) continue
+      const usd = made * price
+      out.usd += usd
+      out.pictures += made
+      if (rec.tag) {
+        const t = (out.byTag[rec.tag] ||= { usd: 0, pictures: 0 })
+        t.usd += usd
+        t.pictures += made
+      }
+    }
+    return out
+  }
 
   // What each family can do on this ComfyUI: its checkpoints, the text encoder and VAE found for it, what's
   // missing, and whether it can edit.
@@ -426,11 +469,12 @@ export class Images {
     // model per family, cloud.json); Comfy Cloud has its own, read like this PC's
     // ChatGPT Images needs Codex, not ComfyUI, so it's listed (and ready) whether or not ComfyUI answers
     const codex = codexFamilyStatus()
+    const gpt = gptFamilyStatus(gptImageStatus({ key: this.imageKey() }), this.imageModel())
     let info
     try {
       info = await this.studio.comfy.objectInfo()
     } catch (err) {
-      return { error: codex.ready ? null : err.message, comfyError: err.message, families: [...IMAGE_FAMILIES.map((f) => ({ ...strip(f), ready: false, models: [], missing: ['ComfyUI (it isn’t answering)'], setup: [] })), codex], aspects: Object.keys(IMAGE_ASPECTS), defaults: IMAGE_DEFAULTS, remote: !!this.studio.comfy?.remote }
+      return { error: codex.ready ? null : err.message, comfyError: err.message, families: [...IMAGE_FAMILIES.map((f) => ({ ...strip(f), ready: false, models: [], missing: ['ComfyUI (it isn’t answering)'], setup: [] })), codex, gpt], aspects: Object.keys(IMAGE_ASPECTS), defaults: IMAGE_DEFAULTS, remote: !!this.studio.comfy?.remote }
     }
     const unets = comboOptions(info, 'UNETLoader', 'unet_name') || []
     const clips = comboOptions(info, 'CLIPLoader', 'clip_name') || []
@@ -478,7 +522,7 @@ export class Images {
         .filter((m) => m.pictureFamilies?.includes(f.id))
         .map((m) => ({ id: m.id, label: m.label, size: m.size || 0, present: !!resolveModel(m, modelOptions(info, m) || [])?.file, gated: m.gated || null }))
     }
-    return { families: [...families, codex], aspects: Object.keys(IMAGE_ASPECTS), defaults: IMAGE_DEFAULTS, remote: !!this.studio.comfy?.remote }
+    return { families: [...families, codex, gpt], aspects: Object.keys(IMAGE_ASPECTS), defaults: IMAGE_DEFAULTS, remote: !!this.studio.comfy?.remote }
   }
 
   // Queues a set of pictures. request: { mode: generate|edit, model (a checkpoint), prompt, negative, loras
@@ -489,6 +533,7 @@ export class Images {
     const text = String(prompt || '').trim()
     if (!text) throw new Error(mode === 'edit' ? 'Say what to change in the picture.' : 'Describe the picture first.')
     if (model === CODEX_MODEL || model === CODEX_FAMILY.id) return this.codexCreate({ mode, prompt: text, aspect, count, refs, name, tag })
+    if (gptModelOk(model) || model === GPT_FAMILY.id) return this.gptCreate({ mode, prompt: text, aspect, count, refs, name, tag, model: gptModelOk(model) ? model : this.imageModel() })
     const st = await this.status()
     if (st.error) throw new Error(st.error)
     const fam = st.families.find((f) => f.models.includes(model)) || st.families.find((f) => f.id === familyOfModel(String(model || ''))?.id)
@@ -599,9 +644,71 @@ export class Images {
     return { ...this.all().find((x) => x.id === rec.id), result: 'stopped' }
   }
 
+  // ---------- GPT Image (gptimages.js) ----------
+  // A set made on the person's OpenAI API key: each picture is its own API call, two at a time, saved into images/
+  // as it lands. Same record shape and cancel/refresh handling as a ChatGPT set (engine 'gptimage').
+  async gptCreate({ mode = 'generate', prompt, aspect = IMAGE_DEFAULTS.aspect, count = 1, refs = [], name, tag = null, model = null }) {
+    const key = this.imageKey()
+    const st = gptImageStatus({ key })
+    if (!st.ready) throw new Error(`GPT Image needs ${st.missing.join(' and ')}.`)
+    if (!['generate', 'edit'].includes(mode)) throw new Error('Mode is generate or edit.')
+    if (mode === 'edit' && !refs.length) throw new Error('Add the picture to edit.')
+    if (refs.length > GPT_FAMILY.maxRefs) throw new Error(`${GPT_FAMILY.label} takes up to ${GPT_FAMILY.maxRefs} pictures.`)
+    for (const r of refs) if (!fs.existsSync(r)) throw new Error(`No picture at ${r}.`)
+    if (!IMAGE_ASPECTS[aspect]) aspect = IMAGE_DEFAULTS.aspect
+    const n = Math.max(1, Math.min(4, Math.round(Number(count) || 1)))
+    const id = randomUUID().slice(0, 8)
+    const title = String(name || '').trim() || prompt.split(/[.,\n]/)[0].slice(0, 48)
+    const useModel = gptModelOk(model) ? model : gptModelOk(this.imageModel()) ? this.imageModel() : DEFAULT_GPT_MODEL
+    const record = { id, name: title, mode, family: GPT_FAMILY.id, familyLabel: GPT_FAMILY.label, engine: 'gptimage', model: useModel, prompt, negative: '', loras: [], aspect, megapixels: null, width: null, height: null, count: n, seed: null, refs, ...(tag ? { tag } : {}), owner: process.pid, status: 'running', progress: { value: 0, max: n }, files: [], createdAt: now() }
+    this.saveAll([record, ...this.all()])
+    this.gptRun(record, key)
+    return record
+  }
+  async gptRun(rec, key) {
+    this.codexRuns ||= new Map()
+    const run = { children: new Set() }
+    this.codexRuns.set(rec.id, run)
+    const url = this.imageUrl()
+    const errors = []
+    let next = 0
+    let done = 0
+    const stopped = () => this.all().find((x) => x.id === rec.id)?.status === 'cancelled'
+    const worker = async () => {
+      while (next < rec.count && !stopped()) {
+        const i = next++
+        try {
+          const png = await gptImage({ key, url, model: rec.model, prompt: rec.prompt, aspect: rec.aspect, refs: rec.mode === 'edit' ? rec.refs : [] })
+          if (stopped()) return
+          fs.mkdirSync(this.dir, { recursive: true })
+          const tmp = path.join(this.dir, `.${rec.id}_${i + 1}.tmp.png`)
+          fs.writeFileSync(tmp, png)
+          const file = path.join(this.dir, `${slug(rec.name)}_${rec.id}_${i + 1}.png`)
+          await fitAspect(tmp, file, rec.mode === 'edit' ? null : rec.aspect)
+          fs.rmSync(tmp, { force: true })
+          const cur = this.all().find((x) => x.id === rec.id)
+          this.saveRec(rec.id, { files: [...(cur?.files || []), file].sort(), progress: { value: ++done, max: rec.count } })
+        } catch (err) {
+          if (!stopped()) errors.push(err.message)
+          this.saveRec(rec.id, { progress: { value: ++done, max: rec.count } })
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(CODEX_AT_ONCE, rec.count) }, worker))
+    this.codexRuns.delete(rec.id)
+    if (stopped()) return
+    const cur = this.all().find((x) => x.id === rec.id)
+    const files = cur?.files || []
+    const first = files[0] && (await probe(FFPROBE, files[0]).catch(() => null))
+    const finish = { status: files.length ? 'success' : 'error', finishedAt: now(), width: first?.width || null, height: first?.height || null }
+    if (!files.length) finish.error = errors[0] || 'GPT Image made no picture.'
+    else if (errors.length) finish.note = `${errors.length} of ${rec.count} didn’t come back: ${errors[0]}`
+    this.saveRec(rec.id, { ...finish, progress: undefined })
+  }
+
   // A set brought up to date: a finished job's pictures are copied into images/ once.
   async refresh(rec) {
-    if (rec.engine === 'codex') {
+    if (rec.engine === 'codex' || rec.engine === 'gptimage') {
       if (DONE.includes(rec.status)) return rec
       // still being made here, or by another Techlit Studio process that's still open
       if (this.codexRuns?.has(rec.id) || (rec.owner && rec.owner !== process.pid && alive(rec.owner))) return rec
