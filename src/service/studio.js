@@ -13,7 +13,6 @@ import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
 import { applyPatch, planFinish, planPreviews } from './plan.js'
 import { cleanLabel, SHOT_MARKS } from './shotstatus.js'
-import { cleanDirection } from './direction.js'
 import { cleanLocks, cleanShotLook, shotLook } from './look.js'
 import { applyFinishSpeed, applySpeed, withPreviewSize } from './speed.js'
 import { adaptGraph, capabilities, LIVE_NODE, withLivePreview, withLivePreviewAll } from './remote.js'
@@ -310,23 +309,6 @@ export class Studio {
     p.label = cleanLabel(label)
     writeJson(this.projectFile(id), p)
     return p
-  }
-  // The Director page's saved direction (direction.js). None saved yet: it seeds from the latest run's
-  // request — with its voice line as the first dialogue clip — so the Director opens on what the shot
-  // was last made with.
-  projectDirection(id) {
-    const p = this.getProject(id)
-    if (p.direction) return p.direction
-    const req = p.jobs.map((jid) => readJson(this.jobFile(jid), null)).filter((j) => j?.plan?.request).at(-1)?.plan.request
-    if (!req) return null
-    const audioPlan = req.voiceLine ? [{ kind: 'voice', file: req.voiceLine, name: String(req.voiceLine).split(/[\\/]/).pop(), start: 0, length: Math.max(0.5, Number(req.seconds) || 5) }] : []
-    return { ...req, audioPlan }
-  }
-  setProjectDirection(id, direction) {
-    const p = this.getProject(id)
-    p.direction = cleanDirection(direction)
-    writeJson(this.projectFile(id), p)
-    return p.direction
   }
   // A shot and its run history. The rendered videos stay in ComfyUI's output folder.
   deleteProject(id) {

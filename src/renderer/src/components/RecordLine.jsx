@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 
 // Record a line from the microphone (the Director Workspace's dialogue recording, first pass): record,
-// listen, keep — the take lands as a mono wav (voices:saveRecording) and onDone gets its path. Used by
-// Create's voice line and the Director's dialogue track. Multiple takes and waveforms come later.
+// listen, keep — the take lands as a mono wav (voices:saveRecording) and onDone gets its path. Create's
+// voice line uses it. Multiple takes and waveforms come later.
 export default function RecordLine({ onDone, notify, label = '● Record' }) {
   const [recording, setRecording] = useState(false)
   const [url, setUrl] = useState(null)

@@ -398,8 +398,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
   turnaround: { status: call('turnaround:status'), list: call('turnaround:list'), make: call('turnaround:make'), delete: call('turnaround:delete') },
   refmods: { list: call('refmods:list'), ready: call('refmods:ready'), make: call('refmods:make'), onStatus: on('refmods:status') },
   characters: { list: call('characters:list'), save: call('characters:save'), catalog: call('characters:catalog'), install: call('characters:install'), loras: call('characters:loras'), onProgress: on('characters:progress'), saveOne: call('characters:saveOne'), addPictures: call('characters:addPictures'), removePicture: call('characters:removePicture') },
-  projects: { list: call('projects:list'), get: call('projects:get'), create: call('projects:create'), rename: call('projects:rename'), delete: call('projects:delete'), setStatus: call('projects:status'), setLabel: call('projects:label'), direction: call('projects:direction'), saveDirection: call('projects:saveDirection') },
-  director: { assemble: call('director:assemble') },
+  projects: { list: call('projects:list'), get: call('projects:get'), rename: call('projects:rename'), delete: call('projects:delete'), setStatus: call('projects:status'), setLabel: call('projects:label') },
   sequences: {
     list: call('sequences:list'),
     get: call('sequences:get'),

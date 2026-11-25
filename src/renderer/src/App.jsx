@@ -8,7 +8,6 @@ import ChatPanel, { ChatButton, useChat } from './components/ChatPanel'
 import { spotTour } from './tours'
 import { CharacterList, CharacterTrainer } from './components/Characters'
 import Create from './components/Create'
-import Director from './components/Director'
 import { sendIdea } from './components/PromptWriter'
 import tlMark from './assets/tl-mark.svg'
 import tlMarkClosed from './assets/tl-mark-closed.svg'
@@ -64,7 +63,6 @@ const SECTIONS = {
   video: [
     ['home', 'Dashboard'],
     ['create', 'Create'],
-    ['director', 'Director'],
     ['projects', 'Projects'],
     ['features', 'Features'],
     ['library', 'Shots'],
@@ -688,7 +686,6 @@ export default function App() {
             <Create {...ctx} kindSwitch={<CreateKind kind={createKind} onKind={pickCreateKind} />} incomingLine={lineForCreate} clearIncomingLine={() => setLineForCreate(null)} incomingLora={loraForCreate} clearIncomingLora={() => setLoraForCreate(null)} incomingPicture={pictureForCreate} clearIncomingPicture={() => setPictureForCreate(null)} incomingCharacter={characterForCreate} clearIncomingCharacter={() => setCharacterForCreate(null)} incomingRun={runForCreate} clearIncomingRun={() => setRunForCreate(null)} />
           ))}
         {page === 'loras' && <LorasPage {...ctx} />}
-        {page === 'director' && <Director {...ctx} />}
         {page === 'audio' && <AudioHome {...ctx} />}
         {page === 'voices' && <VoicesPage {...ctx} />}
         {page === 'lines' && <LinesPage {...ctx} />}
