@@ -15,7 +15,6 @@ const on = (channel) => (cb) => {
 }
 
 contextBridge.exposeInMainWorld('ivstudio', {
-  workspace: { call: call('workspace:call') },
   app: { info: call('app:info') },
   // opt-in usage counting and the cloud beta signup (src/service/usage.js); time estimates (src/service/timing.js)
   usage: { status: call('usage:status'), set: call('usage:set'), preview: call('usage:preview'), joinBeta: call('usage:joinBeta') },
@@ -54,9 +53,13 @@ contextBridge.exposeInMainWorld('ivstudio', {
     writeEnvironmentPrompts: call('productions:writeEnvironmentPrompts'),
     addEstablishingShots: call('productions:addEstablishingShots'),
     editShot: call('productions:editShot'),
+    editScene: call('productions:editScene'),
+    autoPlan: call('productions:autoPlan'),
     speak: call('productions:speak'),
     render: call('productions:render'),
     renderScene: call('productions:renderScene'),
+    renderShots: call('productions:renderShots'),
+    removeShots: call('productions:removeShots'),
     finish: call('productions:finish'),
     roughCut: call('productions:roughCut'),
     animatic: call('productions:animatic'),
@@ -407,6 +410,9 @@ contextBridge.exposeInMainWorld('ivstudio', {
     linkRun: call('sequences:linkRun')
   },
   system: { stats: call('system:stats'), free: call('system:free') },
+  lipsync: { render: call('lipsync:render') },
+  story: { open: call('story:open') },
+  flows: { list: call('flows:list'), get: call('flows:get'), import: call('flows:import'), update: call('flows:update'), delete: call('flows:delete'), check: call('flows:check'), run: call('flows:run') },
   rank: { job: call('rank:job'), learn: call('rank:learn'), clean: call('rank:clean') },
   review: { take: call('review:take') },
   previs: { make: call('previs:make') },

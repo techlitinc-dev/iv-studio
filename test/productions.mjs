@@ -475,3 +475,77 @@ console.log(`${n} checks passed`)
     assert.equal(prods2.addEstablishingShots(p2.id).added, 0)
   })
 }
+
+await (async (name, fn) => (await fn(), n++, console.log(`ok  ${name}`)))('the board’s picked shots film together: no prompt, in flight or waiting on a take stay out', async () => {
+  const dir = tmp()
+  const studio = { listJobs: (pid) => (pid === 'busy1' ? [{ id: 'j1', kind: 'previews', status: 'running', createdAt: '2026-01-01T00:00:00.000Z' }] : []) }
+  const films = new Productions({ dataDir: dir, studio: () => studio })
+  const p = films.create({ name: 'Picked' })
+  films.patch(p.id, (q) => (q.scenes = [
+    { id: 's1', heading: 'INT. A - DAY', shots: [
+      { id: 'a', action: 'One.', seconds: 5, prompt: 'p' },
+      { id: 'b', action: 'Two.', seconds: 5, prompt: '' },
+      { id: 'c', action: 'Three.', seconds: 5, prompt: 'p', projectId: 'busy1' }
+    ] },
+    { id: 's2', heading: 'EXT. B - DAY', shots: [
+      { id: 'd', action: 'Four.', seconds: 5, prompt: 'p', continues: true },
+      { id: 'e', action: 'Five.', seconds: 5, prompt: 'p' }
+    ] }
+  ]))
+  films.filmShots = async (id, ids) => ids // what would be queued, without ComfyUI
+  assert.deepEqual(await films.renderShots(p.id, ['a', 'b', 'c', 'd', 'e']), ['a', 'e'], 'b has no prompt, c is filming, d carries on from a take that isn’t there')
+  films.removeShots(p.id, ['a', 'e'])
+  const after = films.get(p.id)
+  assert.deepEqual(after.scenes[0].shots.map((s) => s.id), ['b', 'c'])
+  assert.deepEqual(after.scenes[1].shots.map((s) => s.id), ['d'])
+  fs.rmSync(dir, { recursive: true, force: true })
+})
+
+ok('editScene: Story-refine adds, renames, moves and removes scenes', () => {
+  const dir = tmp()
+  const films = new Productions({ dataDir: dir, studio: () => null })
+  const p = films.create({ name: 'Scenes' })
+  films.patch(p.id, (q) => (q.scenes = [
+    { id: 'a', heading: 'INT. A - DAY', shots: [{ id: 'a1', action: '', seconds: 5 }] },
+    { id: 'b', heading: 'EXT. B - NIGHT', shots: [] }
+  ]))
+  films.editScene(p.id, 'b', { location: 'Roof', time: 'NIGHT' })
+  assert.equal(films.get(p.id).scenes[1].location, 'Roof')
+  films.editScene(p.id, 'a', { add: true, heading: 'INT. C - DAY' })
+  assert.deepEqual(films.get(p.id).scenes.map((s) => s.heading), ['INT. A - DAY', 'INT. C - DAY', 'EXT. B - NIGHT'], 'added after the scene it was made from')
+  films.editScene(p.id, films.get(p.id).scenes[1].id, { move: 1 })
+  assert.deepEqual(films.get(p.id).scenes.map((s) => s.heading), ['INT. A - DAY', 'EXT. B - NIGHT', 'INT. C - DAY'])
+  films.editScene(p.id, 'a', { remove: true })
+  const scenes = films.get(p.id).scenes
+  assert.equal(scenes.length, 2)
+  assert.ok(!scenes.some((s) => s.shots.some((x) => x.id === 'a1')), 'the scene’s shots go with it')
+  assert.throws(() => films.editScene(p.id, 'nope', { heading: 'X' }), /No such scene/)
+  fs.rmSync(dir, { recursive: true, force: true })
+})
+
+ok('plan dates: shots and scenes take a span, autoPlan schedules the film, clear removes it', () => {
+  const dir = tmp()
+  const films = new Productions({ dataDir: dir, studio: () => null })
+  const p = films.create({ name: 'Planned' })
+  films.patch(p.id, (q) => (q.scenes = [
+    { id: 'a', heading: 'INT. A - DAY', shots: [{ id: 'a1', action: '', seconds: 5 }, { id: 'a2', action: '', seconds: 5 }] },
+    { id: 'b', heading: 'EXT. B - NIGHT', shots: [{ id: 'b1', action: '', seconds: 5 }] }
+  ]))
+  films.editShot(p.id, 'a', 'a1', { plan: { start: '2026-12-01', end: '2026-12-02' } })
+  assert.deepEqual(films.find(films.get(p.id), 'a1').sh.plan, { start: '2026-12-01', end: '2026-12-02' })
+  assert.throws(() => films.editShot(p.id, 'a', 'a1', { plan: { start: '2026-12-03', end: '2026-12-02' } }), /ends before/)
+  assert.throws(() => films.editShot(p.id, 'a', 'a1', { plan: { start: 'tomorrow' } }), /YYYY-MM-DD/)
+  films.editShot(p.id, 'a', 'a1', { plan: null })
+  assert.equal(films.find(films.get(p.id), 'a1').sh.plan, null)
+  films.editScene(p.id, 'a', { plan: { start: '2026-12-01', end: '2026-12-05' } })
+  assert.deepEqual(films.get(p.id).scenes[0].plan, { start: '2026-12-01', end: '2026-12-05' })
+  films.autoPlan(p.id, { start: '2026-12-10', perDay: 2 })
+  const scenes = films.get(p.id).scenes
+  assert.deepEqual(scenes[0].shots.map((s) => s.plan.start), ['2026-12-10', '2026-12-10'], 'two shots a day')
+  assert.equal(scenes[1].shots[0].plan.start, '2026-12-11', 'the third shot lands on day two')
+  assert.deepEqual(scenes[0].plan, { start: '2026-12-01', end: '2026-12-05' }, 'autoPlan plans shots; a scene’s own dates stay as they were')
+  films.autoPlan(p.id, { clear: true })
+  assert.ok(films.get(p.id).scenes.every((s) => !s.plan && s.shots.every((sh) => !sh.plan)))
+  assert.throws(() => films.autoPlan(p.id, { perDay: 0 }), /1 to 500/)
+  fs.rmSync(dir, { recursive: true, force: true })
+})

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { media } from '../media'
 import { ask } from './Confirm'
 import StageBoard from './StageBoard'
 import { needsPrevis } from '../../../service/staging'
@@ -14,6 +13,10 @@ import { askAgent, useAgentName } from './ChatPanel'
 import { CinemaChips, CinemaPicker, LookbookBox, PromptTools, useSlate } from './CraftKit'
 import { SPEEDS } from '../../../service/speed'
 import { FirstRenders, useFirstRenders } from './Speed'
+import { BoardTools, BulkBar, LinesTable, SceneProg, ShotTable, useFilmBoard } from './FilmBoard'
+import FilmDash from './FilmDash'
+import FilmPlan from './FilmPlan'
+import { FILM_STATE, clock, estimate, first, nice, plural, ratio, src } from './filmkit'
 
 // Projects: a short film made step by step (src/service/productions.js). The list of films, and one film as a
 // six-step wizard: Idea, Story, Cast and places, Storyboard, Film it, Watch. The storyboard is the heart of it:
@@ -51,17 +54,6 @@ const LOOKS = [
 ]
 const ANGLE_NAMES = { quarter: 'Turned a little', side: 'From the side', wide: 'Wider' }
 const CAMERAS = ['Wide shot, static', 'Medium shot, static', 'Close-up, static', 'Wide shot, slow push in', 'Medium shot, handheld', 'Close-up, slow push in', 'Tracking shot following them', 'Over the shoulder']
-const FILM_STATE = {
-  draft: ['Not planned', ''],
-  ready: ['Not filmed yet', ''],
-  speaking: ['Saying the line…', 'busy'],
-  queued: ['Waiting to film', 'busy'],
-  rendering: ['Filming…', 'busy'],
-  pick: ['Pick a take', 'pick'],
-  finishing: ['Finishing…', 'busy'],
-  finished: ['Done', 'ok'],
-  error: ['Failed', 'bad']
-}
 const EXAMPLE = `Title: One More Try
 
 INT. POTTERY STUDIO - DAY
@@ -81,17 +73,8 @@ Tess runs through the rain to her car, the bowl wrapped in a towel against her c
 TESS
 Don't you dare break.
 `
-const clock = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
 // a film's length in words: whole minutes by name ("12 minutes", "180 minutes"), the rest as m:ss
 const lengthWords = (s) => (s % 60 === 0 ? `${s / 60} minute${s === 60 ? '' : 's'}` : clock(s))
-const src = (o) => (o?.path ? fileUrl(o.path) : media(o?.url))
-const first = (x) => String(x || '').split(/\s+/)[0].toLowerCase()
-// a name in capitals, as a script's cue writes it, the way people read it: "MR. WHISKERS" -> "Mr. Whiskers"
-const nice = (n) => (n && n === n.toUpperCase() ? n.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : n)
-const ratio = (aspect) => aspect.replace(':', ' / ')
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
-// about how long a hunt takes on a 4090: ~14 s of GPU per second of preview
-const estimate = (shots, previews) => Math.max(1, Math.round(shots.reduce((n, s) => n + s.seconds, 0) * previews * 14 / 60))
 
 // faces for characters: their own picture, or the ready-made catalogue's
 function useFaces() {
@@ -263,6 +246,11 @@ export function ProjectPage({ productionId, notify, go, openShot, openEdit, char
   const [v, setV] = useState(null)
   const top = useRef(null)
   const timer = useRef(null)
+  // the project page's lens: the wizard, the Dashboard (progress, links into the board) or the Plan (Gantt).
+  // Declared with the other hooks: they must run before the !v early return below.
+  const [pview, setPview] = useState('wizard')
+  // a dashboard/plan link into the board: which scene (and shot) to open once the board shows
+  const [boardFocus, setBoardFocus] = useState(null)
   const load = () => P().get(productionId).then(setV, (err) => notify(err.message))
   useEffect(() => {
     load()
@@ -291,8 +279,13 @@ export function ProjectPage({ productionId, notify, go, openShot, openEdit, char
     P().update(v.id, { step }).catch(() => {})
     top.current?.scrollIntoView({ block: 'start' })
   }
+  const focusBoard = (sceneId, shotId = null, st = null) => {
+    setPview('wizard')
+    setStep(st === 'pick' || st === 'finished' || st === 'finishing' ? 'film' : 'board')
+    setBoardFocus({ sceneId, shotId, at: Date.now() })
+  }
   const at = STEPS.findIndex(([id]) => id === v.step)
-  const ctx = { v, setV, act, load, notify, go, openShot, openEdit, characters, setStep, filmShotToCreate }
+  const ctx = { v, setV, act, load, notify, go, openShot, openEdit, characters, setStep, filmShotToCreate, boardFocus, clearBoardFocus: () => setBoardFocus(null) }
   const t = v.totals
   const filmed = t.finished + t.pick
   const status = {
@@ -309,11 +302,24 @@ export function ProjectPage({ productionId, notify, go, openShot, openEdit, char
         <input className="shot-name hero-title-input" value={v.name} aria-label="Film title" onChange={(e) => setV({ ...v, name: e.target.value })} onBlur={(e) => act(() => P().update(v.id, { name: e.target.value.trim() || 'Untitled film' }))} />
       </Hero>
       <div className="proj-map-row">
+        <button className={`btn btn-small ${pview === 'dash' ? 'btn-primary' : ''}`} onClick={() => setPview(pview === 'dash' ? 'wizard' : 'dash')} title="Where the whole film stands: every number, every scene and shot, linked to the board">
+          Dashboard
+        </button>
+        <button className={`btn btn-small ${pview === 'plan' ? 'btn-primary' : ''}`} onClick={() => setPview(pview === 'plan' ? 'wizard' : 'plan')} title="Schedule the film: dates on scenes and shots, a Gantt of the whole movie">
+          Plan
+        </button>
         <button className="btn btn-small" onClick={() => openStoryMap('production', v.id)} title="The whole film as a mindmap: scenes and shots, coloured by what is written, filmed and finished">
           Storyboard map
         </button>
+        <button className="btn btn-small" onClick={() => window.ivstudio.story.open(v.id)} title="The scenes and shots in a window of their own, for rewriting the words: every change lands on this board at once">
+          Refine story ↗
+        </button>
       </div>
-      <nav className="wiz-steps" aria-label="Steps">
+      {pview === 'dash' && <FilmDash v={v} goScene={(sceneId) => focusBoard(sceneId)} goShot={(sceneId, shotId, st) => focusBoard(sceneId, shotId, st)} />}
+      {pview === 'plan' && <FilmPlan v={v} act={act} goShot={(sceneId, shotId, st) => focusBoard(sceneId, shotId, st)} />}
+      {pview === 'wizard' && (
+        <>
+          <nav className="wiz-steps" aria-label="Steps">
         {STEPS.map(([id, label], i) => (
           <button key={id} className={`wiz-step-btn ${i === at ? 'on' : i < at ? 'done' : ''}`} aria-current={i === at ? 'step' : undefined} onClick={() => setStep(id)}>
             <span className="wiz-step-n">{i < at ? '✓' : i + 1}</span>
@@ -330,6 +336,8 @@ export function ProjectPage({ productionId, notify, go, openShot, openEdit, char
       {v.step === 'board' && <Board {...ctx} mode="board" />}
       {v.step === 'film' && <Board {...ctx} mode="film" />}
       {v.step === 'watch' && <Watch {...ctx} />}
+        </>
+      )}
     </div>
   )
 }
@@ -844,7 +852,7 @@ function FilmSettings({ v, act }) {
 }
 
 // ---------- 4 · Storyboard and 5 · Film it: one board of panels ----------
-function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate }) {
+function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate, boardFocus, clearBoardFocus }) {
   const [open, setOpen] = useState(null) // { sceneId, shotId } in the drawer
   const [takes, setTakes] = useState(null) // shot id whose takes are being picked
   // takes per shot, remembered on this PC
@@ -863,6 +871,20 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate }
   }
   const [fromSketch, setFromSketch] = useState(true)
   const face = useFaces()
+  const fb = useFilmBoard(v)
+  // a Dashboard or Plan link landed here: unfold the scene, scroll to it, open the shot's drawer. The focus is
+  // cleared after the jump, not before: clearing re-renders, and this effect's cleanup would kill the timer.
+  useEffect(() => {
+    if (!boardFocus) return
+    const { sceneId, shotId } = boardFocus
+    if (fb.shut.has(sceneId)) fb.toggleShut(sceneId)
+    const t = setTimeout(() => {
+      document.getElementById(`film-scene-${sceneId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      if (shotId) setOpen({ sceneId, shotId })
+      clearBoardFocus?.()
+    }, 60)
+    return () => clearTimeout(t)
+  }, [boardFocus])
   const b = v.breakdown
   const t = v.totals
   const planning = b?.state === 'running'
@@ -882,6 +904,26 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate }
     setAnimatic(r?.file ? { ...r, open: true } : null)
   }
   const unvoiced = all.filter((s) => s.line && !s.voiceLine && characters.find((c) => c.id === s.character)?.voiceId).length
+  const addShot = async (sc) => {
+    const p = await act(() => P().editShot(v.id, sc.id, sc.shots.at(-1)?.id || null, { add: true, action: '', seconds: 5 }))
+    const added = p?.scenes.find((s) => s.id === sc.id)?.shots.at(-1)
+    if (added) setOpen({ sceneId: sc.id, shotId: added.id })
+  }
+  // the picked shots, worked on together from the bulk bar
+  const filmPicked = async () => {
+    const r = await act(() => P().renderShots(v.id, [...fb.selected], { previews, fromSketch }), (jobs) => (jobs?.length ? `Filming ${plural(jobs.length, 'shot')}.` : 'Nothing new to film: those shots are filming already or have no prompt yet.'))
+    if (r) fb.clear()
+  }
+  const sketchPicked = async () => {
+    const r = await act(() => P().sketch(v.id, { shotIds: [...fb.selected] }), (jobs) => `Sketching ${plural(jobs.length, 'panel')}.`)
+    if (r) fb.clear()
+  }
+  const deletePicked = async () => {
+    const n = fb.selected.size
+    if (!(await ask({ title: `Delete ${plural(n, 'shot')}?`, message: 'They leave the board. Anything already filmed stays in Shots and the Library.', confirm: 'Delete them' }))) return
+    const r = await act(() => P().removeShots(v.id, [...fb.selected]), `Deleted ${plural(n, 'shot')}.`)
+    if (r) fb.clear()
+  }
 
   if (!v.scenes.length)
     return (
@@ -1013,6 +1055,7 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate }
         </div>
       )}
       <FilmSettings v={v} act={act} />
+      <BoardTools fb={fb} scenes={v.scenes} />
       {b?.sketchError && !film && <p className="small pink">Sketches: {b.sketchError}</p>}
       {b?.state === 'done' && !film && b.cutScenes?.length > 0 && (
         <p className="small pink">
@@ -1031,54 +1074,83 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate }
           The writer left out {b.restoredLines === 1 ? 'one line' : `${b.restoredLines} lines`} of your script, so {b.restoredLines === 1 ? 'it has a shot' : 'they have shots'} of {b.restoredLines === 1 ? 'its' : 'their'} own, in a plain medium close-up. Open {b.restoredLines === 1 ? 'it' : 'them'} to change the camera or the action.
         </p>
       )}
-      {v.scenes.map((sc, k) => (
-        <div key={sc.id} className="wiz-scene">
-          <div className="wiz-scene-head">
-            <span className="wiz-scene-n">Scene {k + 1}</span>
-            <span className="wiz-scene-place">
-              {sc.location || sc.heading}
-              {sc.time ? ` · ${sc.time.toLowerCase()}` : ''}
-            </span>
-            <span className="mono small dim">{clock(sc.shots.reduce((n, s) => n + s.seconds, 0))}</span>
-            {sc.stale && <span className="mono small pink">script changed</span>}
-            {film && sc.shots.some((s) => s.prompt && !s.projectId) && (
-              <button className="link-btn mono small" onClick={() => act(() => P().renderScene(v.id, sc.id, { previews, fromSketch }), (jobs) => `Filming ${plural(jobs.length, 'shot')}.`)}>
-                Film this scene
-              </button>
-            )}
-          </div>
-          {!film && <SceneTools v={v} sc={sc} k={k} act={act} planning={planning} />}
-          <div className="wiz-panels">
-            {sc.shots.map((sh, i) => (
-              <Panel
-                key={sh.id}
-                v={v}
-                sh={sh}
-                n={i + 1}
-                film={film}
-                ch={characters.find((c) => c.id === sh.character)}
-                face={face}
-                onClick={() => (film && sh.state.status === 'pick' ? setTakes(sh.id) : setOpen({ sceneId: sc.id, shotId: sh.id }))}
-              />
-            ))}
-            {!film && !planning && (
-              <button
-                className="wiz-panel wiz-panel-add"
-                style={{ '--ratio': ratio(v.aspect) }}
-                onClick={async () => {
-                  const p = await act(() => P().editShot(v.id, sc.id, sc.shots.at(-1)?.id || null, { add: true, action: '', seconds: 5 }))
-                  const added = p?.scenes.find((s) => s.id === sc.id)?.shots.at(-1)
-                  if (added) setOpen({ sceneId: sc.id, shotId: added.id })
-                }}
-              >
-                <span className="wiz-panel-frame">+</span>
-                <span className="small dim">Add a shot</span>
-              </button>
-            )}
-            {planning && !sc.shots.length && <div className="wiz-panel wiz-panel-ghost" style={{ '--ratio': ratio(v.aspect) }} />}
-          </div>
-        </div>
-      ))}
+      {fb.view === 'lines' ? (
+        <LinesTable v={v} scenes={v.scenes.filter((sc) => !fb.filtering || fb.shown(sc).length)} act={act} characters={characters} nums={fb.nums} onOpen={(sc, sh) => (film && sh.state.status === 'pick' ? setTakes(sh.id) : setOpen({ sceneId: sc.id, shotId: sh.id }))} />
+      ) : (
+        v.scenes.map((sc, k) => {
+          const shots = fb.shown(sc)
+          if (fb.filtering && !shots.length) return null
+          const shut = fb.shut.has(sc.id)
+          return (
+            <div key={sc.id} className="wiz-scene" id={`film-scene-${sc.id}`}>
+              <div className="wiz-scene-head">
+                <button className="wiz-scene-fold" aria-expanded={!shut} aria-label={shut ? `Open scene ${k + 1}` : `Fold scene ${k + 1} away`} onClick={() => fb.toggleShut(sc.id)}>
+                  {shut ? '▸' : '▾'}
+                </button>
+                <span className="wiz-scene-n">Scene {k + 1}</span>
+                <span className="wiz-scene-place">
+                  {sc.location || sc.heading}
+                  {sc.time ? ` · ${sc.time.toLowerCase()}` : ''}
+                </span>
+                <SceneProg sc={sc} />
+                {fb.filtering && (
+                  <span className="mono small dim">
+                    {shots.length} of {sc.shots.length} shown
+                  </span>
+                )}
+                {sc.stale && <span className="mono small pink">script changed</span>}
+                {film && sc.shots.some((s) => s.prompt && !s.projectId) && (
+                  <button className="link-btn mono small" onClick={() => act(() => P().renderScene(v.id, sc.id, { previews, fromSketch }), (jobs) => `Filming ${plural(jobs.length, 'shot')}.`)}>
+                    Film this scene
+                  </button>
+                )}
+              </div>
+              {!shut && !film && <SceneTools v={v} sc={sc} k={k} act={act} planning={planning} />}
+              {!shut && fb.view === 'table' && (
+                <ShotTable
+                  v={v}
+                  sc={sc}
+                  shots={shots}
+                  act={act}
+                  characters={characters}
+                  nums={fb.nums}
+                  selecting={fb.selecting}
+                  selected={fb.selected}
+                  onToggle={fb.toggle}
+                  onOpen={(sh) => (film && sh.state.status === 'pick' ? setTakes(sh.id) : setOpen({ sceneId: sc.id, shotId: sh.id }))}
+                  onAdd={!film && !planning && !fb.filtering ? () => addShot(sc) : null}
+                />
+              )}
+              {!shut && fb.view === 'panels' && (
+                <div className="wiz-panels">
+                  {shots.map((sh) => (
+                    <Panel
+                      key={sh.id}
+                      v={v}
+                      sh={sh}
+                      n={fb.nums.get(sh.id)}
+                      film={film}
+                      ch={characters.find((c) => c.id === sh.character)}
+                      face={face}
+                      picking={fb.selecting}
+                      picked={fb.selected.has(sh.id)}
+                      onClick={() => (fb.selecting ? fb.toggle(sh.id) : film && sh.state.status === 'pick' ? setTakes(sh.id) : setOpen({ sceneId: sc.id, shotId: sh.id }))}
+                    />
+                  ))}
+                  {!film && !planning && !fb.filtering && (
+                    <button className="wiz-panel wiz-panel-add" style={{ '--ratio': ratio(v.aspect) }} onClick={() => addShot(sc)}>
+                      <span className="wiz-panel-frame">+</span>
+                      <span className="small dim">Add a shot</span>
+                    </button>
+                  )}
+                  {planning && !sc.shots.length && <div className="wiz-panel wiz-panel-ghost" style={{ '--ratio': ratio(v.aspect) }} />}
+                </div>
+              )}
+            </div>
+          )
+        })
+      )}
+      {fb.selecting && <BulkBar film={film} shots={all.filter((s) => fb.selected.has(s.id))} previews={previews} onAll={() => fb.selectMany(v.scenes.flatMap((sc) => fb.shown(sc).map((s) => s.id)))} onFilm={filmPicked} onSketch={sketchPicked} onDelete={deletePicked} onClear={fb.clear} />}
       {film ? (
         <Foot back={() => setStep('board')} next={() => setStep('watch')} label="Next: watch it" disabled={!t.finished && !t.pick} hint={!t.finished && !t.pick ? 'Film a shot to watch it.' : ''} />
       ) : (
@@ -1183,13 +1255,18 @@ function Animatic({ v, a, unvoiced, onVoice, onClose }) {
   )
 }
 
-function Panel({ v, sh, n, film, ch, face, onClick }) {
+function Panel({ v, sh, n, film, ch, face, onClick, picking = false, picked = false }) {
   const st = sh.state
   const [label, tone] = FILM_STATE[st.status] || FILM_STATE.draft
   const video = film && (st.final || (st.candidates?.length ? st.candidates.find((c) => c.n === st.picked) || st.candidates[0] : null))
   return (
-    <button className={`wiz-panel ${film ? `film ${st.status}` : ''}`} style={{ '--ratio': ratio(v.aspect) }} onClick={onClick}>
+    <button className={`wiz-panel ${film ? `film ${st.status}` : ''} ${picking ? 'picking' : ''} ${picked ? 'picked' : ''}`} style={{ '--ratio': ratio(v.aspect) }} onClick={onClick}>
       <span className="wiz-panel-frame">
+        {picking && (
+          <span className="wiz-panel-check" aria-hidden="true">
+            {picked ? '✓' : ''}
+          </span>
+        )}
         {video ? (
           <video src={src(video)} muted loop playsInline preload="metadata" poster={sh.sketch ? fileUrl(sh.sketch) : undefined} onMouseEnter={(e) => e.target.play().catch(() => {})} onMouseLeave={(e) => e.target.pause()} />
         ) : sh.sketch ? (

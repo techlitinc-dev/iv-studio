@@ -4,7 +4,7 @@ This build connects IV Outreach 0.12.4, IV Studio 1.1.14 and IV Signal 0.1.10 on
 
 ## Use it
 
-1. Open each updated app once. The red **Hivemind** button in its top bar shows the other connected apps.
+1. Open each updated app once. In Outreach and Signal, the red **Hivemind** button in the top bar shows the other connected apps. Studio has no Hivemind window: handoffs from the other apps still arrive and open their project, and the shared profile still feeds its chat's memory, but there is nothing to open in Studio itself.
 2. In Outreach, choose your business and campaign, then Scanning → Content briefs. Prepare a brief and select **Create in IV Studio**. The business is linked to the shared workspace and Studio opens a native project with the campaign, offer, audience, voice, visual direction and source evidence in its creative notes.
 3. Work on the project in Studio using its existing tools. When ready, open **Hivemind**, select that handoff, choose the finished picture/video files, review a caption and network, then select **Prepare in IV Signal**.
 4. Signal opens a native unapproved post draft with the selected media copied into its own library. Review the wording, media, alt text and network checks before using Signal's existing approval/publishing controls.

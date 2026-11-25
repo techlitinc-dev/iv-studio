@@ -206,16 +206,23 @@ export class RunPod {
   // on an H100 — if nothing within ~25% of the chosen price is free, ask them to try again instead.
   // perHour: the catalog price of a chosen card outside the curated GPUS (the dropdown lists them all), so its
   // fallback is capped the same way; with no known price an unknown card is tried alone, never substituted.
-  async createPod({ gpu, perHour = null, volume, token, idleSeconds, hf = null }) {
+  // ask: the pod is the card picked in the app; a substitute starts only after the person says yes to that card
+  // (the Cloud page's question), never silently. No ask (a test, an older caller): the chosen card alone.
+  async createPod({ gpu, perHour = null, volume, token, idleSeconds, hf = null, ask = null }) {
     const chosen = GPUS.find((g) => g.id === gpu)
     const price = chosen?.perHour ?? perHour
     const cap = price != null ? price * 1.25 : 0
     const order = [gpu, ...GPUS.filter((g) => g.id !== gpu && g.perHour <= cap).map((g) => g.id)]
     let last
     for (const id of order) {
+      if (id !== gpu) {
+        const alt = GPUS.find((g) => g.id === id)
+        const ok = ask ? await ask({ wanted: chosen?.label || gpu, gpu: id, label: alt?.label || id, perHour: alt?.perHour ?? null, dataCenter: volume.dataCenter }) : false
+        if (!ok) throw new Error(`${chosen?.label || gpu} is taken in ${volume.dataCenter} right now. Try again in a few minutes, or pick another GPU on the Cloud page.`)
+      }
       try {
         const pod = await this.req('/pods', { method: 'POST', json: this.podBody({ gpu: id, volume, token, idleSeconds, hf }) })
-        if (id !== gpu) this.onLog(`${GPUS.find((g) => g.id === gpu)?.label || gpu} was taken in ${volume.dataCenter}; started a ${GPUS.find((g) => g.id === id)?.label || id} ($${GPUS.find((g) => g.id === id)?.perHour}/h) instead.`)
+        if (id !== gpu) this.onLog(`${chosen?.label || gpu} was taken in ${volume.dataCenter}; started a ${GPUS.find((g) => g.id === id)?.label || id} ($${GPUS.find((g) => g.id === id)?.perHour}/h) instead, with your OK.`)
         return { id: pod.id, gpu: id, perHour: pod.cost, url: RunPod.url(pod.id) }
       } catch (err) {
         last = err

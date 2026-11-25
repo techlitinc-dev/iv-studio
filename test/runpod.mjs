@@ -118,18 +118,18 @@ async function serviceTests() {
   api.state.noCapacity.add('NVIDIA L40S')
   const logs = []
   rp.onLog = (l) => logs.push(l)
-  const pod = await rp.createPod({ gpu: 'NVIDIA L40S', volume: vol, token: 'tok', idleSeconds: 300 })
-  ok(pod.gpu === GPUS[1].id && pod.url === 'https://pod1-8189.proxy.runpod.net' && logs.some((l) => /taken in US-NC-1/.test(l)), 'pod: chosen GPU out of capacity falls back to the next one, and says so')
+  const pod = await rp.createPod({ gpu: 'NVIDIA L40S', volume: vol, token: 'tok', idleSeconds: 300, ask: async () => true })
+  ok(pod.gpu === GPUS[1].id && pod.url === 'https://pod1-8189.proxy.runpod.net' && logs.some((l) => /taken in US-NC-1/.test(l)), 'pod: chosen GPU out of capacity falls back to the next one, once the person says yes, and says so')
 
   // the fallback is price-capped: choosing a 4090 must never silently land on an H100 (GitHub: the person's report)
   const tried = () => api.calls.filter((c) => c.method === 'POST' && c.route === '/pods').map((c) => c.body.gpu.id)
   api.state.noCapacity = new Set(['NVIDIA GeForce RTX 4090', 'NVIDIA L40S'])
-  const pod2 = await rp.createPod({ gpu: 'NVIDIA GeForce RTX 4090', volume: vol, token: 'tok', idleSeconds: 300 })
+  const pod2 = await rp.createPod({ gpu: 'NVIDIA GeForce RTX 4090', volume: vol, token: 'tok', idleSeconds: 300, ask: async () => true })
   ok(pod2.gpu === 'NVIDIA RTX 6000 Ada Generation', 'pod: a 4090 falls back to the 6000 Ada (near its price)')
   ok(!tried().includes('NVIDIA H100 80GB HBM3') && !tried().includes('NVIDIA A100 80GB PCIe') && !tried().includes('NVIDIA GeForce RTX 5090'), 'pod: pricier cards (H100, A100, 5090) are never tried for a 4090')
   api.state.noCapacity.add('NVIDIA RTX 6000 Ada Generation')
   const before = tried().length
-  await rp.createPod({ gpu: 'NVIDIA GeForce RTX 4090', volume: vol, token: 'tok', idleSeconds: 300 }).then(
+  await rp.createPod({ gpu: 'NVIDIA GeForce RTX 4090', volume: vol, token: 'tok', idleSeconds: 300, ask: async () => true }).then(
     () => ok(false, 'pod: nothing affordable left should fail, not substitute a pricey GPU'),
     (e) => ok(/within about \$0\.89\/h/.test(e.message), 'pod: the failure says what price range was looked for')
   )
@@ -141,11 +141,27 @@ async function serviceTests() {
   ok(sxm.gpu === 'NVIDIA A100-SXM4-80GB', 'pod: a catalog card outside the curated six is started when it is free')
   api.state.noCapacity = new Set(['NVIDIA A100-SXM4-80GB'])
   const before2 = tried().length
-  await rp.createPod({ gpu: 'NVIDIA A100-SXM4-80GB', perHour: 0.7, volume: vol, token: 'tok', idleSeconds: 300 }).then(
+  await rp.createPod({ gpu: 'NVIDIA A100-SXM4-80GB', perHour: 0.7, volume: vol, token: 'tok', idleSeconds: 300, ask: async () => true }).then(
     () => ok(false, 'pod: an outside card with nothing near its price should fail, not substitute a pricier GPU'),
     (e) => ok(/within about \$0\.7\/h/.test(e.message), 'pod: an outside card’s own price caps its fallback')
   )
   ok(tried().length === before2 + 1 && tried().at(-1) === 'NVIDIA A100-SXM4-80GB', 'pod: nothing near the outside card’s price: only that card was tried')
+
+  // the pod is the card picked in the app: without a yes (or with a no) no substitute is even tried
+  api.state.noCapacity = new Set(['NVIDIA L40S'])
+  const before3 = tried().length
+  await rp.createPod({ gpu: 'NVIDIA L40S', volume: vol, token: 'tok', idleSeconds: 300 }).then(
+    () => ok(false, 'pod: no ask callback should mean no substitute'),
+    (e) => ok(/is taken in US-NC-1/.test(e.message) && /pick another GPU/.test(e.message), 'pod: without consent the failure says the picked card is taken')
+  )
+  ok(tried().length === before3 + 1 && tried().at(-1) === 'NVIDIA L40S', 'pod: without consent only the picked card was tried')
+  const asked = []
+  await rp.createPod({ gpu: 'NVIDIA L40S', volume: vol, token: 'tok', idleSeconds: 300, ask: async (q) => (asked.push(q), false) }).then(
+    () => ok(false, 'pod: a declined substitute should fail'),
+    (e) => ok(/is taken/.test(e.message), 'pod: a declined substitute fails plainly')
+  )
+  ok(asked.length === 1 && asked[0].wanted === 'L40S · 48 GB' && asked[0].label === GPUS[1].label && asked[0].dataCenter === 'US-NC-1', 'pod: the question names the picked card, the offered one and the data center')
+  ok(tried().length === before3 + 2, 'pod: a declined substitute was never posted')
 
   api.state.pods = api.state.pods.filter((p) => p.id === 'pod1')
   api.state.noCapacity = new Set(['NVIDIA L40S'])

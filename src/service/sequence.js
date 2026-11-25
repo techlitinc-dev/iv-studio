@@ -205,7 +205,9 @@ export function takeGraph({ template, seq, character, name, voiceRef, unet, refs
 }
 
 // Redo start..end seconds of a finished video. Everything outside the window is kept as it was.
-export function retakeGraph({ template, seq, character, name, sourcePath, prompt, start, end, mode, seed, unet }) {
+// voiceAudio (a staged sound file): the retake mouths that audio instead of the source's own — the
+// lip-sync module's graph (mode 'video': the picture is redone to the new performance, the sound kept).
+export function retakeGraph({ template, seq, character, name, sourcePath, prompt, start, end, mode, seed, unet, voiceAudio = null }) {
   const { g, model } = loaders(template, character, unet, seq.loras)
   g.src = { class_type: 'VHS_LoadVideoPath', inputs: { video: sourcePath, force_rate: 24, custom_width: 0, custom_height: 0, frame_load_cap: 0, skip_first_frames: 0, select_every_nth: 1, format: 'AnimateDiff' } }
   g.sampler = { class_type: 'KSamplerSelect', inputs: { sampler_name: 'er_sde' } }
@@ -213,6 +215,10 @@ export function retakeGraph({ template, seq, character, name, sourcePath, prompt
   g.retake = {
     class_type: 'H3Retake',
     inputs: { model, clip: ['clip', 0], video_vae: ['vvae', 0], audio_vae: ['avae', 0], images: ['src', 0], audio: ['src', 2], prompt: fill(prompt, character), start_seconds: start, end_seconds: end, mode: RETAKE_MODES[mode], seed, sampler: ['sampler', 0], sigmas: ['sigmas', 0] }
+  }
+  if (voiceAudio) {
+    g.voice = { class_type: 'LoadAudio', inputs: { audio: voiceAudio } }
+    g.retake.inputs.audio = ['voice', 0]
   }
   g[SAVES.master] = save(['retake', 0], ['retake', 1], `H3/sequences/${name}_retake`)
   return { graph: g }

@@ -27,6 +27,17 @@ import { applyOps } from './timeline.js'
 
 const now = () => new Date().toISOString()
 const id6 = () => randomUUID().slice(0, 6)
+// Schedule days (the Plan view): YYYY-MM-DD or nothing.
+const isoDay = (x) => (/^\d{4}-\d{2}-\d{2}$/.test(String(x || '')) ? String(x) : null)
+// A plan patch -> a stored plan: { start, end } validated, or null to clear.
+function planDays(plan) {
+  if (plan === null) return null
+  const start = isoDay(plan?.start)
+  const end = isoDay(plan?.end)
+  if (!start || !end) throw new Error('Plan dates are days, YYYY-MM-DD.')
+  if (end < start) throw new Error('The plan ends before it starts.')
+  return { start, end }
+}
 const first = (x) => String(x || '').split(/\s+/)[0].toLowerCase() // people match by first name
 // the film's video model: MiniMax H3 (the default) or LTX 2.5 (GitHub #34)
 const videoOf = (p) => (p?.settings?.video === LTX ? LTX : 'h3')
@@ -1158,6 +1169,8 @@ export class Productions {
       for (const k of ['action', 'staging', 'camera', 'ends', 'characters', 'speaker', 'line', 'seconds', 'prompt', 'character', 'stage', 'continues']) if (patch[k] !== undefined) sh[k] = patch[k]
       // a seed of the shot's own: every Film it starts from it (null: a new one each time)
       if (patch.seed !== undefined) sh.seed = patch.seed === null || patch.seed === '' ? null : Math.max(0, Math.floor(Number(patch.seed)) || 0)
+      // its place in the film's schedule (the Plan view): { start, end } as YYYY-MM-DD days, or null
+      if (patch.plan !== undefined) sh.plan = planDays(patch.plan)
       if (sh.continues && i === 0) sh.continues = false // the first shot of a scene has nothing to carry on from
       // a staging board's plan becomes the shot's words, unless the words were given too
       if (patch.stage) {
@@ -1175,6 +1188,62 @@ export class Productions {
       if (sh) return { sc, sh }
     }
     throw new Error(`No shot ${shotId}.`)
+  }
+  // The board's selection removed in one write (their renders stay in Shots and the Library, as with editShot's remove).
+  removeShots(id, shotIds) {
+    const wanted = new Set(shotIds)
+    return this.patch(id, (p) => {
+      for (const sc of p.scenes) sc.shots = sc.shots.filter((sh) => !wanted.has(sh.id))
+    })
+  }
+  // A scene changed from Story-refine: its heading/place/time, added after another scene (add), removed
+  // (remove: its shots go with it; anything filmed stays in Shots and the Library), or moved (move: -1 | 1).
+  editScene(id, sceneId, patch = {}) {
+    return this.patch(id, (p) => {
+      const i = p.scenes.findIndex((s) => s.id === sceneId)
+      if (patch.add) {
+        const sc = { id: id6(), heading: String(patch.heading || 'INT. NEW SCENE - DAY'), location: String(patch.location || ''), time: String(patch.time || 'DAY'), elements: [], shots: [] }
+        p.scenes.splice(i < 0 ? p.scenes.length : i + 1, 0, sc)
+        return
+      }
+      if (i < 0) throw new Error('No such scene.')
+      if (patch.remove) {
+        p.scenes.splice(i, 1)
+        return
+      }
+      if (patch.move) {
+        const j = i + Math.sign(patch.move)
+        if (j >= 0 && j < p.scenes.length) [p.scenes[i], p.scenes[j]] = [p.scenes[j], p.scenes[i]]
+        return
+      }
+      const sc = p.scenes[i]
+      for (const k of ['heading', 'location', 'time']) if (patch[k] !== undefined) sc[k] = String(patch[k])
+      // a scene's own scheduled span (the Plan view); without one its dates derive from its shots
+      if (patch.plan !== undefined) sc.plan = planDays(patch.plan)
+    })
+  }
+  // The whole film scheduled at once (the Plan view's Auto-plan): shots in script order, perDay of them on each
+  // day from start (default today), each shot taking one day. clear: every planned date goes instead.
+  autoPlan(id, { start = null, perDay = 20, clear = false } = {}) {
+    if (clear)
+      return this.patch(id, (p) => {
+        for (const sc of p.scenes) {
+          delete sc.plan
+          for (const sh of sc.shots) delete sh.plan
+        }
+      })
+    const day0 = isoDay(start) || new Date().toISOString().slice(0, 10)
+    const per = Math.floor(Number(perDay))
+    if (!(per >= 1 && per <= 500)) throw new Error('Shots a day: 1 to 500.')
+    return this.patch(id, (p) => {
+      let n = 0
+      for (const sc of p.scenes)
+        for (const sh of sc.shots) {
+          const d = new Date(new Date(`${day0}T00:00:00Z`).getTime() + Math.floor(n / per) * 86400000).toISOString().slice(0, 10)
+          sh.plan = { start: d, end: d }
+          n++
+        }
+    })
   }
 
   // The shot's line in its character's voice (for lip-sync): the file becomes the shot's voice line.
@@ -1574,6 +1643,18 @@ export class Productions {
     // a continuous shot waits until the shot before it has a take to carry on from
     const hasTake = (sh) => !!sh?.projectId && ['pick', 'finished', 'finishing'].includes(this.shotState(sh).status)
     const ids = scenes.flatMap((sc) => sc.shots.filter((sh, i) => sh.prompt.trim() && !sh.projectId && (!sh.continues || hasTake(sc.shots[i - 1]))).map((sh) => sh.id))
+    return ids.length ? this.filmShots(id, ids, opts) : []
+  }
+  // Previews for the board's selection, across scenes: every picked shot with a prompt that isn't in flight
+  // (a picked shot with takes is filmed again, as the drawer's Film again does). A continuous shot still waits
+  // for the take before it.
+  async renderShots(id, shotIds, opts = {}) {
+    const p = this.get(id)
+    if (this.filming.has(id)) throw new Error('This film is already being filmed. Wait for its lines to be said.')
+    const wanted = new Set(shotIds)
+    const busy = new Set(['speaking', 'queued', 'rendering', 'finishing'])
+    const hasTake = (sh) => !!sh?.projectId && ['pick', 'finished', 'finishing'].includes(this.shotState(sh).status)
+    const ids = p.scenes.flatMap((sc) => sc.shots.filter((sh, i) => wanted.has(sh.id) && sh.prompt.trim() && !busy.has(this.shotState(sh).status) && (!sh.continues || hasTake(sc.shots[i - 1]))).map((sh) => sh.id))
     return ids.length ? this.filmShots(id, ids, opts) : []
   }
   // Finishes preview n of the shot's latest hunt (2 MP; with the voice line as its sound when it has one).

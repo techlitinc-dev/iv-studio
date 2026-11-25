@@ -17,6 +17,20 @@ export const WORKFLOWS = [
     needs: ['H3 on this PC']
   },
   {
+    page: 'lipsync',
+    name: 'Lip-sync',
+    tag: 'Re-mouth a video to new words',
+    about: 'Pick a video and the words: said in a character’s voice, or any sound file. MiniMax H3 redoes the picture so the lips move with the new audio, and keeps everything outside the stretch exactly as it was.',
+    needs: ['H3 on this PC or your own cloud', 'A video and the audio to mouth']
+  },
+  {
+    page: 'flows',
+    name: 'My workflows',
+    tag: 'Your own ComfyUI workflows, as simple pages',
+    about: 'Bring a workflow saved in API format. Techlit Studio reads it, shows only the controls that matter, and runs it on this PC or your cloud pod — which starts when you run and shuts itself off when idle.',
+    needs: ['A ComfyUI workflow (API format)', 'Its models and node packs (the page checks)']
+  },
+  {
     page: 'sizzle',
     name: 'Sizzle',
     tag: 'A website, made into a film',

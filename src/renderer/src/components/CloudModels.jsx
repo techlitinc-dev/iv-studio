@@ -10,6 +10,21 @@ export default function CloudModels() {
   const [state, setState] = useState(null)
   useEffect(() => {
     const offAsk = window.ivstudio.cloud.onAsk?.(async (q) => {
+      // a substitute GPU for the one picked (runpod.js createPod): starts only on a yes here
+      if (q.kind === 'gpu') {
+        const ok = await ask({
+          kicker: 'Your cloud GPU',
+          title: `${q.wanted} is taken — start a ${q.label} instead?`,
+          message: `Every ${q.wanted} in ${q.dataCenter} is busy right now. The ${q.label} is free there${q.perHour != null ? ` at $${Number(q.perHour).toFixed(2)} an hour` : ''}. Your models and files are the same either way: both cards use your one volume.`,
+          details: [
+            ['Picked by you', q.wanted],
+            ['Offered instead', `${q.label}${q.perHour != null ? ` · $${Number(q.perHour).toFixed(2)}/h` : ''}`]
+          ],
+          confirm: `Start the ${q.label}`
+        })
+        window.ivstudio.cloud.answer({ id: q.id, ok })
+        return
+      }
       const n = q.downloads.length
       const where = q.provider === 'runpod' ? 'your RunPod network volume' : 'your Modal storage'
       const details = q.downloads.map((d) => [gb(d.size || 0), d.label])

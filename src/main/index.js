@@ -34,6 +34,7 @@ import { execFile } from 'node:child_process'
 import { Edits, FORMATS, LOUDNESS } from '../service/edits'
 import { EditGen } from '../service/editgen'
 import { Productions } from '../service/productions'
+import { CustomFlows } from '../service/customflows'
 import { Features } from '../service/feature'
 import { storyTree } from '../service/storymap'
 import { Reels } from '../service/reel'
@@ -211,6 +212,53 @@ function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
   // the chat popped out into its own window (openChatWindow) hears everything too; it only listens for the chat's
   if (chatWin && !chatWin.isDestroyed()) chatWin.webContents.send(channel, payload)
+  // so do the story-refine windows (openStoryWindow): a scene edited there reloads the board here, and back
+  for (const w of storyWins.values()) if (!w.isDestroyed()) w.webContents.send(channel, payload)
+}
+
+// ---------- story-refine windows ----------
+// One per film (StoryRefine.jsx at #story-refine/<id>): the scenes and shots as a writing surface, editing the
+// same production JSON through the same IPC as the main window; productions:changed keeps both in step.
+const storyWins = new Map()
+function openStoryWindow(productionId) {
+  const open = storyWins.get(productionId)
+  if (open && !open.isDestroyed()) {
+    open.show()
+    open.focus()
+    return
+  }
+  const b = readSettings(BASE).storyWindow || {}
+  const w = new BrowserWindow({
+    width: b.width || 1180,
+    height: b.height || 820,
+    ...(Number.isFinite(b.x) && Number.isFinite(b.y) ? { x: b.x, y: b.y } : {}),
+    minWidth: 760,
+    minHeight: 480,
+    show: false,
+    backgroundColor: BG,
+    title: 'Techlit Studio · Story refine',
+    icon: path.join(resourcesDir(path.join(app.getAppPath(), 'resources')), 'icon.png'),
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 14, y: 13 } } : { titleBarOverlay: { color: BG, symbolColor: '#f1ede5', height: 40 } }),
+    webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false }
+  })
+  storyWins.set(productionId, w)
+  w.webContents.on('will-navigate', (e, url) => {
+    if (url !== w.webContents.getURL()) e.preventDefault()
+  })
+  w.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https:\/\//.test(url)) shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  w.once('ready-to-show', () => w.show())
+  w.on('close', () => {
+    try {
+      writeSettings({ storyWindow: w.getBounds() }, BASE)
+    } catch {}
+  })
+  w.on('closed', () => storyWins.delete(productionId))
+  if (process.env.ELECTRON_RENDERER_URL) w.loadURL(`${process.env.ELECTRON_RENDERER_URL}#story-refine/${productionId}`)
+  else w.loadFile(path.join(__dirname, '../renderer/index.html'), { hash: `story-refine/${productionId}` })
 }
 
 // ---------- the chat in its own window ----------
@@ -1241,6 +1289,7 @@ app.whenReady().then(() => {
   handle('editgen:cancel', (id, genId) => editgen.cancel(id, genId))
   // ---------- Projects (a short film from script to rough cut) ----------
   const productions = new Productions({ dataDir: DATA, studio: () => studio, voices: () => voices, images: () => images, previs: () => previs, catalog: () => catalog, edits, localCopy, onChange: (id) => send('productions:changed', { id }), model: () => readSettings(BASE).ollamaModel || undefined, writer: () => writerOf(readSettings(BASE)) })
+  const customFlows = new CustomFlows({ dataDir: DATA, studio: () => studio })
   // Feature films (feature.js): acts and sequences over the productions above, with the trailer (a Sizzle) and songs (Music)
   const features = new Features({ dataDir: DATA, productions: () => productions, edits: () => edits, studio: () => studio, writer: () => writerOf(readSettings(BASE)), onChange: (id) => send('features:changed', { id }) })
   handle('features:list', () => features.list())
@@ -1260,7 +1309,6 @@ app.whenReady().then(() => {
   handle('features:planAll', (id, opts) => features.planAll(id, opts))
   ivWorkspace = workspaceHost({appId:'studio',dataDir:DATA,disabled:INCOGNITO,receive:(h,w)=>receiveStudio(h,w,productions)})
   ivWorkspace.capture(pendingWorkspaceArgs);ivWorkspace.ready()
-  handle('workspace:call',(method,args)=>{if(!Object.hasOwn(ivWorkspace.api,method))throw Error('Unknown workspace action.');return ivWorkspace.api[method](args||{})})
   handle('productions:list', () => productions.list())
   handle('productions:get', (id) => productions.view(id))
   handle('productions:create', (opts) => productions.create(opts))
@@ -1278,6 +1326,9 @@ app.whenReady().then(() => {
   handle('productions:writeEnvironmentPrompts', (id) => productions.writeEnvironmentPrompts(id))
   handle('productions:addEstablishingShots', (id) => productions.addEstablishingShots(id))
   handle('productions:editShot', (id, sceneId, shotId, patch) => productions.editShot(id, sceneId, shotId, patch))
+  handle('productions:editScene', (id, sceneId, patch) => productions.editScene(id, sceneId, patch))
+  handle('productions:autoPlan', (id, opts) => productions.autoPlan(id, opts))
+  handle('story:open', (id) => (openStoryWindow(id), true))
   handle('productions:speak', (id, shotId, opts) => productions.speak(id, shotId, opts))
   handle('productions:render', async (id, shotId, opts) => {
     const j = await productions.render(id, shotId, opts)
@@ -1289,6 +1340,12 @@ app.whenReady().then(() => {
     for (const j of jobs) pending.add(j.id)
     return jobs
   })
+  handle('productions:renderShots', async (id, shotIds, opts) => {
+    const jobs = await productions.renderShots(id, shotIds, opts)
+    for (const j of jobs) pending.add(j.id)
+    return jobs
+  })
+  handle('productions:removeShots', (id, shotIds) => productions.removeShots(id, shotIds))
   handle('productions:finish', async (id, shotId, candidate, opts) => {
     const j = await productions.finish(id, shotId, candidate, opts)
     pending.add(j.id)
@@ -1625,7 +1682,7 @@ app.whenReady().then(() => {
       if (!url) {
         if (cloudBudgetCheck(cloudBudget(), cloudToday()).over) throw overBudgetError()
         send('cloud:log', 'Starting a cloud GPU on RunPod…')
-        const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, perHour: r.gpuPerHour ?? null, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300, hf: hfToken() }).catch((e) => {
+        const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, perHour: r.gpuPerHour ?? null, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300, hf: hfToken(), ask: askGpu }).catch((e) => {
           // a wake can't make a new volume itself (the models would reinstall for 30+ minutes): say what to do
           if (/network volume .*not found/i.test(e.message)) throw new Error('Your RunPod network volume no longer exists. Run Set up again on the Cloud page to make a new one (the first boot then reinstalls the models).')
           throw e
@@ -1668,6 +1725,8 @@ app.whenReady().then(() => {
     asks.delete(id)
     return true
   })
+  // A substitute GPU starts only when the person says yes to it (the Cloud page's question, CloudModels.jsx)
+  const askGpu = (q) => askWindow({ kind: 'gpu', ...q })
   // This PC's LoRAs and RefMods: its ComfyUI's model folders, and the data folder's models/ (a PC without ComfyUI)
   const localFolders = async (kind) => {
     const own = [path.join(DATA, 'models', kind)]
@@ -1925,7 +1984,7 @@ app.whenReady().then(() => {
       writeSettings({ runpodToken: seal(randomBytes(24).toString('base64url')) }, BASE)
       saveRunpod({ gpu, gpuPerHour: perHour ?? null, idleSeconds, volumeId: volume.id, dataCenter: volume.dataCenter, url: null, podId: null })
       send('cloud:log', `Starting a pod in ${volume.dataCenter}. The first time, it installs ComfyUI and downloads the H3 models onto your volume (20–40 minutes).`)
-      const pod = await runpod.createPod({ gpu: gpu || RUNPOD_GPUS[0].id, perHour: perHour ?? null, volume: { id: volume.id, dataCenter: volume.dataCenter }, token: runpodToken(), idleSeconds: idleSeconds || 300, hf: hfToken() }).catch((e) => {
+      const pod = await runpod.createPod({ gpu: gpu || RUNPOD_GPUS[0].id, perHour: perHour ?? null, volume: { id: volume.id, dataCenter: volume.dataCenter }, token: runpodToken(), idleSeconds: idleSeconds || 300, hf: hfToken(), ask: askGpu }).catch((e) => {
         // a stored volume pins the data center: a GPU elsewhere can't attach to it, so "pick another GPU" alone
         // can be a dead end — say what the real choices are
         const pinned = known ? ` Your storage is in ${volume.dataCenter}, and only a GPU there can use it: pick a card that's free in ${volume.dataCenter}, or delete the "iv-studio" volume on RunPod's Storage page and set up again to start fresh in another data center.` : ''
@@ -3082,6 +3141,21 @@ app.whenReady().then(() => {
   }
   handle('sequences:take', (id) => track(studio.renderTake(id)))
   handle('sequences:retake', (id, opts) => track(studio.retakeSequence(id, opts)))
+  // Lip-sync (Workflows): a video re-mouths to new audio on H3's retake (studio.lipsyncFile)
+  handle('lipsync:render', (opts) => track(studio.lipsyncFile(opts)))
+  // My workflows (Workflows): the person's own ComfyUI workflows, API format (customflows.js)
+  handle('flows:list', () => customFlows.list())
+  handle('flows:get', (id) => customFlows.get(id))
+  handle('flows:import', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'A ComfyUI workflow (API format)', properties: ['openFile'], filters: [{ name: 'Workflow JSON', extensions: ['json'] }] })
+    if (r.canceled) return null
+    const file = r.filePaths[0]
+    return customFlows.importFlow({ name: path.basename(file).replace(/\.json$/i, ''), json: fs.readFileSync(file, 'utf8') })
+  })
+  handle('flows:update', (id, patch) => customFlows.update(id, patch))
+  handle('flows:delete', (id) => customFlows.delete(id))
+  handle('flows:check', (id) => customFlows.check(id))
+  handle('flows:run', (id, values) => track(customFlows.run(id, values)))
   handle('sequences:renderOut', (id, opts) => track(studio.renderOutSequence(id, opts)))
   handle('sequences:huntShot', (id, index, opts) => track(studio.huntShot(id, index, opts)))
   handle('sequences:finishShot', (id, index, opts) => track(studio.finishShot(id, index, opts)))

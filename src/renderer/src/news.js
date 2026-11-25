@@ -86,7 +86,6 @@ export const NEWS = [
   {
     version: '1.1.15',
     items: [
-      { text: 'Techlit Link: click the Techlit mark at the top left to open it. Techlit Studio knows the profile you picked in Techlit Link, its chat reads your Techlit memory, and work can be handed between your Techlit apps.' },
       { text: 'Live preview for everything that renders on your PC: shots, sequences, pictures, effects and more. Turning it on or off between hunting and finishing doesn’t lose your takes.' },
       { text: 'Sequences: One take is Plain by default (it plays your shots as written), or With references (a face picture, more pictures of the person, and a voice sample or shot 1’s own voice). Shot 1 can start from a picture.' },
       { text: 'Sequences: Write it for me keeps going if you leave the page, and your ideas and story are saved.' },

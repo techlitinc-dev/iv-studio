@@ -1,5 +1,3 @@
-import IVWorkspace from './components/IVWorkspace'
-const ivWorkspaceApi = (method,args) => window.ivstudio.workspace.call(method,args)
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { selectionFor } from './selection'
 import { setSimpleWords } from './words'
@@ -28,6 +26,8 @@ import Replace from './components/Replace'
 import Reel from './components/Reel'
 import MusicVideo from './components/MusicVideo'
 import Keyframes from './components/Keyframes'
+import LipSync from './components/LipSync'
+import Flows from './components/Flows'
 import AnimalCam from './components/AnimalCam'
 import Effects from './components/Effects'
 import Workflows from './components/Workflows'
@@ -82,7 +82,7 @@ const SECTIONS = {
     ['settings', 'Settings']
   ]
 }
-const SUBPAGES = { settings: ['setup'], library: ['shot'], projects: ['project'], edits: ['edit'], features: ['storymap'], characters: ['character'], workflows: ['sequences', 'sequence', 'shinobi', 'shinobi-film', 'replace', 'reel', 'musicvideo', 'keyframes', 'animalcam', 'effects', 'sizzle', 'sizzle-project', 'rebuild', 'rebuild-project'] }
+const SUBPAGES = { settings: ['setup'], library: ['shot'], projects: ['project'], edits: ['edit'], features: ['storymap'], characters: ['character'], workflows: ['sequences', 'sequence', 'lipsync', 'flows', 'shinobi', 'shinobi-film', 'replace', 'reel', 'musicvideo', 'keyframes', 'animalcam', 'effects', 'sizzle', 'sizzle-project', 'rebuild', 'rebuild-project'] }
 const savedSection = () => {
   try {
     return localStorage.getItem('iv.section') === 'audio' ? 'audio' : 'video'
@@ -595,8 +595,7 @@ export default function App() {
   return (
     <div className={`app ${incognito ? 'incognito' : ''} ${focus && page === 'edit' ? 'app-focus' : ''} ${info?.platform === 'darwin' ? 'mac' : ''} ${chatOpen && !chatPopped ? 'chat-on' : ''}`}>
       <header className="titlebar">
-        {/* the Techlit mark is the Techlit Link button: it glows softly and opens Techlit Link when clicked */}
-        <IVWorkspace api={ivWorkspaceApi} appId="studio" disabled={incognito} projectId={productionId} launcher={<img className="brand-logo" src={incognito ? tlMarkClosed : tlMark} alt="DD'S Techlit AI Solutions" />} onOpen={r=>{if(r.kind==='production'){setWelcome(null);openProject(r.id)}}} />
+        <img className="brand-logo" src={incognito ? tlMarkClosed : tlMark} alt="DD'S Techlit AI Solutions" />
         <div className="nav-arrows">
           <span className="menu-anchor" ref={menuBtnRef}>
             <button className={`nav-arrow menu-arrow ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen((v) => !v)} aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Menu" title="Menu">
@@ -697,6 +696,8 @@ export default function App() {
         {page === 'storymap' && storyMapOf && <StoryMap key={`${storyMapOf.kind}:${storyMapOf.id}`} kind={storyMapOf.kind} id={storyMapOf.id} {...ctx} />}
         {page === 'project' && productionId && <ProjectPage key={productionId} productionId={productionId} {...ctx} />}
         {page === 'sequences' && <SequenceList {...ctx} />}
+        {page === 'lipsync' && <LipSync {...ctx} />}
+        {page === 'flows' && <Flows {...ctx} />}
         {page === 'sequence' && sequenceId && <SequenceEditor key={sequenceId} sequenceId={sequenceId} {...ctx} shotFocus={sequenceFocus} clearShotFocus={() => setSequenceFocus(null)} />}
         {page === 'edits' && <EditList {...ctx} />}
         {page === 'edit' && editId && <EditEditor key={editId} editId={editId} {...ctx} />}

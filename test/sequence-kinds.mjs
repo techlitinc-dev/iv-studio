@@ -9,7 +9,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { checkPrompt } from '../src/service/graph.js'
-import { bindLine, SEQUENCE_DEFAULTS, takeGraph, takeKindOf, takeReferences, takeScript, validateSequence } from '../src/service/sequence.js'
+import { bindLine, retakeGraph, SEQUENCE_DEFAULTS, takeGraph, takeKindOf, takeReferences, takeScript, validateSequence } from '../src/service/sequence.js'
 import { Studio } from '../src/service/studio.js'
 
 let passed = 0
@@ -176,6 +176,25 @@ test('a sequence deleted by an older version (its project left behind) is skippe
   fs.rmSync(studio.sequenceFile(s.id))
   assert.ok(!studio.library().some((i) => i.sequenceId === s.id))
 })
+
+// ---------- lip-sync: the retake graph mouths new audio (studio.lipsyncFile) ----------
+test('lip-sync: the new audio rides as the retake’s performance', () => {
+  const { graph: g } = retakeGraph({ template, seq: { ...SEQUENCE_DEFAULTS }, character: null, name: 'ls', sourcePath: 'C:/in/clip.mp4', prompt: 'The person speaks.', start: 0, end: 8, mode: 'video', seed: 4242, voiceAudio: 'iv_studio/line.wav' })
+  assert.equal(g.voice.class_type, 'LoadAudio')
+  assert.deepEqual(g.retake.inputs.audio, ['voice', 0], 'the new audio, not the source’s')
+  assert.equal(g.retake.inputs.mode, 'video only (keep the performance)')
+  assert.deepEqual(g.save.inputs.audio, ['retake', 1], 'the output carries the mouthed audio')
+})
+test('lip-sync: without new audio the retake keeps the source’s own', () => {
+  const { graph: g } = retakeGraph({ template, seq: { ...SEQUENCE_DEFAULTS }, character: null, name: 'rt', sourcePath: 'C:/in/clip.mp4', prompt: 'x', start: 0, end: 5, mode: 'both', seed: 1 })
+  assert.equal(g.voice, undefined)
+  assert.deepEqual(g.retake.inputs.audio, ['src', 2])
+})
+await assert.rejects(studio.lipsyncFile({ name: 'x', sourcePath: 'nope.mp4', audio: null, start: 0, end: 5 }), /Pick the audio/)
+await assert.rejects(studio.lipsyncFile({ name: 'x', sourcePath: 'nope.mp4', audio: 'a.wav', start: 5, end: 5 }), /end after it starts/)
+await assert.rejects(studio.lipsyncFile({ name: 'x', sourcePath: 'nope.mp4', audio: 'a.wav', start: 0, end: 20 }), /15 seconds/)
+passed++
+console.log('ok - lip-sync checks its inputs before anything is staged')
 
 fs.rmSync(dataDir, { recursive: true, force: true })
 console.log(`\n${passed} passed`)

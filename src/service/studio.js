@@ -1323,6 +1323,24 @@ export class Studio {
     return this.submitGraph({ kind: 'retake', graph, name: base, plan: { saves: SAVES, resolved: { start, end, mode } } })
   }
 
+  // Lip-sync: a video re-mouthed to new audio, on H3's retake. The new audio rides as the performance, so the
+  // picture in the window is redone to mouth it (mode 'video'); everything outside the window is kept. The audio
+  // is a spoken line (Voices), a recording, or any sound file on this PC. H3's window is 15 s at most.
+  async lipsyncFile({ name, sourcePath, audio, start, end, mode = 'video', prompt, character = 'none', seed }) {
+    if (this.comfy.hosted) throw new Error('Lip-sync runs on this PC\'s ComfyUI or your own cloud (RunPod, Modal).')
+    if (!audio) throw new Error('Pick the audio to lip-sync to: a spoken line or a sound file.')
+    if (!(end > start)) throw new Error('The lip-sync must end after it starts.')
+    if (end - start > 15) throw new Error('H3 re-mouths up to 15 seconds at a time. Pick a shorter stretch.')
+    const ch = character === 'none' ? null : this.characters().find((c) => c.id === character) || null
+    const base = `${slug(name)}_${randomUUID().slice(0, 6)}`
+    const src = await this.videoSource(sourcePath)
+    const voiceAudio = await this.stage(audio, 'iv_studio')
+    const said = prompt?.trim() || 'The person speaks, their lips moving naturally with the words.'
+    const { graph } = retakeGraph({ template: this.template, seq: { ...SEQUENCE_DEFAULTS }, character: ch, name: base, sourcePath: src.video, prompt: said, start, end, mode, seed: seed ?? SEQUENCE_DEFAULTS.seed, unet: this.models.retake, voiceAudio })
+    graph.src.class_type = src.cls
+    return this.submitGraph({ kind: 'lipsync', graph, name: base, plan: { saves: SAVES, resolved: { start, end, mode } } })
+  }
+
   async retakeSequence(id, { versionId, prompt, start, end, mode = 'both', seed }) {
     const s = this.getSequence(id)
     const character = this.sequenceCharacter(s)
@@ -1601,6 +1619,18 @@ export class Studio {
           if (/\.(mp4|webm|mov|mkv)$/i.test(f.filename)) list.push(file(f, 'video', { node: nid }))
           else if (/\.(png|jpe?g|webp)$/i.test(f.filename)) list.push(file(f, 'image', { node: nid }))
         }
+      }
+      return list
+    }
+    if (job.plan?.custom) {
+      // an imported ComfyUI workflow (customflows.js): everything its save nodes wrote — videos, pictures, audio
+      for (const [nid, out] of Object.entries(outputs)) {
+        for (const f of [...(out.gifs || []), ...(out.videos || []), ...(out.images || [])]) {
+          if (f.type === 'input' || f.type === 'temp') continue
+          if (/\.(mp4|webm|mov|mkv)$/i.test(f.filename)) list.push(file(f, 'video', { node: nid }))
+          else if (/\.(png|jpe?g|webp)$/i.test(f.filename)) list.push(file(f, 'image', { node: nid }))
+        }
+        for (const a of out.audio || []) list.push(file(a, 'audio', { node: nid }))
       }
       return list
     }
