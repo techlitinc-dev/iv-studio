@@ -9722,6 +9722,258 @@ button.nav-update:hover {
   height: 32px;
   max-width: 280px;
 }
+/* the Director page: shot bin · preview · inspector, and a timeline with the room it needs */
+.director {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.director-main {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr) 330px;
+  gap: 12px;
+  min-height: 240px;
+}
+.director-bin {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.director-search {
+  width: 100%;
+}
+.director-bin-list {
+  overflow-y: auto;
+  max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.director-shot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.director-shot.on {
+  border-color: var(--red);
+}
+.director-shot-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  white-space: nowrap;
+}
+.director-stage video {
+  width: 100%;
+  max-height: 30vh;
+  background: #000;
+}
+.director-nopreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  padding: 12px;
+  text-align: center;
+}
+.director-stage-bar {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.director-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 44vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.director-field {
+  display: grid;
+  gap: 5px;
+}
+.director-field textarea,
+.director-field input,
+.director-field select {
+  width: 100%;
+}
+.director-two {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.director-two label {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 84px;
+}
+.director-sel {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 8px;
+}
+.director-lora {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 2px 7px;
+}
+.director-lora input[type='range'] {
+  width: 70px;
+}
+.director-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: sticky;
+  bottom: 0;
+  padding: 6px 0;
+}
+/* the timeline */
+.director-timeline {
+  display: flex;
+  flex-direction: column;
+  height: 38vh;
+  min-height: 260px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.director.big .director-timeline {
+  height: 56vh;
+}
+.director-timeline-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.director-timeline-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.director-timeline-tools label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.director-lanes {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+.director-lanes-inner {
+  position: relative;
+  min-height: 100%;
+}
+.director-ruler {
+  position: relative;
+  height: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: ew-resize;
+}
+.director-tick {
+  position: absolute;
+  top: 3px;
+  font-size: 10px;
+  color: var(--paper-dim);
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+  padding-left: 3px;
+}
+.director-lane {
+  display: flex;
+  height: 54px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.director-track-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: 0 0 92px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  background: rgba(19, 15, 21, 0.96);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.director-track-label em {
+  font-style: normal;
+  color: var(--paper-dim);
+  font-size: 10px;
+}
+.director-lane-body {
+  position: relative;
+  flex: 1;
+}
+.director-block {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  border: 1px solid;
+  border-radius: 3px;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+}
+.director-block.beat {
+  border-color: var(--red);
+  background: rgba(210, 60, 60, 0.16);
+}
+.director-block.audio.voice {
+  border-color: #5cc3b2;
+  background: rgba(92, 195, 178, 0.14);
+}
+.director-block.audio.music {
+  border-color: #c4b0ff;
+  background: rgba(196, 176, 255, 0.13);
+}
+.director-block.audio.sfx {
+  border-color: #e8a06a;
+  background: rgba(232, 160, 106, 0.14);
+}
+.director-block.on {
+  box-shadow: 0 0 0 1px currentColor inset;
+}
+.director-block-text {
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.director-grip {
+  flex: 0 0 7px;
+  align-self: stretch;
+  cursor: ew-resize;
+}
+.director-grip:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.director-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--red);
+  pointer-events: none;
+  z-index: 3;
+}
 .create-field.inline {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSelection } from '../selection'
+import { ask } from './Confirm'
+import RecordLine from './RecordLine'
 import { SHOT_MARKS, STATE_NAME } from '../../../service/shotstatus'
 import { ANGLES, cameraText, cleanCamera, MOVEMENTS, PACES, SHOT_SIZES } from '../../../service/camera'
 import Stage from './Stage'
@@ -139,74 +141,6 @@ const DIALOGUE = /<d>\[([^\]]+)\][^<]*<\/d>/
 const withLine = (prompt, text) => {
   const m = DIALOGUE.exec(prompt)
   return m ? prompt.replace(m[0], `<d>[${m[1]}] ${text}</d>`) : prompt
-}
-
-// Record a line from the microphone (the Director Workspace's dialogue recording, first pass): record,
-// listen, keep — the take lands as the shot's voice line, a mono wav (voices:saveRecording). Multiple
-// takes, waveforms and per-character tracks come later.
-function RecordLine({ onDone, notify }) {
-  const [recording, setRecording] = useState(false)
-  const [url, setUrl] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const chunks = useRef([])
-  const rec = useRef(null)
-  async function start() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const r = new MediaRecorder(stream)
-      chunks.current = []
-      r.ondataavailable = (e) => e.data.size && chunks.current.push(e.data)
-      r.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop())
-        setUrl(URL.createObjectURL(new Blob(chunks.current, { type: r.mimeType || 'audio/webm' })))
-      }
-      r.start()
-      rec.current = r
-      setUrl(null)
-      setRecording(true)
-    } catch {
-      notify('The microphone isn’t available — check the system’s microphone permission for Techlit Studio.')
-    }
-  }
-  const stop = () => (rec.current?.stop(), setRecording(false))
-  async function keep() {
-    setBusy(true)
-    try {
-      const path = await window.ivstudio.voices.saveRecording(await new Blob(chunks.current).arrayBuffer())
-      setUrl(null)
-      chunks.current = []
-      await onDone(path)
-    } catch (err) {
-      notify(err.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <span className="record-line">
-      {!recording && !url && (
-        <button className="btn btn-small" onClick={start} title="Record a line from the microphone, in any language">
-          ● Record
-        </button>
-      )}
-      {recording && (
-        <button className="btn btn-small btn-primary" onClick={stop}>
-          ■ Stop
-        </button>
-      )}
-      {url && (
-        <>
-          <audio src={url} controls />
-          <button className="btn btn-small btn-primary" disabled={busy} onClick={keep}>
-            {busy ? 'Saving…' : 'Use this line'}
-          </button>
-          <button className="link-btn mono small" onClick={() => (setUrl(null), (chunks.current = []))}>
-            Again
-          </button>
-        </>
-      )}
-    </span>
-  )
 }
 
 export default function Create({ setup, characters, notify, openShot, go, incomingLine, clearIncomingLine, incomingLora, clearIncomingLora, incomingPicture, clearIncomingPicture, incomingCharacter, clearIncomingCharacter, incomingRun, clearIncomingRun, kindSwitch }) {
@@ -597,6 +531,13 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
   async function useRecording(file) {
     const info = await window.ivstudio.media.probe(file).catch(() => null)
     set({ voiceLine: file, voiceItem: { kind: 'audio', path: file, info } })
+  }
+  // …and can go again: only takes made here (the recordings folder) are deleted from the disk
+  async function deleteRecording() {
+    const ok = await ask({ title: 'Delete this recording?', message: 'The file is removed from this PC. Shots already rendered keep their video; any shot still using it as its voice line loses it.', confirm: 'Delete', danger: true })
+    if (!ok) return
+    await window.ivstudio.voices.deleteRecording(form.voiceLine).catch((err) => notify(err.message))
+    set({ voiceLine: null, voiceItem: null })
   }
   async function pickVoice() {
     const [file] = await window.ivstudio.files.pick('audio')
@@ -1168,7 +1109,14 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
               </div>
               <div className="voice-control">
                 {form.voiceLine ? (
-                  <MediaTile item={form.voiceItem || { kind: 'audio', path: form.voiceLine }} label="Lip-sync" onEdit={() => setEditing('voice')} onRemove={() => set({ voiceLine: null, voiceItem: null })} />
+                  <>
+                    <MediaTile item={form.voiceItem || { kind: 'audio', path: form.voiceLine }} label="Lip-sync" onEdit={() => setEditing('voice')} onRemove={() => set({ voiceLine: null, voiceItem: null })} />
+                    {/[\\/]recordings[\\/]/.test(form.voiceLine) && (
+                      <button className="link-btn mono small danger" onClick={deleteRecording} title="Remove the file from this PC (the × only takes it out of this shot)">
+                        Delete the recording
+                      </button>
+                    )}
+                  </>
                 ) : (
                   <>
                     {char?.voiceId && (

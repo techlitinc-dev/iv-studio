@@ -81,6 +81,7 @@ import { RefMods } from '../service/refmods'
 import { Civitai, CIVITAI_SITES, LORA_FAMILIES, LORA_SORTS, LORA_TAGS } from '../service/civitai'
 import { preflight } from '../service/preflight'
 import { shotState } from '../service/shotstatus'
+import { applyOps } from '../service/timeline'
 import { Comfy } from '../service/comfy'
 import { afterPrompt, getBalance } from '../service/comfyaccount'
 import { budgetOf, readLedger, spentToday, startSpendDesk, todayLabel } from '../service/spending'
@@ -917,6 +918,15 @@ app.whenReady().then(() => {
     await new Promise((resolve, reject) => execFile(edits.ffmpeg, ['-v', 'error', '-y', '-i', webm, '-ac', '1', wav], (err) => (err ? reject(new Error(`Couldn't save the recording: ${err.message}`)) : resolve())))
     fs.rmSync(webm, { force: true })
     return wav
+  })
+  // A microphone take the person no longer wants. Only files in the recordings folder go this way — a
+  // picked file of their own is theirs to delete.
+  handle('voices:deleteRecording', (file) => {
+    const dir = path.resolve(DATA, 'recordings')
+    const p = path.resolve(String(file || ''))
+    if (!p.startsWith(dir + path.sep)) throw new Error('Only recordings made here can be deleted.')
+    fs.rmSync(p, { force: true })
+    return true
   })
   // ---------- Audio: music (MiniMax Music 3 and ACE-Step 1.5 on this PC's ComfyUI) ----------
   music = new Music({ studio, dataDir: DATA, probe: (f) => edits.probe(f), decode: monoDecoder((a) => edits.run(a)) })
@@ -3259,6 +3269,35 @@ app.whenReady().then(() => {
     })
   )
   handle('projects:label', (id, label) => studio.setProjectLabel(id, label))
+  // The Director page (Director.jsx): the shot's saved direction, and the assembly of its render plus its
+  // audio plan (music and sound at their offsets) into a new Edit for the final mix.
+  handle('projects:direction', (id) => studio.projectDirection(id))
+  handle('projects:saveDirection', (id, direction) => studio.setProjectDirection(id, direction))
+  handle('director:assemble', async (id) => {
+    const p = studio.getProject(id)
+    const outs = studio
+      .listJobs(id)
+      .filter((j) => j.status === 'success')
+      .flatMap((j) => j.outputs || [])
+    const take = outs.filter((o) => o.kind === 'final').at(-1) || outs.filter((o) => o.kind === 'preview').at(-1)
+    if (!take) throw new Error('Render the shot first — the assembly needs its video.')
+    const e = edits.create(`${p.name} (mix)`)
+    const put = async (file, label, track, at, length) => {
+      const m = await edits.addMedia(file, { type: 'iv', label })
+      const cur = edits.get(e.id)
+      const ops = [{ op: 'overwrite_clip', media: m.id, track, at: Math.max(0, at), in: 0, out: Math.min(m.duration || length || 0, length || m.duration || 0) }]
+      const r = applyOps({ ...cur, media: { ...cur.media, [m.id]: m } }, ops)
+      Object.assign(cur, { clips: r.clips, media: r.media, tracks: r.tracks, markers: r.markers })
+      edits.write(cur)
+    }
+    await put(await localCopy(take), p.name, 'V1', 0, null)
+    // a dialogue clip at the start is already in the rendered video (the lip-sync): only later ones lay in
+    for (const c of p.direction?.audioPlan || []) {
+      if (!c?.file || !fs.existsSync(c.file) || (c.kind === 'voice' && c.start < 0.5)) continue
+      await put(c.file, c.name || path.basename(c.file), c.kind === 'music' ? 'A2' : c.kind === 'sfx' ? 'A3' : 'A1', c.start, c.length)
+    }
+    return e.id
+  })
   handle('sequences:list', () => studio.listSequences())
   handle('sequences:get', (id) => studio.refreshSequence(id))
   handle('sequences:create', (init) => studio.createSequence(init))
