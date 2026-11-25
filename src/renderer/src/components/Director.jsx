@@ -50,8 +50,26 @@ export default function Director({ notify, characters = [], editRun, openEdit, g
   useEffect(() => {
     window.ivstudio.projects.list().then(setBin, () => setBin([]))
   }, [])
+  const reload = () => window.ivstudio.projects.list().then(setBin, () => {})
   const project = useMemo(() => (bin || []).find((p) => p.id === pid) || null, [bin, pid])
   const shots = (bin || []).filter((p) => !q.trim() || `${p.name} ${p.label || ''}`.toLowerCase().includes(q.trim().toLowerCase()))
+
+  // a shot starts here, before anything renders: an empty project to direct, rendered later from Create
+  async function newShot() {
+    const p = await window.ivstudio.projects.create('Untitled shot').catch((err) => (notify(err.message), null))
+    if (!p) return
+    await reload()
+    setPid(p.id)
+  }
+  // the shot's name, editable while directing
+  const [name, setName] = useState('')
+  useEffect(() => setName(project?.name || ''), [pid, project?.name])
+  async function saveName() {
+    const n = name.trim()
+    if (!project || !n || n === project.name) return setName(project?.name || '')
+    await window.ivstudio.projects.rename(project.id, n).catch((err) => notify(err.message))
+    reload()
+  }
 
   // open a shot: its saved direction, or one seeded from its latest run (studio.projectDirection)
   useEffect(() => {
@@ -196,6 +214,8 @@ export default function Director({ notify, characters = [], editRun, openEdit, g
 
   const selBeat = sel?.t === 'beat' ? beats[sel.i] : null
   const selClip = sel?.t === 'audio' ? plan[sel.i] : null
+  // the previs: the beat under the playhead, shown on the stage before anything renders
+  const beatAt = beats.find((b) => time >= b.from && time < b.to)
 
   return (
     <div className={`director ${big ? 'big' : ''}`}>
@@ -204,14 +224,13 @@ export default function Director({ notify, characters = [], editRun, openEdit, g
       <div className="director-main">
         {/* the shot bin */}
         <aside className="director-bin">
+          <button className="btn btn-small btn-primary" onClick={newShot}>
+            + New shot
+          </button>
           <input className="director-search" placeholder="Search shots or labels" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="director-bin-list">
             {bin === null && <p className="dim small">Loading…</p>}
-            {bin?.length === 0 && (
-              <p className="dim small">
-                No shots yet. <button className="link-btn" onClick={() => go('create')}>Make one in Create</button> — it appears here to direct.
-              </p>
-            )}
+            {bin?.length === 0 && <p className="dim small">No shots yet. Start one with + New shot — direct it here, then send it to Create to generate.</p>}
             {shots.map((p) => (
               <button key={p.id} className={`director-shot ${p.id === pid ? 'on' : ''}`} onClick={() => setPid(p.id)}>
                 <span className="director-shot-name">
@@ -228,8 +247,28 @@ export default function Director({ notify, characters = [], editRun, openEdit, g
         <section className="director-stage">
           {project?.cover ? (
             <video ref={video} key={project.cover} src={media(project.cover)} controls onTimeUpdate={(e) => setTime(e.target.currentTime)} />
+          ) : pid && dir ? (
+            // previs, before anything renders: the frame in the shot's shape, and what the playhead's beat holds
+            <div className="director-nopreview">
+              <div className="director-previs" style={{ aspectRatio: (dir.aspect || '16:9').replace(':', ' / ') }}>
+                <span className="mono small dim">
+                  {clock(time)} · {cameraText(dir.camera) || 'no camera picked yet'}
+                  {beatAt ? ` · beat ${beats.indexOf(beatAt) + 1} (${beatAt.from}–${beatAt.to}s)` : ''}
+                </span>
+                {beatAt ? (
+                  <>
+                    {beatAt.camera && <p>{beatAt.camera}</p>}
+                    {beatAt.action && <p>{beatAt.action}</p>}
+                    {beatAt.dialogue && <p className="director-previs-line">“{String(beatAt.dialogue).replace(/<\/?d>/g, '')}”</p>}
+                    {(beatAt.expression || beatAt.lighting || beatAt.sound) && <p className="dim small">{[beatAt.expression, beatAt.lighting, beatAt.sound && `sound: ${beatAt.sound}`].filter(Boolean).join(' · ')}</p>}
+                  </>
+                ) : (
+                  <p className="dim small">{beats.length ? 'No beat at the playhead — scrub the ruler.' : 'Direct on the timeline below: add beats on V1, dialogue, music and sound on the audio tracks. What each moment holds shows here, before anything renders.'}</p>
+                )}
+              </div>
+            </div>
           ) : (
-            <div className="director-nopreview dim small">{pid ? 'No render yet — direct the shot, open it in Create and hunt. The newest take plays here.' : 'Pick a shot on the left.'}</div>
+            <div className="director-nopreview dim small">Pick a shot on the left, or start a new one with + New shot.</div>
           )}
           <div className="director-stage-bar mono small dim">
             <span>{clock(time)} / {clock(duration)}</span>
@@ -242,6 +281,7 @@ export default function Director({ notify, characters = [], editRun, openEdit, g
           {!dir && <p className="dim small">Select a shot to direct it.</p>}
           {dir && (
             <>
+              {project && <input className="director-name" value={name} placeholder="Shot name" aria-label="Shot name" onChange={(e) => setName(e.target.value)} onBlur={saveName} onKeyDown={(e) => e.key === 'Enter' && saveName()} />}
               <label className="director-field">
                 <span className="mono small dim">Prompt</span>
                 <textarea rows={4} value={dir.prompt || ''} onChange={(e) => put({ prompt: e.target.value })} placeholder="What happens, in plain sentences…" />

@@ -3269,6 +3269,9 @@ app.whenReady().then(() => {
     })
   )
   handle('projects:label', (id, label) => studio.setProjectLabel(id, label))
+  // A shot started in the Director, before anything renders: an empty project its direction saves onto,
+  // and whose first run (from Create) joins it.
+  handle('projects:create', (name) => studio.createProject(name))
   // The Director page (Director.jsx): the shot's saved direction, and the assembly of its render plus its
   // audio plan (music and sound at their offsets) into a new Edit for the final mix.
   handle('projects:direction', (id) => studio.projectDirection(id))
