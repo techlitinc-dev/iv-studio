@@ -357,6 +357,13 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
   // for this project (H3): the cheapest card free now, and the best suited (the curated cards are in recommendation order)
   const cheapest = options.filter((g) => usable(g) && g.perHour != null).sort((a, b) => a.perHour - b.perHour)[0] || null
   const best = st.runpodGpus.map((c) => options.find((o) => o.id === c.id)).find((g) => g && usable(g)) || null
+  // no card chosen yet (fresh setup): default to the cheapest free one as stock reports in; a stored or clicked
+  // pick is the person's own and is never overridden
+  const pickedByHand = useRef(!!rp.gpu)
+  useEffect(() => {
+    if (pickedByHand.current || !cheapest) return
+    setGpu((cur) => (cur === cheapest.id ? cur : cheapest.id))
+  }, [cheapest?.id])
   const sorted = [...options].sort(sort === 'vram' ? (a, b) => (b.vram ?? 0) - (a.vram ?? 0) || (a.perHour ?? Infinity) - (b.perHour ?? Infinity) : (a, b) => (a.perHour ?? Infinity) - (b.perHour ?? Infinity))
   const visible = freeOnly ? sorted.filter(usable) : sorted
   // the chosen card stays in the dropdown even when the filter would hide it
@@ -429,7 +436,7 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
         )}
         <div className="row">
           <span className="row-label">Graphics card</span>
-          <select className="cloud-gpu-select" value={gpu} onChange={(e) => setGpu(e.target.value)} aria-label="Graphics card">
+          <select className="cloud-gpu-select" value={gpu} onChange={(e) => { pickedByHand.current = true; setGpu(e.target.value) }} aria-label="Graphics card">
             {listed.map((g) => (
               <option key={g.id} value={g.id}>
                 {optionText(g)}

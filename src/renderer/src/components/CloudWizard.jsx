@@ -90,7 +90,10 @@ export default function CloudWizard({ onClose, notify, recheck, info }) {
   const p = st.provider
   const onCloud = st.target === 'cloud'
   const gpus = p === 'runpod' ? rpGpus || st.runpodGpus || [] : st.gpus || []
-  const pick = gpu && gpus.some((g) => g.id === gpu) ? gpu : gpus[0]?.id
+  // a fresh RunPod setup defaults to the cheapest card free right now (stock still unknown counts as maybe-free),
+  // not the first curated card; a stored or clicked pick always wins
+  const auto = p === 'runpod' ? gpus.filter((g) => g.inStock !== false && g.perHour != null).sort((a, b) => a.perHour - b.perHour)[0] : null
+  const pick = gpu && gpus.some((g) => g.id === gpu) ? gpu : (auto || gpus[0])?.id
   const chosen = gpus.find((g) => g.id === pick)
   const account = p === 'runpod' ? !!st.runpod?.hasKey : p === 'comfycloud' ? !!st.comfycloud?.hasKey : !!st.workspace
   const ready = p === 'comfycloud' ? !!st.comfycloud?.hasKey : p === 'runpod' ? !!st.runpod?.ready : !!(st.cloud?.url && st.cloud?.modelsAt)
