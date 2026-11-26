@@ -99,7 +99,7 @@ export default function Dashboard(ctx) {
 
   return (
     <div className="dashboard">
-      <Stage effect="pulse" art="eye" title="DD'S AI Movie Studio" kicker="DD'S Techlit AI Solutions" help="home">
+      <Stage effect="pulse" art="eye" title="NatRang" kicker="DD'S Techlit AI Solutions" help="home">
         {/* straight into Create, where the prompt writer turns the words into a shot (PromptWriter sendIdea) */}
         <QuickBar
           label="What do you want to make?"

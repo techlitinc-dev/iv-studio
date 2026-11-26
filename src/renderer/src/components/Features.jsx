@@ -20,7 +20,7 @@ function Field({ label, children }) {
 // rough cost to finish the filming, in dollars and rupees (the rate set on the Cloud page; RunPod's own pod
 // rate when one is up).
 function DirectorsDesk({ f, stats, dash }) {
-  const rate = dash.rate || 18
+  const rate = dash.rate || 180
   const inr = (v) => `₹${(v * rate).toFixed(2)}`
   const perHour = dash.pod?.perHour ?? dash.gpuPerHour ?? null
   const left = Math.max(0, stats.total.shots - stats.total.filmed)
@@ -193,7 +193,7 @@ function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, o
   const gpuPerHour = dash?.pod?.perHour ?? dash?.gpuPerHour ?? null
   const shotCost = (sh) => {
     const sec = sh.projectId && costs ? costs[sh.projectId] || 0 : 0
-    return gpuPerHour != null && sec > 0 ? `₹${(((sec / 3600) * gpuPerHour * (dash?.rate || 18))).toFixed(2)}` : null
+    return gpuPerHour != null && sec > 0 ? `₹${(((sec / 3600) * gpuPerHour * (dash?.rate || 180))).toFixed(2)}` : null
   }
   // a shot straight into Create, 100% prefilled from the story (What happens, prompt, references, settings)
   async function openInCreate(seqId, shotId) {

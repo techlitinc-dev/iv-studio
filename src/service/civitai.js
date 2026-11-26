@@ -119,6 +119,7 @@ export function previewUrl(img, width = PREVIEW_WIDTH) {
 export class Civitai {
   // key(): the person's Civitai API key or null. mature(): whether "Show mature LoRAs" is on.
   constructor({ dataDir, comfy, key = () => null, mature = () => false, onProgress }) {
+    this.dataDir = dataDir
     this.dir = path.join(dataDir, 'loras')
     this.comfy = comfy
     this.key = key
@@ -135,15 +136,24 @@ export class Civitai {
   async api(route, { timeout = 30000 } = {}) {
     const key = this.key()
     let res
-    try {
-      res = await fetch(`${this.site()}/api/v1${route}`, { headers: key ? { Authorization: `Bearer ${key}` } : {}, signal: AbortSignal.timeout(timeout) })
-    } catch (err) {
-      throw new Error(`Couldn't reach Civitai (${err.name === 'TimeoutError' ? 'it took too long' : err.message}).`)
+    for (let attempt = 0; ; attempt++) {
+      try {
+        res = await fetch(`${this.site()}/api/v1${route}`, { headers: key ? { Authorization: `Bearer ${key}` } : {}, signal: AbortSignal.timeout(timeout) })
+      } catch (err) {
+        throw new Error(`Couldn't reach Civitai (${err.name === 'TimeoutError' ? 'it took too long' : err.message}).`)
+      }
+      if (res.status === 404) return null
+      if (res.status === 401 || res.status === 403) throw new Error('Civitai refused the request. Check your Civitai API key in Settings.')
+      if (!res.ok) throw new Error(`Civitai answered ${res.status}.`)
+      const text = await res.text()
+      try {
+        return JSON.parse(text)
+      } catch {
+        // a proxy or a cut connection can hand back HTML or half a JSON body: once is transient, twice is real
+        if (attempt === 0) continue
+        throw new Error(`Civitai's reply was cut off or wasn't JSON (${res.status}, ${text.length} bytes). Try again in a moment.`)
+      }
     }
-    if (res.status === 404) return null
-    if (res.status === 401 || res.status === 403) throw new Error('Civitai refused the request. Check your Civitai API key in Settings.')
-    if (!res.ok) throw new Error(`Civitai answered ${res.status}.`)
-    return res.json()
   }
 
   // Whether a model, version or picture may be shown in the current mode.
@@ -220,18 +230,45 @@ export class Civitai {
   }
 
   // ---------- this PC's LoRAs ----------
+  // The folders LoRA weights live in: the connected ComfyUI's loras folders when a local ComfyUI answers,
+  // and always the app's own store (the data folder's models/loras — scans read it, the cloud's lists merge
+  // it and a render there uploads from it). So a download lands where it works with no local ComfyUI at all.
   async loraFolders() {
-    const folders = await this.comfy.req('/experiment/models')
-    return folders.find((f) => f.name === 'loras')?.folders || []
+    let folders = []
+    try {
+      const list = await this.comfy.req('/experiment/models')
+      folders = list.find((f) => f.name === 'loras')?.folders || []
+    } catch {}
+    const own = path.join(this.dataDir, 'models', 'loras')
+    return folders.includes(own) ? folders : [...folders, own]
   }
   installedShas() {
     return new Set(Object.values(this.library().files).map((f) => f.sha256).filter(Boolean))
   }
 
-  // Every LoRA ComfyUI can load, with what's known about it.
+  // The LoRA files in the app's own store, as ComfyUI-style relative names ("Civitai/x/y.safetensors").
+  // Cloud-only PCs have no local ComfyUI to list a store against; renders find them the same way, here or uploaded.
+  storeNames() {
+    const out = []
+    const walk = (d, rel) => {
+      for (const e of fs.existsSync(d) ? fs.readdirSync(d, { withFileTypes: true }) : []) {
+        if (e.isDirectory()) walk(path.join(d, e.name), rel ? `${rel}/${e.name}` : e.name)
+        else if (/\.(safetensors|gguf|sft|pth|pt|ckpt|bin)$/i.test(e.name)) out.push(rel ? `${rel}/${e.name}` : e.name)
+      }
+    }
+    walk(path.join(this.dataDir, 'models', 'loras'), '')
+    return out
+  }
+
+  // Every LoRA a render can load, with what's known about it: the local ComfyUI's list when one answers, plus
+  // always the app's own store (a cloud-only PC has no local ComfyUI at all).
   async yours() {
-    const info = await this.comfy.objectInfo('LoraLoaderModelOnly')
-    const names = comboOptions(info, 'LoraLoaderModelOnly', 'lora_name') || []
+    let names = []
+    try {
+      const info = await this.comfy.objectInfo('LoraLoaderModelOnly')
+      names = comboOptions(info, 'LoraLoaderModelOnly', 'lora_name') || []
+    } catch {}
+    names = [...new Set([...names, ...this.storeNames()])]
     const folders = await this.loraFolders()
     const lib = this.library()
     const items = []

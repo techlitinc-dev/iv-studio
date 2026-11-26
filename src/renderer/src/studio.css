@@ -7866,6 +7866,42 @@ button.nav-update:hover {
   background: #000;
   object-fit: contain;
 }
+.previz .modal-head {
+  gap: 12px;
+}
+.previz-where {
+  margin: 0;
+}
+.previz-stage {
+  display: grid;
+  place-items: center;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 120px;
+}
+.previz-stage video,
+.previz-stage img {
+  width: 100%;
+  height: 100%;
+  max-height: 58vh;
+  object-fit: contain;
+}
+.previz-decide {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.previz-redo {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 260px;
+}
+.previz-redo input {
+  flex: 1;
+}
 
 /* Workflows → Reel */
 .reel-page .reel-h {
@@ -9498,6 +9534,48 @@ button.nav-update:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
+}
+.beat-more-line {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 6px;
+}
+.beat-more-line select {
+  flex: 0 0 auto;
+}
+.beat-more-line input {
+  flex: 1;
+}
+.motion-chips {
+  grid-column: 1 / -1;
+}
+.motion-style select {
+  font: inherit;
+  color: var(--paper);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+.plan-it input {
+  flex: 1;
+}
+.plan-proposal {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+}
+.plan-proposal p {
+  margin: 0;
+}
+.plan-diff {
+  margin: 0;
+  padding-left: 18px;
+}
+.plan-diff li {
+  margin: 2px 0;
 }
 .beat-detail-toggle {
   white-space: nowrap;
@@ -21267,4 +21345,289 @@ h3.h-long {
   zoom: 0.72;
   line-height: 1.25;
   overflow-wrap: break-word;
+}
+
+/* ---------- chat visual upgrade: presence, motion and polish (overrides the rules above) ---------- */
+/* the panel: a brand line along its top edge and a soft ambient glow in the corner */
+.chat-panel {
+  position: relative;
+  background:
+    radial-gradient(420px 260px at 100% 0%, color-mix(in srgb, var(--red) 7%, transparent), transparent 70%),
+    var(--ink);
+}
+.chat-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--red) 80%, var(--cream)) 30%, var(--red) 55%, transparent);
+  opacity: 0.8;
+  pointer-events: none;
+}
+/* the header: the wordmark glows like the orb, and the icons sit on quiet discs */
+.chat-head {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cream) 3%, transparent), transparent);
+}
+.chat-head h2 {
+  background: linear-gradient(100deg, var(--cream) 30%, color-mix(in srgb, var(--red) 65%, var(--cream)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 22px color-mix(in srgb, var(--red) 22%, transparent);
+}
+.chat-head .chat-icon {
+  border-radius: 50%;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.chat-head .chat-icon:hover:not(:disabled),
+.chat-head .chat-icon:focus-visible {
+  background: color-mix(in srgb, var(--red) 14%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 40%, transparent);
+}
+/* who is answering: the dot breathes while the agent works */
+.chat-who-dot {
+  box-shadow: 0 0 8px var(--agent-color);
+}
+.chat-panel.busy .chat-who-dot {
+  animation: chat-who-breathe 1.6s ease-in-out infinite;
+}
+@keyframes chat-who-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 4px var(--agent-color);
+    opacity: 0.7;
+  }
+  50% {
+    box-shadow: 0 0 12px var(--agent-color);
+    opacity: 1;
+  }
+}
+/* the conversation: rows settle in, and the top fades under the header */
+.chat-body {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16px);
+  mask-image: linear-gradient(180deg, transparent 0, #000 16px);
+}
+.chat-row {
+  animation: chat-row-in 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes chat-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* the agent's avatar: a small orb of its colour at the start of each group */
+.chat-row.agent {
+  gap: 8px;
+  align-items: flex-end;
+}
+.chat-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 2px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--agent-color) 70%, var(--cream)), var(--agent-color) 62%, color-mix(in srgb, var(--agent-color) 55%, var(--ink)));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--agent-color) 50%, transparent),
+    0 3px 10px rgba(0, 0, 0, 0.45);
+  font: 700 13px/1 var(--display);
+  color: var(--ink);
+  text-transform: uppercase;
+  animation: chat-row-in 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+/* bubbles: the person's glows red, the agent's carries its colour in a lit card */
+.chat-bubble {
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+.chat-row:hover .chat-bubble {
+  transform: translateY(-1px);
+}
+.chat-bubble.you {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--red) 42%, var(--ink-3)), color-mix(in srgb, var(--red) 24%, var(--ink-2)));
+  border: 1px solid color-mix(in srgb, var(--red) 48%, transparent);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 color-mix(in srgb, var(--cream) 14%, transparent);
+}
+.chat-bubble.agent {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--agent-color) 8%, var(--ink-2)), var(--ink-2) 70%);
+  border: 1px solid color-mix(in srgb, var(--agent-color) 22%, transparent);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 color-mix(in srgb, var(--cream) 8%, transparent);
+}
+.chat-row.agent.first .chat-bubble.agent {
+  border-color: color-mix(in srgb, var(--agent-color) 42%, transparent);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.35),
+    0 0 16px color-mix(in srgb, var(--agent-color) 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--cream) 10%, transparent);
+}
+/* markdown inside a reply gets a touch of its agent colour */
+.chat-text.md strong,
+.chat-text.md .ct-head {
+  color: color-mix(in srgb, var(--agent-color) 55%, var(--cream));
+}
+.chat-text.md .ct-code {
+  background: color-mix(in srgb, var(--agent-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--agent-color) 18%, transparent);
+}
+/* the typing bubble breathes in the agent colour */
+.chat-typing {
+  border: 1px solid color-mix(in srgb, var(--agent-color) 30%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--agent-color) 10%, var(--ink-2)), var(--ink-2));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--agent-color) 14%, transparent);
+}
+/* permission cards and reports lift off the page a little */
+.chat-ask,
+.chat-report,
+.chat-renders {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+}
+/* the dock: a grounded bar with an elevated composer */
+.chat-dock-area {
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--cream) 3%, transparent));
+  border-top: 1px solid color-mix(in srgb, var(--cream) 8%, transparent);
+}
+.chat-composer {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cream) 5%, var(--ink-2)), var(--ink-2));
+  border: 1px solid color-mix(in srgb, var(--cream) 10%, transparent);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 color-mix(in srgb, var(--cream) 7%, transparent);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.chat-composer:focus-within {
+  border-color: color-mix(in srgb, var(--agent-color) 60%, transparent);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.38),
+    0 0 0 3px color-mix(in srgb, var(--agent-color) 16%, transparent),
+    0 0 22px color-mix(in srgb, var(--agent-color) 18%, transparent);
+}
+.chat-composer .chat-icon {
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
+}
+/* the send button: the one loud thing, now with heat */
+.chat-send-round {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--red) 82%, var(--cream)), var(--red) 55%, color-mix(in srgb, var(--red) 72%, #000));
+  box-shadow:
+    0 4px 14px color-mix(in srgb, var(--red) 40%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--cream) 30%, transparent);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+}
+.chat-send-round:hover:not(:disabled) {
+  transform: scale(1.07);
+  box-shadow:
+    0 6px 20px color-mix(in srgb, var(--red) 55%, transparent),
+    0 0 16px color-mix(in srgb, var(--red) 35%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--cream) 30%, transparent);
+}
+.chat-send-round:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.chat-send-round:disabled {
+  background: var(--ink-3);
+  box-shadow: none;
+}
+.chat-send-round.stop {
+  background: linear-gradient(160deg, var(--cream), color-mix(in srgb, var(--cream) 78%, var(--ink)));
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  animation: chat-stop-nudge 1.4s ease-in-out infinite;
+}
+@keyframes chat-stop-nudge {
+  0%,
+  100% {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 4px 14px rgba(0, 0, 0, 0.4),
+      0 0 14px color-mix(in srgb, var(--red) 45%, transparent);
+  }
+}
+/* idea chips: a quiet shine travels across on hover */
+.chat-idea {
+  position: relative;
+  overflow: hidden;
+}
+.chat-idea::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--cream) 9%, transparent) 50%, transparent 65%);
+  transform: translateX(-110%);
+  transition: transform 0.5s ease;
+  pointer-events: none;
+}
+.chat-idea:hover::after,
+.chat-idea:focus-visible::after {
+  transform: translateX(110%);
+}
+/* a slimmer, rounded scrollbar for the conversation */
+.chat-body::-webkit-scrollbar {
+  width: 8px;
+}
+.chat-body::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cream) 14%, transparent);
+}
+.chat-body::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--cream) 24%, transparent);
+}
+/* motion off: everything settles immediately (Accessibility → reduce motion) */
+@media (prefers-reduced-motion: reduce) {
+  .chat-row,
+  .chat-avatar {
+    animation: none;
+  }
+  .chat-bubble,
+  .chat-composer,
+  .chat-send-round,
+  .chat-idea::after,
+  .chat-composer .chat-icon,
+  .chat-head .chat-icon {
+    transition: none;
+  }
+  .chat-panel.busy .chat-who-dot,
+  .chat-send-round.stop {
+    animation: none;
+  }
+  .chat-row:hover .chat-bubble,
+  .chat-send-round:hover:not(:disabled) {
+    transform: none;
+  }
+}
+:root.rm .chat-row,
+:root.rm .chat-avatar {
+  animation: none;
+}
+:root.rm .chat-panel.busy .chat-who-dot,
+:root.rm .chat-send-round.stop {
+  animation: none;
+}
+:root.rm .chat-row:hover .chat-bubble,
+:root.rm .chat-send-round:hover:not(:disabled) {
+  transform: none;
 }

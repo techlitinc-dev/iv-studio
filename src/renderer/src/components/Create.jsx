@@ -4,6 +4,7 @@ import { ask } from './Confirm'
 import RecordLine from './RecordLine'
 import { SHOT_MARKS, STATE_NAME } from '../../../service/shotstatus'
 import { ANGLES, cameraText, cleanCamera, MOVEMENTS, PACES, SHOT_SIZES } from '../../../service/camera'
+import { MOTION_PRINCIPLES, MOTION_STYLES, motionPhrase, motionTags } from '../../../service/contract'
 import Stage from './Stage'
 import QuickBar, { showBelow } from './AudioQuick'
 import { sendIdea } from './PromptWriter'
@@ -129,6 +130,9 @@ const FRESH_FORM = {
   retention: 1,
   extraLoras: [],
   beats: [], // timed beats (beats.js): the shot directed moment by moment, compiled into the prompt
+  motion_style: 'live_action', // the Motion and Performance style (contract.js): how the principles read
+  intent: null, // the Shot Contract's intent (contract.js): why the shot exists and what changes in it
+  locks: null, // the Shot Contract's locks: what holds across the take (contract.js)
   camera: null // the structured camera pick (camera.js): size, angle, movement, pace
 }
 const MAX_BEATS = 5 // beats.js MAX_BEATS
@@ -584,7 +588,8 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
 
   // Timed beats: the first pair splits the shot in two; another beat starts where the last ends
   const [beatOpen, setBeatOpen] = useState({}) // which beats show their detail fields (dialogue, expression, …)
-  const beatHasMore = (b) => !!(b.dialogue || b.expression || b.lighting || b.sound)
+  const beatHasMore = (b) => !!(b.dialogue || b.expression || b.lighting || b.sound || b.framing || b.eyeline || b.motion_principles?.length)
+  const styleTags = motionTags(form.motion_style) // the motion principles this shot's style has (contract.js)
   const startBeats = () => {
     const half = Math.round(form.seconds) / 2
     set({ beats: [{ from: 0, to: half, camera: '', action: '' }, { from: half, to: form.seconds, camera: '', action: '' }] })
@@ -594,6 +599,30 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
     set({ beats: [...form.beats, { from, to: Math.min(form.seconds, from + 2), camera: '', action: '' }] })
   }
   const setBeat = (i, patch) => set({ beats: form.beats.map((b, j) => (j === i ? { ...b, ...patch } : b)) })
+  // the motion style (contract.js): switching takes the new style's principles and drops the ones it doesn't have
+  const setMotionStyle = (style) =>
+    set({
+      motion_style: style,
+      beats: form.beats.map((b) => (b.motion_principles?.length ? { ...b, motion_principles: b.motion_principles.filter((p) => motionTags(style).includes(p)) } : b))
+    })
+  // the planning assistant (planner.js): a plain-words brief in, a proposed Shot Contract out — a diff to approve
+  const [planBrief, setPlanBrief] = useState('')
+  const [proposal, setProposal] = useState(null)
+  const [planning, setPlanning] = useState(false)
+  const planIt = async () => {
+    setPlanning(true)
+    try {
+      const r = await window.ivstudio.planner.plan({ brief: planBrief, seconds: form.seconds, prompt: form.prompt, current: { beats: form.beats, motion_style: form.motion_style, intent: form.intent, locks: form.locks }, locked: [] })
+      setProposal(r)
+    } catch (e) {
+      notify(e.message)
+    }
+    setPlanning(false)
+  }
+  const usePlan = () => {
+    set({ beats: proposal.contract.beats, motion_style: proposal.contract.motion_style, intent: proposal.contract.intent, locks: proposal.contract.locks })
+    setProposal(null)
+  }
   // The camera pick (camera.js): one field at a time, tidied — picking nothing left is no camera at all
   const setCam = (f, v) => set({ camera: cleanCamera({ ...(form.camera || {}), [f]: v || undefined }) })
 
@@ -982,10 +1011,21 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
                   <button className="btn btn-small" onClick={startBeats}>
                     + Time the beats
                   </button>
-                  <span className="dim small">Direct the shot moment by moment: up to {MAX_BEATS} beats, each with its camera and action — and, under detail, its dialogue, expression, lighting and sound — compiled into the prompt. Character, look and camera direction stay locked across beats.</span>
+                  <span className="dim small">Direct the shot moment by moment: up to {MAX_BEATS} beats, each with its camera and action — and, under detail, its framing, eyeline, dialogue, expression, lighting, sound and motion principles — compiled into the prompt. Character, look and camera direction stay locked across beats.</span>
                 </div>
               ) : (
                 <div className="beat-list">
+                  <div className="beat-actions motion-style">
+                    <span className="dim small">Movement</span>
+                    <select value={form.motion_style} onChange={(e) => setMotionStyle(e.target.value)} aria-label="Movement style" title={MOTION_STYLES[form.motion_style]?.mode}>
+                      {Object.entries(MOTION_STYLES).map(([id, s]) => (
+                        <option key={id} value={id}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="dim small">how the per-beat Motion picks play</span>
+                  </div>
                   {form.beats.map((b, i) => {
                     const more = beatOpen[i] ?? beatHasMore(b)
                     return (
@@ -1006,8 +1046,35 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
                         </button>
                         {more && (
                           <div className="beat-more">
+                            <div className="beat-more-line">
+                              <select value={b.framing || ''} onChange={(e) => setBeat(i, { framing: e.target.value || undefined })} aria-label={`Beat ${i + 1} framing`}>
+                                <option value="">Framing: none picked</option>
+                                {Object.entries(SHOT_SIZES).map(([id, label]) => (
+                                  <option key={id} value={id}>
+                                    {label}
+                                  </option>
+                                ))}
+                              </select>
+                              <input value={b.eyeline || ''} placeholder="Eyeline: what she looks at — the kite string, the door" onChange={(e) => setBeat(i, { eyeline: e.target.value })} />
+                            </div>
+                            <div className="voice-picker motion-chips" role="group" aria-label={`Beat ${i + 1} motion principles`}>
+                              {styleTags.map((id) => {
+                                const on = (b.motion_principles || []).includes(id)
+                                return (
+                                  <button
+                                    key={id}
+                                    type="button"
+                                    className={`voice-chip ${on ? 'on' : ''}`}
+                                    title={motionPhrase(id, form.motion_style)}
+                                    onClick={() => setBeat(i, { motion_principles: on ? (b.motion_principles || []).filter((x) => x !== id) : [...(b.motion_principles || []), id].slice(0, 4) })}
+                                  >
+                                    <span className="voice-chip-name">{MOTION_PRINCIPLES[id].label}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
                             <input value={b.dialogue || ''} placeholder="Dialogue: the exact line, any language" onChange={(e) => setBeat(i, { dialogue: e.target.value })} />
-                            <input value={b.expression || ''} placeholder="Expression and eyeline: doubt hardening into resolve" onChange={(e) => setBeat(i, { expression: e.target.value })} />
+                            <input value={b.expression || ''} placeholder="Expression: doubt hardening into resolve" onChange={(e) => setBeat(i, { expression: e.target.value })} />
                             <input value={b.lighting || ''} placeholder="Lighting or atmosphere: dusk deepens, a lamp flickers on" onChange={(e) => setBeat(i, { lighting: e.target.value })} />
                             <input value={b.sound || ''} placeholder="Sound: rain on tin, a distant bell" onChange={(e) => setBeat(i, { sound: e.target.value })} />
                           </div>
@@ -1023,6 +1090,36 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
                     )}
                     <button className="link-btn mono small" onClick={() => set({ beats: [] })}>
                       Clear the timeline
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="beat-actions plan-it">
+                <input value={planBrief} placeholder="Or direct it in plain words — 'she crosses the yard, sees the gate standing open, decides to go in' — and plan the beats" onChange={(e) => setPlanBrief(e.target.value)} aria-label="Directing brief for the planner" />
+                <button className="btn btn-small" disabled={planning || !planBrief.trim()} title="The planning assistant (Settings → Prompt writer) proposes a Shot Contract — beats, motion, intent, locks — as a diff to approve. It fills gaps; it never changes locked fields." onClick={planIt}>
+                  {planning ? 'Planning…' : 'Plan it'}
+                </button>
+              </div>
+              {proposal && (
+                <div className="plan-proposal">
+                  <p className="small">{proposal.reply}</p>
+                  <ul className="plan-diff">
+                    {proposal.changed.length ? (
+                      proposal.changed.map((d, i) => (
+                        <li key={i} className="small">
+                          <span className="mono dim small">{d.where}</span> {d.before} → {d.after}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="small dim">The plan matches what is already directed.</li>
+                    )}
+                  </ul>
+                  <div className="beat-actions">
+                    <button className="btn btn-small" onClick={usePlan}>
+                      Use this plan
+                    </button>
+                    <button className="link-btn mono small" onClick={() => setProposal(null)}>
+                      Dismiss
                     </button>
                   </div>
                 </div>
@@ -1431,7 +1528,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
               )}
               <div>
                 <dt>Timeline</dt>
-                <dd>{form.beats.length ? `${form.beats.length} beats · ${form.beats.map((b) => `${b.from}–${b.to}s`).join(', ')}` : 'none: one brief for the whole shot'}</dd>
+                <dd>{form.beats.length ? `${form.beats.length} beats · ${form.beats.map((b) => `${b.from}–${b.to}s`).join(', ')}${form.beats.some((b) => b.motion_principles?.length) ? ` · ${MOTION_STYLES[form.motion_style]?.label}` : ''}` : 'none: one brief for the whole shot'}{form.intent?.purpose ? ` · ${form.intent.purpose}` : ''}</dd>
               </div>
               <div>
                 <dt>References</dt>

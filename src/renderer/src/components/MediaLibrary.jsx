@@ -22,12 +22,13 @@ const src = (file) => (file.path ? fileUrl(file.path) : media(file.url))
 const secs = (d) => (d ? (d >= 60 ? `${Math.floor(d / 60)}:${String(Math.round(d % 60)).padStart(2, '0')}` : `${Math.round(d)}s`) : null)
 const day = (at) => (at ? new Date(at).toLocaleDateString() : '')
 
-// Items grouped into sets (a shot, a sequence, an edit), best version first, newest set first.
+// Items grouped into sets (a shot, a sequence, an edit), best version first, newest set first. A set keeps its
+// project's id when it has one, so the shelf can group everything by project.
 export function toSets(items) {
   const map = new Map()
   for (const i of items) {
     const k = i.set || i.key
-    if (!map.has(k)) map.set(k, { key: k, name: i.setName || i.label, group: i.group, type: i.type, items: [] })
+    if (!map.has(k)) map.set(k, { key: k, name: i.setName || i.label, group: i.group, type: i.type, projectId: i.projectId || null, sequenceId: i.sequenceId || null, filmName: i.filmName || null, items: [] })
     map.get(k).items.push(i)
   }
   const sets = [...map.values()]
@@ -131,7 +132,7 @@ export function Viewer({ sets, at, setAt, onClose, edits, notify, sendToCreate, 
         <aside className="viewer-side">
           <div className="viewer-head">
             <span className="mono small dim">
-              {set.group} · {pos + 1} of {flat.length}
+              {set.projectId || set.sequenceId ? set.name : set.group} · {pos + 1} of {flat.length}
             </span>
             <button className="viewer-close" onClick={onClose} aria-label="Close" title="Close (Esc)">
               ×
@@ -308,7 +309,7 @@ export function Tile({ set, onOpen }) {
           {set.name}
         </span>
         <span className="tile-info small">{c.tile || [c.detail, secs(c.duration)].filter(Boolean).join(' · ') || c.variant}</span>
-        <span className="mono dim small tile-where">{[set.group, day(set.at)].filter(Boolean).join(' · ')}</span>
+        <span className="mono dim small tile-where">{[set.projectId || set.sequenceId ? set.name : set.group, day(set.at)].filter(Boolean).join(' · ')}</span>
       </span>
     </button>
   )
@@ -360,6 +361,14 @@ export default function MediaLibrary(ctx) {
   const [q, setQ] = useState('')
   const [period, setPeriod] = useState('any')
   const [from, setFrom] = useState('all')
+  const [by, setBy] = useState(() => {
+    try {
+      return localStorage.getItem('iv.libraryGroup') || 'day'
+    } catch {
+      return 'day'
+    }
+  }) // 'day' or 'project': group the shelf by when things were made, or by the project that made them
+  const [proj, setProj] = useState('all')
   const [mode, setMode] = useState('all')
   const [who, setWho] = useState('all')
   const [shape, setShape] = useState('all')
@@ -377,6 +386,9 @@ export default function MediaLibrary(ctx) {
   }
   const allSets = useMemo(() => toSets(items || []), [items])
   const now = Date.now()
+  // the project a set belongs to: the film that made it, a sequence's own name, or the shelf it came from
+  // (edits, music…). A film's shots can live in many render projects; the film name is what groups them.
+  const projectOf = (x) => x.filmName || x.name
   // who's in a shot: one of your characters, nobody, or a character that's since gone
   const whoOf = (set) => {
     const c = set.cover.character
@@ -389,6 +401,7 @@ export default function MediaLibrary(ctx) {
     type: (x) => filter === 'all' || x.type === filter,
     period: (x) => inWhen(period, x.at, now),
     from: (x) => from === 'all' || x.group === from,
+    project: (x) => proj === 'all' || projectOf(x) === proj,
     mode: (x) => mode === 'all' || x.cover.mode === mode,
     who: (x) => who === 'all' || whoOf(x) === who,
     shape: (x) => shape === 'all' || x.cover.aspect === shape,
@@ -398,7 +411,7 @@ export default function MediaLibrary(ctx) {
   }
   const passing = (except) => allSets.filter((x) => Object.entries(tests).every(([k, t]) => k === except || t(x)))
   const count = (except, fn) => passing(except).filter(fn).length
-  const key = `${q}|${filter}|${period}|${from}|${mode}|${who}|${shape}|${model}|${sort}`
+  const key = `${q}|${filter}|${period}|${from}|${proj}|${mode}|${who}|${shape}|${model}|${sort}`
   const sets = useMemo(() => {
     let list = passing()
     if (sort === 'old') list = [...list].reverse()
@@ -407,14 +420,30 @@ export default function MediaLibrary(ctx) {
     if (sort === 'longest') list = [...list].sort((x, y) => (y.cover.duration || 0) - (x.cover.duration || 0))
     return list.map((x, i) => ({ ...x, idx: i }))
   }, [allSets, key])
-  const groups = sort === 'new' || sort === 'old' ? groupBy(sets, (x) => dayGroup(x.at, now)) : [[sort === 'name' ? 'A to Z' : sort === 'longest' ? 'Longest first' : 'Most versions first', sets]]
+  // grouped by day, or by project: everything a film made under its name (its shots and finals), a sequence under
+  // its own name, and the rest under the shelf they came from — each group newest activity first
+  const groups = useMemo(() => {
+    if (by === 'project') {
+      const map = new Map()
+      for (const x of sets) {
+        const g = projectOf(x)
+        if (!map.has(g)) map.set(g, [])
+        map.get(g).push(x)
+      }
+      return [...map.entries()]
+        .map(([label, list]) => [label, list.sort((a, b) => String(b.at).localeCompare(String(a.at)))])
+        .sort((a, b) => String(b[1][0]?.at || '').localeCompare(String(a[1][0]?.at || '')))
+    }
+    return sort === 'new' || sort === 'old' ? groupBy(sets, (x) => dayGroup(x.at, now)) : [[sort === 'name' ? 'A to Z' : sort === 'longest' ? 'Longest first' : 'Most versions first', sets]]
+  }, [by, sets, sort, now])
   const [limit, more] = useMore(sets.length, 36, key)
   const sources = [...new Set(allSets.map((x) => x.group))]
+  const projects = [...new Set(allSets.map(projectOf))]
   const people = [...new Set(allSets.map(whoOf).filter(Boolean))]
   const shapes = [...new Set(allSets.map((x) => x.cover.aspect).filter(Boolean))]
   const models = [...new Set(allSets.flatMap((x) => x.items.map((i) => i.model)).filter(Boolean))]
-  const clear = () => (setPeriod('any'), setFrom('all'), setMode('all'), setWho('all'), setShape('all'), setModel('all'))
-  const active = [period !== 'any' && WHEN.find(([w]) => w === period)[1], from !== 'all' && from, mode !== 'all' && MODES.find(([m]) => m === mode)?.[1], who !== 'all' && nameOf(who), shape !== 'all' && shape, model !== 'all' && (model === 'seedance' ? 'Seedance' : 'H3')].filter(Boolean)
+  const clear = () => (setPeriod('any'), setFrom('all'), setProj('all'), setMode('all'), setWho('all'), setShape('all'), setModel('all'))
+  const active = [period !== 'any' && WHEN.find(([w]) => w === period)[1], from !== 'all' && from, proj !== 'all' && proj, mode !== 'all' && MODES.find(([m]) => m === mode)?.[1], who !== 'all' && nameOf(who), shape !== 'all' && shape, model !== 'all' && (model === 'seedance' ? 'Seedance' : 'H3')].filter(Boolean)
 
   return (
     <div className="media-library">
@@ -448,7 +477,9 @@ export default function MediaLibrary(ctx) {
         </div>
         {allSets.length > 0 && (
           <FilterPanel id="library" total={allSets.length} shown={sets.length} onClear={clear} active={active}>
+            <Chips label="Group by" value={by} onChange={(v) => (setBy(v), (() => { try { localStorage.setItem('iv.libraryGroup', v) } catch {} })())} options={[['day', 'Day'], ['project', 'Project']]} />
             <Chips label="When" value={period} onChange={setPeriod} options={WHEN.map(([id, label]) => [id, label, id === 'any' ? undefined : count('period', (x) => inWhen(id, x.at, now))])} />
+            {projects.length > 1 && <Chips label="Project" value={proj} onChange={setProj} options={[['all', 'All'], ...projects.map((g) => [g, g, count('project', (x) => projectOf(x) === g)])]} />}
             {sources.length > 1 && <Chips label="From" value={from} onChange={setFrom} options={[['all', 'Anywhere'], ...sources.map((g) => [g, g, count('from', (x) => x.group === g)])]} />}
             {allSets.some((x) => x.cover.mode) && <Chips label="Kind" value={mode} onChange={setMode} options={[['all', 'Any'], ...MODES.map(([id, label]) => [id, label, count('mode', (x) => x.cover.mode === id)])]} />}
             {people.length > 1 && <Chips label="Who" value={who} onChange={setWho} options={[['all', 'Anyone'], ...people.map((id) => [id, nameOf(id), count('who', (x) => whoOf(x) === id)])]} />}

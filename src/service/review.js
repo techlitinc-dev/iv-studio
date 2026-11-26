@@ -46,6 +46,15 @@ export function reviewSchema() {
           required: ['from', 'to', 'kind', 'what', 'unmet']
         }
       },
+      beats: {
+        type: 'array',
+        maxItems: 5,
+        items: {
+          type: 'object',
+          properties: { index: { type: 'integer' }, pass: { type: 'boolean' }, from: { type: 'number' }, to: { type: 'number' }, note: text },
+          required: ['index', 'pass', 'from', 'to', 'note']
+        }
+      },
       fix: {
         type: 'object',
         properties: { kind: { type: 'string', enum: FIX_KINDS }, why: text, clean_from: { type: 'number' }, clean_to: { type: 'number' } },
@@ -59,6 +68,7 @@ export function reviewSchema() {
 
 const SHORT = `- Check what the brief asks for against what the frames show: identity, wardrobe and logos, anatomy (hands, faces), contact with objects, who stands where and faces which way, the order of the actions, whether the feeling reads, and the spoken words.
 - Name each problem with the seconds it happens in (from, to). unmet is true when the brief already asked for the thing the take got wrong: that's an instruction the model didn't follow, not a missing phrase.
+- When the brief directs timed beats, answer one verdict per beat in "beats": its index (the beats are numbered from 1 in the brief), whether it landed (pass), and the seconds its action actually spans in the take (from, to, read off the frame names). A beat whose action happens at the wrong time fails even when the action itself is right — say in "note" what happened ("she touches the string at 4.8s; the beat wanted it by 3s"). A beat asked to do two things rarely lands both: that failure usually wants the action split, not the words warmed over.
 - Say what works, so a revision keeps it.
 - Pick ONE fix: none (the take is good), revise_prompt, change_reference, split_action (too much for one shot), clean_stretch (a usable part: give clean_from and clean_to), or edit (solve it in the edit). Use 0 for clean_from and clean_to unless the fix is clean_stretch.
 - revised_prompt: when the fix is revise_prompt, the whole prompt again in the same H3 format as the brief, keeping everything that works and changing only what fixes the problems; otherwise "". Don't add dialogue, people, props or camera moves to make it longer.
@@ -79,6 +89,18 @@ export function madeWith(r = {}) {
   if (r.mode === 'continue') return 'in Continue mode from a video'
   if (r.mode === 'reference') return `in References mode with ${[count('picture', 'picture'), count('video', 'video'), count('audio', 'sound')].filter(Boolean).join(', ') || 'RefMods'}`
   return 'in Text mode'
+}
+
+// The beats paragraph of the reviewer's brief (empty when the shot has no beats): the compiled timeline, then
+// the ask for one verdict per beat — pass, and the seconds the beat's action actually spans in the take. A
+// timing miss is how the director knows which beat to fix ("Beat 2 failed: she touches the string at 4.8s
+// instead of 3s").
+export function beatsBrief(req = {}) {
+  if (!req.beats?.length) return ''
+  const anyMotion = req.beats.some((b) => b.motion_principles?.length)
+  return `\nThe brief directs the shot in timed beats:\n${compileBeats(req.beats, { intent: req.intent, motionStyle: req.motion_style })}\nAnswer "beats" with one verdict per beat: index (numbered from 1), pass, and the seconds its action actually spans in the take (from, to — read the times off the frame names). A beat that happens at the wrong time fails: the times are how the director fixes it.\n${
+    anyMotion ? 'The "Motion:" lines direct how the movement itself should play — weight, anticipation, follow-through, holds: judge the movement, not only the action.\n' : ''
+  }`
 }
 
 const collect = (cmd, args) =>
@@ -195,8 +217,8 @@ export class Reviewer {
             .map((r, i) => `Run ${i + 1}, made ${r.how}, ${r.revised ? 'with an earlier prompt' : 'with this same prompt'}:\n${r.takes.map((x) => `  ${take(x)}: ${x.unmet.map((u) => `${u.kind}: ${u.what}`).join('; ') || 'nothing unmet'}${x.fix ? ` (fix chosen: ${x.fix})` : ''}`).join('\n')}`)
             .join('\n')}\n`
         : ''
-      // the shot's timed beats (beats.js), when it was directed with a timeline: each one judged, with its times
-      const beats = req.beats?.length ? `\nThe brief directs the shot in timed beats:\n${compileBeats(req.beats)}\nSay for each beat whether it landed, naming its times.\n` : ''
+      // the shot's timed beats (beats.js), when it was directed with a timeline: one verdict per beat, with its times
+      const beats = beatsBrief(req)
       const brief = `The take is ${duration} seconds long, made ${madeWith(req)}.\n${named}${refs}${said}${before}${beats}\nThe prompt (the brief):\n${prompt}`
       const images = shots.map((s, i) => ({ name: `frame-${i + 1}-at-${s.at}s.jpg`, data: s.data, label: `frame at ${s.at} s` }))
       const list = images.map((im) => `${im.name}: ${im.label}`).join('\n')
@@ -253,7 +275,28 @@ export class Reviewer {
         }),
       fix: { kind, label: FIX_WORDS[kind], why: String(fix.why || '').trim(), ...(kind === 'clean_stretch' && { from: +Number(fix.clean_from || 0).toFixed(1), to: +Number(fix.clean_to || 0).toFixed(1) }) },
       revisedPrompt: revised,
-      revisedErrors: findings.filter((f) => f.level === 'error').map((f) => f.message)
+      revisedErrors: findings.filter((f) => f.level === 'error').map((f) => f.message),
+      // one verdict per directed beat, kept beside the beat's own window: a review carries its expected times
+      ...(req.beats?.length
+        ? {
+            beats: (data.beats || [])
+              .map((b) => {
+                const index = Math.min(req.beats.length, Math.max(1, Math.round(Number(b.index) || 0)))
+                const want = req.beats[index - 1] || {}
+                return {
+                  index,
+                  pass: !!b.pass,
+                  from: Math.max(0, +Number(b.from || 0).toFixed(1)),
+                  to: Math.max(0, +Number(b.to || 0).toFixed(1)),
+                  wantFrom: want.from ?? null,
+                  wantTo: want.to ?? null,
+                  note: String(b.note || '').trim().slice(0, 300)
+                }
+              })
+              .filter((b) => !b.pass || b.note || b.from !== b.wantFrom || b.to !== b.wantTo) // landed, on time, wordlessly: nothing to say
+              .slice(0, req.beats.length)
+          }
+        : {})
     }
     const unmet = out.issues.filter((x) => x.unmet)
     if (tried[kind] && unmet.length && unmet.every((x) => x.again && tried[kind].has(x.kind)))

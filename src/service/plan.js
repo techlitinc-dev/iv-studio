@@ -2,6 +2,7 @@
 // graph, and resolves the real pixel size, frame count and duration before anything runs.
 import { cleanBeats, withBeats } from './beats.js'
 import { cleanCamera, withCamera } from './camera.js'
+import { cleanIntent, cleanLocks, cleanMotionStyle, DEFAULT_MOTION_STYLE } from './contract.js'
 
 export const MODES = {
   text: { group: 'mode1', label: 'Text to video', model: 'fl2va' },
@@ -121,16 +122,39 @@ export function planPreviews(request, characters) {
   if (r.mode === 'continue' && videos.length !== 1) errors.push('Continue a video needs exactly one source video.')
   if (r.mode === 'continue' && ![5, 22, 39, 56].includes(r.overlapFrames)) errors.push('Overlap frames must be 5, 22, 39 or 56.')
   if (refmods.length > 8) errors.push(refChar ? 'At most 7 RefMods with a RefMod character (it takes the first).' : 'At most 8 RefMods.')
-  // timed beats (beats.js): cleaned here, kept on the request, and compiled into the prompt the model reads
+  // timed beats (beats.js): cleaned here, kept on the request, and compiled into the prompt the model reads.
+  // The motion style (contract.js) is cleaned first — it gates which motion principles a beat may direct.
   let beats = []
+  let motionStyle = DEFAULT_MOTION_STYLE
   try {
-    beats = cleanBeats(r.beats, r.seconds)
+    motionStyle = cleanMotionStyle(r.motion_style) || DEFAULT_MOTION_STYLE
+    beats = cleanBeats(r.beats, r.seconds, { motionStyle })
   } catch (e) {
     errors.push(e.message)
   }
+  // the Shot Contract's intent and locks (contract.js): same treatment — cleaned, kept on the request,
+  // read by the compiler and the take review
+  let intent = null
+  let locks = null
+  try {
+    intent = cleanIntent(r.intent)
+    locks = cleanLocks(r.locks)
+  } catch (e) {
+    errors.push(e.message)
+  }
+  // the contract's transport fields, when a planner sends them, must match what this studio renders
+  if (Number.isFinite(Number(r.seconds))) {
+    if (r.fps != null && Number(r.fps) !== 24) errors.push('The contract\'s fps is 24 here; leave fps out.')
+    if (r.duration_frames != null && Number(r.duration_frames) !== resolveFrames(r.seconds)) {
+      errors.push(`duration_frames ${r.duration_frames} isn't what ${r.seconds}s renders here (${resolveFrames(r.seconds)} frames on H3's grid); leave it out or use ${resolveFrames(r.seconds)}.`)
+    }
+  }
   if (errors.length) throw Object.assign(new Error(errors.join(' ')), { errors })
   r.beats = beats
+  r.motion_style = motionStyle
   r.camera = cleanCamera(r.camera)
+  r.intent = intent
+  r.locks = locks
 
   // Continue makes one take for the app's own chains (Extend, one-take film shots, sequences); a shot from Create
   // (continueFull) hunts 1-3 takes like any other and finishes at full size (planFinish)
@@ -143,8 +167,8 @@ export function planPreviews(request, characters) {
   if (refmods.length) groups.push('refmods')
 
   const values = {
-    // what the model reads: the camera sentence, then the brief, then the beats' timeline
-    '87': withBeats(withCamera(r.prompt, r.camera), beats),
+    // what the model reads: the camera sentence, then the brief, then the beats' timeline and the contract's intent
+    '87': withBeats(withCamera(r.prompt, r.camera), beats, { intent, locks, motionStyle }),
     '501.aspect_ratio': ASPECTS[r.aspect],
     '501.megapixels': r.megapixels,
     '82': r.seconds,

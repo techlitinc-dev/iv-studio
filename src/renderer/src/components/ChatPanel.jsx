@@ -149,6 +149,7 @@ function Entry({ e, onAnswer, onUndo, onOpenShot, agentName, userName, first }) 
   if (e.kind === 'agent')
     return (
       <div className={`chat-row agent ${first ? 'first' : ''}`}>
+        {first && <span className="chat-avatar" aria-hidden="true">{(agentName || '?').slice(0, 1)}</span>}
         <div className="chat-bubble agent">
           {first && <span className="chat-name mono">{agentName}</span>}
           <ChatText text={e.text} />
@@ -624,7 +625,7 @@ export default function ChatPanel({ status, reload, onClose, context, go, notify
 
   return (
     <aside
-      className={`chat-panel ${dropping ? 'dropping' : ''} ${popped ? 'popped' : ''} agent-${pick || 'none'}`}
+      className={`chat-panel ${dropping ? 'dropping' : ''} ${popped ? 'popped' : ''} ${busy ? 'busy' : ''} agent-${pick || 'none'}`}
       aria-label="Chat"
       onKeyDown={(ev) => {
         if (talk.state === 'listening' && ev.key === 'Escape') {

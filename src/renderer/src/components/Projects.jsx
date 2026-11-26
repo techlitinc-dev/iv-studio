@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ask } from './Confirm'
 import StageBoard from './StageBoard'
 import { needsPrevis } from '../../../service/staging'
+import { MOTION_STYLES } from '../../../service/contract'
 import { fileUrl } from './edit/model'
 import Hero from './Hero'
 import Stage from './Stage'
@@ -898,6 +899,8 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate, 
   const film = mode === 'film'
   // the animatic: { making } while it's built, then { file, seconds, ... } in a player
   const [animatic, setAnimatic] = useState(null)
+  // the previz: the film watched from cheap drafts, each shot decided — the modal is { open: true }
+  const [previz, setPreviz] = useState(null)
   const playAnimatic = async (voice) => {
     setAnimatic({ making: true, voice })
     const r = await act(() => P().animatic(v.id, { voice }))
@@ -1003,6 +1006,9 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate, 
                 {t.sketching > 0 && <span className="mono small busy">Sketching {plural(t.sketching, 'panel')}…</span>}
                 <button className="btn btn-small" disabled={!!animatic?.making || !all.length} title="The sketches played in order with the lines, before anything is filmed" onClick={() => playAnimatic(false)}>
                   {animatic?.making ? 'Making the animatic…' : '▶ Play the animatic'}
+                </button>
+                <button className="btn btn-small" disabled={!all.length} title="Watch the film from cheap drafts, decide each shot — good, remove, or try again — then finish only what survives" onClick={() => setPreviz({ open: true })}>
+                  ▶ Previz
                 </button>
                 {stale.length > 0 && (
                   <button className="btn btn-small btn-primary" onClick={plan}>
@@ -1159,11 +1165,13 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate, 
       {shotAt && <ShotDrawer v={v} sceneId={open.sceneId} sh={shotAt} act={act} characters={characters} face={face} openShot={openShot} toCreate={filmShotToCreate} film={film} previews={previews} fromSketch={fromSketch} onTakes={() => (setOpen(null), setTakes(shotAt.id))} onClose={() => setOpen(null)} />}
       {takesShot && <Takes v={v} sh={takesShot} act={act} onClose={() => setTakes(null)} onOpen={() => (setTakes(null), setOpen({ sceneId: v.scenes.find((s) => s.shots.some((x) => x.id === takesShot.id)).id, shotId: takesShot.id }))} />}
       {(animatic?.open || (animatic?.making && animatic.voice)) && <Animatic v={v} a={animatic} unvoiced={unvoiced} onVoice={() => playAnimatic(true)} onClose={() => setAnimatic(null)} />}
+      {previz?.open && <Previz v={v} act={act} onClose={() => setPreviz(null)} />}
     </section>
   )
 }
 
-// A scene's coverage plan (Slate's twelve, by Sam Wasserman) and its continuity check.
+// A scene's coverage plan (Slate's twelve, by Sam Wasserman), its continuity check, and its grammar read
+// (grammar.js: the 180° rule, eyelines, exits, pacing, the frame grid — then the writer's judgment pass).
 function SceneTools({ v, sc, k, act, planning }) {
   const slate = useSlate()
   const [checking, setChecking] = useState(false)
@@ -1173,6 +1181,14 @@ function SceneTools({ v, sc, k, act, planning }) {
     await act(() => P().continuity(v.id, sc.id), (issues) => (issues?.length ? `${issues.length} continuity ${issues.length === 1 ? 'note' : 'notes'} on scene ${k + 1}.` : `Scene ${k + 1} reads clean.`))
     setChecking(false)
   }
+  const [gramming, setGramming] = useState(false)
+  const g = sc.grammar
+  const gramCheck = async () => {
+    setGramming(true)
+    await act(() => P().grammar(v.id, sc.id), (r) => (r?.findings?.length ? `${r.findings.length} grammar ${r.findings.length === 1 ? 'note' : 'notes'} on scene ${k + 1}.` : `Scene ${k + 1} plays clean.`))
+    setGramming(false)
+  }
+  const intentional = (x) => act(() => P().grammarOverride(v.id, sc.id, x.code, x.shots), 'Marked intentional — the grammar keeps quiet about it.')
   const plan = slate?.plans.find((p) => p.id === sc.coverage?.id)
   return (
     <>
@@ -1197,6 +1213,9 @@ function SceneTools({ v, sc, k, act, planning }) {
         <button className="link-btn mono small" disabled={checking || planning || sc.shots.filter((s) => s.prompt).length < 2} title="A script supervisor's read of the scene's shots: looks, wardrobe, props, light, time of day, screen sides and how each shot ends against the next" onClick={check}>
           {checking ? 'Checking continuity…' : 'Check continuity'}
         </button>
+        <button className="link-btn mono small" disabled={gramming || planning || sc.shots.filter((s) => s.prompt).length < 2} title="The scene against film grammar: the 180° rule, eyelines, exits and entrances, pacing, the frame grid — then the writer's read of motivated camera, match-action, setup and payoff. Warnings, not rules: mark a break intentional and it stays quiet." onClick={gramCheck}>
+          {gramming ? 'Reading the grammar…' : 'Check grammar'}
+        </button>
       </div>
       {c && (
         <div className="wiz-continuity">
@@ -1212,6 +1231,31 @@ function SceneTools({ v, sc, k, act, planning }) {
             ))
           ) : (
             <p className="small dim">Continuity reads clean.</p>
+          )}
+        </div>
+      )}
+      {g && (
+        <div className="wiz-continuity" data-tour="scene-grammar">
+          {g.findings.length ? (
+            g.findings.map((x, i) => (
+              <div key={i} className="wiz-continuity-row">
+                <span className={`mono small ${x.level === 'warn' ? 'pink' : 'dim'}`}>{x.level === 'warn' ? 'Warn' : 'Idea'}</span>
+                <span className="mono small dim">{x.shots?.length ? `Shot ${x.shots.join(', ')}` : ''}</span>
+                <span className="small">
+                  {x.issue} <span className="dim">{x.fix}</span>
+                </span>
+                <button className="link-btn mono small" title="I broke this on purpose — stop flagging it" onClick={() => intentional(x)}>
+                  intentional
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="small dim">The grammar reads clean.</p>
+          )}
+          {!!g.intentional?.length && (
+            <p className="small dim">
+              Broken on purpose: {g.intentional.map((x) => `${x.code}${x.note && x.note !== 'intentional' ? ` (${x.note})` : ''}`).join(', ')}
+            </p>
           )}
         </div>
       )}
@@ -1249,6 +1293,127 @@ function Animatic({ v, a, unvoiced, onVoice, onClose }) {
               Say the {plural(unvoiced, 'line')} in their voices
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// The previz: the film watched from cheap drafts, like a film — each shot decided good, removed, or re-made.
+// Removing marks the shot cut (out of the rough cut and the render sweeps; reversible on the board's drawer).
+// Try again rewrites the shot's prompt from the note and drafts it afresh. Finalize finishes every surviving
+// shot at full quality in one sweep — the identical takes at 2 MP + DLSS.
+function Previz({ v, act, onClose }) {
+  useEffect(() => {
+    const key = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [])
+  const cuts = v.scenes.flatMap((sc) => sc.shots.map((sh) => ({ sc, sh })).filter((x) => !x.sh.cut))
+  const [at, setAt] = useState(0)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState('')
+  const i = Math.min(at, Math.max(0, cuts.length - 1))
+  const cur = cuts[i]
+  const takeOf = (sh) => {
+    const st = sh.state
+    return st.final || (st.candidates?.length ? st.candidates.find((c) => c.n === st.picked) || st.candidates[0] : null)
+  }
+  const removed = v.scenes.reduce((n, sc) => n + sc.shots.filter((sh) => sh.cut).length, 0)
+  const draftsLeft = cuts.filter((x) => !takeOf(x.sh) && ['ready', 'error'].includes(x.sh.state.status)).length
+  const toFinish = cuts.filter((x) => x.sh.state.status === 'pick').length
+  const go = (d) => setAt((a) => Math.max(0, Math.min(cuts.length - 1, a + d)))
+  const decide = (fn, msg) => async () => {
+    setBusy('…')
+    await act(fn, msg)
+    setBusy('')
+  }
+  const close = (e) => e.target === e.currentTarget && onClose()
+  if (!cur)
+    return (
+      <div className="modal-backdrop" onPointerDown={close}>
+        <div className="modal wiz-animatic" role="dialog" aria-label="Previz">
+          <div className="modal-head">
+            <h3>Previz · {v.name}</h3>
+            <button className="lora-chip-x" aria-label="Close" onClick={onClose}>
+              ×
+            </button>
+          </div>
+          <p className="small dim">Every shot is removed from this film. Uncut one in a shot's drawer, then come back.</p>
+        </div>
+      </div>
+    )
+  const take = takeOf(cur.sh)
+  const redoing = ['rendering', 'queued', 'speaking'].includes(cur.sh.state.status)
+  return (
+    <div className="modal-backdrop" onPointerDown={close}>
+      <div className="modal wiz-animatic previz" role="dialog" aria-label="Previz">
+        <div className="modal-head">
+          <h3>Previz · {v.name}</h3>
+          <span className="mono small dim">
+            shot {i + 1} of {cuts.length} · {removed} removed
+          </span>
+          <button className="lora-chip-x" aria-label="Close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <p className="small dim previz-where">
+          {cur.sc.location || cur.sc.heading} · {cur.sh.action}
+          {cur.sh.line ? ` · “${cur.sh.line}”` : ''}
+        </p>
+        <div className="previz-stage" style={{ aspectRatio: ratio(v.aspect) }}>
+          {redoing ? (
+            <span className="mono small busy">Re-making this shot from your note…</span>
+          ) : take ? (
+            <video key={`${take.path || take.url}:${i}`} src={src(take)} autoPlay onEnded={() => go(1)} />
+          ) : cur.sh.sketch ? (
+            <>
+              <img src={fileUrl(cur.sh.sketch)} alt="" />
+              {cur.sh.voiceLine ? <audio autoPlay onEnded={() => go(1)}><source src={fileUrl(cur.sh.voiceLine.file)} /></audio> : null}
+            </>
+          ) : (
+            <span className="mono small dim">No draft or sketch for this shot yet — draft it below.</span>
+          )}
+        </div>
+        <div className="previz-decide">
+          <button className="btn btn-small" disabled={!!busy} onClick={() => go(1)}>
+            Good · next ▶
+          </button>
+          <button className="btn btn-small" disabled={!!busy} title="The shot leaves the film: out of the rough cut, the render sweeps, and the finalize" onClick={decide(() => P().editShot(v.id, cur.sc.id, cur.sh.id, { cut: true }), 'Removed from the film.')}>
+            Remove ✕
+          </button>
+          <span className="previz-redo">
+            <input value={note} placeholder="Try again — what's wrong? “she looks the wrong way”" onChange={(e) => setNote(e.target.value)} aria-label="Why this take is wrong" />
+            <button
+              className="btn btn-small"
+              disabled={!!busy || !note.trim()}
+              title="Rewrite the prompt from your note, then make a new draft of this shot"
+              onClick={decide(async () => {
+                await P().rework(v.id, cur.sc.id, cur.sh.id, { note: note.trim() })
+                await P().render(v.id, cur.sh.id, { draft: true, previews: 1 })
+              }, 'Re-making this shot from your note.').then(() => setNote(''))}
+            >
+              Try again ↻
+            </button>
+          </span>
+        </div>
+        <div className="modal-foot">
+          <button className="btn btn-small" disabled={!!busy || !draftsLeft} title="One cheap draft for every shot that has a prompt but no take yet" onClick={decide(() => P().previzDrafts(v.id), (jobs) => `Drafting ${plural(jobs.length, 'shot')}.`)}>
+            {draftsLeft ? `Draft the ${plural(draftsLeft, 'shot')} left` : 'Every shot has a draft'}
+          </button>
+          <span className="small dim">Watch it rough, decide, then:</span>
+          <button
+            className="btn btn-small btn-primary"
+            disabled={!!busy || !toFinish}
+            title="Finish every surviving shot at full quality — the identical takes, 2 MP + DLSS. Removed shots are never touched."
+            onClick={decide(() => P().finalizeFilm(v.id), (r) => {
+              const ok = r.filter((x) => x.job).length
+              const bad = r.filter((x) => x.error).length
+              return `Finishing ${plural(ok, 'shot')} at full quality${bad ? `; ${plural(bad, 'shot')} failed to start` : ''}.`
+            })}
+          >
+            Finalize film · {plural(toFinish, 'shot')}
+          </button>
         </div>
       </div>
     </div>
@@ -1312,6 +1477,15 @@ function ShotDrawer({ v, sceneId, sh, act, characters, face, openShot, toCreate,
   // the staging board, and the scene's last staged shot before this one (for the line between two people)
   const [board, setBoard] = useState(!!sh.stage)
   const before = sc.shots.slice(0, i).reverse().find((s) => s.stage)?.stage || null
+  // the Shot Contract (contract.js / planner.js): direction summary, and the planner proposing beats from a brief
+  const [planBrief, setPlanBrief] = useState('')
+  const [proposal, setProposal] = useState(null)
+  const planShot = async () => setProposal(await act(() => P().planShot(v.id, sceneId, sh.id, { brief: planBrief })))
+  const usePlan = () => {
+    const c = proposal.contract
+    edit({ beats: c.beats, motion_style: c.motion_style, intent: c.intent, locks: c.locks }, false)
+    setProposal(null)
+  }
   useEffect(() => {
     const key = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', key)
@@ -1347,6 +1521,69 @@ function ShotDrawer({ v, sceneId, sh, act, characters, face, openShot, toCreate,
             </button>
           </div>
         )}
+        {sh.cut && (
+          <div className="wiz-field">
+            <span className="small dim">Removed from the film in Previz — out of the rough cut, the sweeps and the finalize.</span>{' '}
+            <button className="link-btn mono small" onClick={() => edit({ cut: false }, false)}>
+              Restore it
+            </button>
+          </div>
+        )}
+        <div className="wiz-field">
+          <span className="wiz-field-head">
+            <span className="mono small dim">Direction</span>
+            {(sh.intent || sh.beats?.length || sh.motion_style || sh.locks) && (
+              <button className="link-btn mono small" title="Take the Shot Contract off this shot: it renders from its prompt alone" onClick={() => edit({ intent: null, locks: null, motion_style: null, beats: [] }, false)}>
+                Clear
+              </button>
+            )}
+          </span>
+          {sh.intent || sh.beats?.length ? (
+            <span className="small dim">
+              {sh.intent?.purpose || 'No purpose written'}
+              {sh.intent?.emotion?.start ? ` · ${sh.intent.emotion.start} → ${sh.intent.emotion.end}` : ''}
+              {sh.intent?.role ? ` · ${sh.intent.role}` : ''}
+              {sh.beats?.length ? ` · ${sh.beats.length} beats` : ''}
+              {sh.motion_style ? ` · ${MOTION_STYLES[sh.motion_style]?.label || sh.motion_style}` : ''}
+            </span>
+          ) : (
+            <span className="small dim">No contract yet — the shot renders from its prompt alone.</span>
+          )}
+          <span className="beat-actions plan-it">
+            <input value={planBrief} placeholder="Direct it in plain words to plan its beats, motion and intent…" onChange={(e) => setPlanBrief(e.target.value)} aria-label="Directing brief for this shot" />
+            <button className="btn btn-small" disabled={!!working || !planBrief.trim()} title="The planning assistant proposes a Shot Contract as a diff to approve — it fills gaps and never changes locked fields. The shot renders with it: compiled into its prompt, judged by the take review." onClick={busy('plan', planShot)}>
+              {working === 'plan' ? 'Planning…' : 'Plan it'}
+            </button>
+          </span>
+          {proposal && (
+            <div className="plan-proposal">
+              <p className="small">{proposal.reply}</p>
+              <ul className="plan-diff">
+                {proposal.changed.length ? (
+                  proposal.changed.map((d, k) => (
+                    <li key={k} className="small">
+                      <span className="mono dim small">{d.where}</span> {d.before} → {d.after}
+                    </li>
+                  ))
+                ) : (
+                  <li className="small dim">The plan matches the shot's direction.</li>
+                )}
+              </ul>
+              <div className="beat-actions">
+                <button
+                  className="btn btn-small"
+                  disabled={!!working}
+                  onClick={busy('apply', usePlan)}
+                >
+                  Use this plan
+                </button>
+                <button className="link-btn mono small" onClick={() => setProposal(null)}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <label className="wiz-field">
           <span className="mono small dim">What we see</span>
           <textarea rows={3} defaultValue={sh.action} placeholder="Tess lifts the bowl off the wheel and turns it in the light." onBlur={(e) => e.target.value !== sh.action && edit({ action: e.target.value })} />

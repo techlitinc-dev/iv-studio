@@ -54,6 +54,7 @@ import { ModelInstaller, hfLoginFrom, setSavedHfToken } from '../service/models'
 import { CONTEXT_IR_PRICE, localChat, localWriterModel, normalizeOllamaUrl, ollamaExe, ollamaIsLocal, ollamaStatus, pullModel, setOllamaSource, unloadOllama } from '../service/prompter'
 import { normalizeApiBase, openaiStatus, parseHeaders, setLlmSource } from '../service/llm'
 import { askWriter, loadSlate, lookbook, promptVariants, rewritePrompt, writerName } from '../service/filmcraft'
+import { planContract } from '../service/planner'
 import { Studio } from '../service/studio'
 import { cleanStretchFile, Ranker } from '../service/ranking'
 import { exportInterchange } from '../service/interchange'
@@ -1440,12 +1441,19 @@ app.whenReady().then(() => {
   handle('craft:rewrite', async ({ prompt, tool, note, context } = {}) => rewritePrompt(writerNow(), { prompt, tool, note, context, cpu: await busyGpu() }))
   handle('craft:variants', async ({ prompt, context } = {}) => promptVariants(writerNow(), { prompt, context, cpu: await busyGpu() }))
   handle('craft:lookbook', async (source) => lookbook(writerNow(), { source, cpu: await busyGpu() }))
+  // the planning assistant (planner.js): a brief in, a proposed Shot Contract out — cleaned, locked fields kept
+  handle('planner:plan', async ({ brief, seconds, prompt, current, locked } = {}) => planContract(writerNow(), { brief, seconds, prompt, current, locked, cpu: await busyGpu() }))
   handle('productions:coverage', (id, sceneId, planId) => productions.setCoverage(id, sceneId, planId ? slate().plans.find((p) => p.id === planId) || null : null))
   handle('productions:rework', (id, sceneId, shotId, opts) => productions.reworkShot(id, sceneId, shotId, opts))
   handle('productions:variants', (id, sceneId, shotId) => productions.shotVariants(id, sceneId, shotId))
   handle('productions:setPrompt', (id, sceneId, shotId, prompt, why) => productions.setShotPrompt(id, sceneId, shotId, prompt, why))
   handle('productions:restorePrompt', (id, sceneId, shotId, index) => productions.restoreShotPrompt(id, sceneId, shotId, index))
   handle('productions:continuity', (id, sceneId) => productions.checkContinuity(id, sceneId))
+  handle('productions:grammar', (id, sceneId) => productions.checkGrammar(id, sceneId))
+  handle('productions:grammar-override', (id, sceneId, code, names, note) => productions.grammarOverride(id, sceneId, code, names, note))
+  handle('productions:plan-shot', (id, sceneId, shotId, opts) => productions.planShotContract(id, sceneId, shotId, opts))
+  handle('productions:previz-drafts', (id, sceneId) => productions.previzDrafts(id, sceneId))
+  handle('productions:finalize', (id) => productions.finalizeFilm(id))
   // outfits (GitHub #37): the writer as costume designer, and shots written before an outfit changed written again
   handle('productions:writeOutfits', (id, opts) => productions.writeOutfits(id, opts))
   // GitHub #35: a film shot's Film it request, for Create to open (its line said first, so the voice engine runs)
@@ -1725,7 +1733,7 @@ app.whenReady().then(() => {
   }
   const overBudgetError = () => new Error(`Today's cloud budget is spent ($${cloudBudget().daily.toFixed(2)} a day). Raise it on the Cloud page, or wait for tomorrow.`)
   // The director's display rate: rupees per $1, shown beside every cloud cost (topbar meter, dashboard, feature page)
-  const RUPEES_PER_USD = 18
+  const RUPEES_PER_USD = 180
   const rateOf = (s) => (Number(s.rupeesPerUsd) > 0 ? Number(s.rupeesPerUsd) : RUPEES_PER_USD)
   // character training on RunPod uses the same account
   if (trainings) trainings.runpod = runpod
@@ -3262,8 +3270,12 @@ app.whenReady().then(() => {
       const previews = jobs.flatMap((j) => j.outputs.filter((o) => o.kind === 'preview'))
       // the latest run's request, for Shots' filters (kind of shot, who's in it, its shape) and its warnings
       const req = [...jobs].reverse().find((j) => j.plan?.request)?.plan.request || {}
-      // references or a voice line picked for the latest run that have moved or gone since (shotstatus/preflight)
-      const missing = (req.media || []).filter((m) => m?.file && !fs.existsSync(m.file)).length + (req.voiceLine && !fs.existsSync(req.voiceLine) ? 1 : 0)
+      // references or a voice line picked for the latest run that have moved or gone since (shotstatus/preflight).
+      // staged names (ComfyUI-input copies, wiped with a cloud pod) are relative and disposable; only the original
+      // absolute path counts as missing.
+      const ABSOLUTE = /^([a-zA-Z]:[\\/]|\/|\\\\)/
+      const gone = (f) => f && ABSOLUTE.test(f) && !fs.existsSync(f)
+      const missing = (req.media || []).filter((m) => m?.file && gone(m.src || m.file)).length + (gone(req.voiceLineSrc || req.voiceLine) ? 1 : 0)
       return { ...p, jobCount: jobs.length, cover: (finals.at(-1) || previews.at(-1))?.url || null, finals: finals.length, running: jobs.some((j) => !['success', 'error', 'cancelled'].includes(j.status)), mode: req.mode || null, character: req.character || 'none', aspect: req.aspect || null, state: shotState(p, jobs), missing }
     })
   )

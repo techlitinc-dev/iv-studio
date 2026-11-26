@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
   queue: { list: call('queue:list'), cancel: call('queue:cancel') },
   // Projects: a short film from script to rough cut (src/service/productions.js)
   craft: { slate: call('craft:slate'), rewrite: call('craft:rewrite'), variants: call('craft:variants'), lookbook: call('craft:lookbook') },
+  planner: { plan: call('planner:plan') },
   productions: {
     coverage: call('productions:coverage'),
     rework: call('productions:rework'),
@@ -35,6 +36,11 @@ contextBridge.exposeInMainWorld('ivstudio', {
     setPrompt: call('productions:setPrompt'),
     restorePrompt: call('productions:restorePrompt'),
     continuity: call('productions:continuity'),
+    grammar: call('productions:grammar'),
+    grammarOverride: call('productions:grammar-override'),
+    planShot: call('productions:plan-shot'),
+    previzDrafts: call('productions:previz-drafts'),
+    finalizeFilm: call('productions:finalize'),
     writeOutfits: call('productions:writeOutfits'),
     createRequest: call('productions:createRequest'),
     rewriteOutfitShots: call('productions:rewriteOutfitShots'),

@@ -97,6 +97,15 @@ const writeJson = (file, value) => {
 const slug = (s) => (s || 'shot').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'shot'
 const now = () => new Date().toISOString()
 
+// The film a render project belongs to, for the Library's project grouping: stored on projects the film
+// made since the grouping fix; before that, read off the name film shots' projects get ("Film · Scene · n"
+// — everything before the last two parts). Standalone shots and sequences have no film: null.
+export const filmNameOf = (p) => {
+  if (p?.film?.name) return p.film.name
+  const parts = String(p?.name || '').split(' · ')
+  return parts.length >= 3 ? parts.slice(0, -2).join(' · ').replace(/ \(sequence\)$/, '') : null
+}
+
 // SeedVR2 models for Enhance, best first: what's in ComfyUI's SEEDVR2 folder decides.
 const ENHANCE_MODELS = ['seedvr2_ema_3b_fp16.safetensors', 'seedvr2_ema_3b_fp8_e4m3fn.safetensors', 'seedvr2_ema_3b-Q8_0.gguf']
 // Frames per SeedVR2 batch (4n+1) by output size, sized for a 24 GB card: 21 at 1440 spilled into shared memory
@@ -282,8 +291,8 @@ export class Studio {
   }
   // sequenceId / trainingId / tool: the project holds a sequence's shots, a character training's renders or a
   // workflow's runs (tool 'replace'), and stays out of Shots.
-  createProject(name, sequenceId = null, trainingId = null, tool = null) {
-    const p = { id: randomUUID().slice(0, 8), name: name || 'Untitled shot', createdAt: now(), updatedAt: now(), jobs: [], sequenceId, ...(trainingId && { trainingId }), ...(tool && { tool }) }
+  createProject(name, sequenceId = null, trainingId = null, tool = null, film = null) {
+    const p = { id: randomUUID().slice(0, 8), name: name || 'Untitled shot', createdAt: now(), updatedAt: now(), jobs: [], sequenceId, ...(trainingId && { trainingId }), ...(tool && { tool }), ...(film && { film }) }
     writeJson(this.projectFile(p.id), p)
     return p
   }
@@ -535,13 +544,19 @@ export class Studio {
       // H3's media loader refuses a video without sound when it's told to pair it (a previs, a silent clip)
       const local = softMouth(m) ? (await this.softMouth(m.file || m.path)).path : m.file || m.path
       const sound = m.kind === 'video' && m.hasAudio === undefined && local && fs.existsSync(local) ? { hasAudio: (await probe(FFPROBE, local).catch(() => null))?.hasAudio ?? true } : {}
-      media.push({ ...m, ...sound, file: await this.stage(local, 'minimax_h3') })
+      // keep the original path (src): the staged name points into ComfyUI's input folder (wiped with a cloud pod),
+      // and the missing-file checks must test the original, not the copy
+      const staged = await this.stage(local, 'minimax_h3')
+      media.push({ ...m, ...sound, file: staged, ...(local && staged !== local ? { src: local } : {}) })
     }
     const voiceLine = request.voiceLine ? await this.stage(request.voiceLine, 'iv_studio') : null
     const characters = characterOverride ? [...this.characters(), characterOverride] : this.characters()
     const plan = planPreviews({ ...request, media, voiceLine, ...(characterOverride && { character: characterOverride.id }) }, characters)
     const unet = this.models[plan.request.mode]
     if (unet) plan.values[`${MODEL_NODES[plan.request.mode]}.unet_name`] = unet
+    // the original voice line path: the staged name points into ComfyUI's input folder (wiped with a cloud pod),
+    // and the missing-file checks must test the original, not the copy
+    if (voiceLine && voiceLine !== request.voiceLine) plan.request.voiceLineSrc = request.voiceLine
     // the run keeps what was asked as written (mentions and all, media as local files), for "Edit and run again"
     plan.asked = { prompt: asked.prompt, mode: asked.mode, media: (asked.media || []).map((m) => ({ kind: m.kind, file: m.file || m.path, ...(m.softMouth ? { softMouth: true } : {}) })), voiceLine: asked.voiceLine || null, ...(asked.with?.length ? { with: asked.with } : {}) }
     const run = project.jobs.length + 1
@@ -1086,7 +1101,7 @@ export class Studio {
           const name = o.kind !== 'final' ? `Preview ${o.candidate}` : j.kind === 'enhance' ? `${fin?.name || 'Final'} · ${enhanced(j.plan?.enhance)}` : fin?.name || 'Final'
           const variant = `${run ? `Run ${run} · ` : ''}${name}`
           const about = renderFacts({ job: j, jobs, output: o, request: req, characters: chars })
-          items.push({ ...about, key: `${j.id}:${o.kind}:${o.candidate || ''}`, label: `${p.name} · ${variant.toLowerCase()}`, group: p.tool === 'replace' ? 'Replace' : p.sequenceId ? 'Sequence shots' : 'Shots', at: j.finishedAt || j.createdAt, file: { path: o.path, url: o.url, filename: o.filename }, set: p.sequenceId ? `sequence:${p.sequenceId}` : `project:${p.id}`, setName: p.name.replace(/ \(sequence\)$/, ''), variant: p.sequenceId ? `Shot ${variant.toLowerCase()}` : variant, rank: (o.kind === 'final' ? 0 : 10 + (o.candidate || 0)) + (run ? (runs.size - run) * 100 : 0), projectId: p.sequenceId ? null : p.id, sequenceId: p.sequenceId || null, mode: req.mode || null, character: req.character || null, aspect: req.aspect || null })
+          items.push({ ...about, key: `${j.id}:${o.kind}:${o.candidate || ''}`, label: `${p.name} · ${variant.toLowerCase()}`, group: p.tool === 'replace' ? 'Replace' : p.sequenceId ? 'Sequence shots' : 'Shots', at: j.finishedAt || j.createdAt, file: { path: o.path, url: o.url, filename: o.filename }, set: p.sequenceId ? `sequence:${p.sequenceId}` : `project:${p.id}`, setName: p.name.replace(/ \(sequence\)$/, ''), variant: p.sequenceId ? `Shot ${variant.toLowerCase()}` : variant, rank: (o.kind === 'final' ? 0 : 10 + (o.candidate || 0)) + (run ? (runs.size - run) * 100 : 0), projectId: p.sequenceId ? null : p.id, sequenceId: p.sequenceId || null, filmName: filmNameOf(p), mode: req.mode || null, character: req.character || null, aspect: req.aspect || null })
         }
       }
     }

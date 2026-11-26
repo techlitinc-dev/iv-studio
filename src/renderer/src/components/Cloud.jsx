@@ -51,7 +51,7 @@ export function CloudMeter({ onOpen, notify = () => {} }) {
   const ids = new Set(usage.running.map((c) => c.id))
   const seconds = [...seen].reduce((sum, [id, c]) => sum + Math.max(0, ((ids.has(id) ? now : c.last) - c.start) / 1000), 0)
   const cost = (seconds / 3600) * usage.perHour
-  const rate = usage.rate || 18
+  const rate = usage.rate || 180
   const inr = (v) => `₹${(v * rate).toFixed(2)}`
   const perHour = `${inr(usage.perHour)}/h`
   return (
@@ -140,7 +140,7 @@ function CloudDash({ notify }) {
   const pod = dash.pod
   const idleLeft = pod?.idleLeft != null ? Math.max(0, pod.idleLeft - (now - dashAt) / 1000) : null
   const pct = dash.budget.on && dash.budget.daily > 0 ? Math.min(100, (dash.today / dash.budget.daily) * 100) : 0
-  const inr = (v) => `₹${(v * (dash.rate || 18)).toFixed(2)}`
+  const inr = (v) => `₹${(v * (dash.rate || 180)).toFixed(2)}`
   const list = files?.files ? Object.entries(files.files).sort((a, b) => b[1] - a[1]) : null
   const usedGb = list ? list.reduce((s, [, b]) => s + b, 0) / 1e9 : null
   return (

@@ -77,6 +77,20 @@ expect('wrong checksum -> removed', bad instanceof Error && /checksum/.test(bad.
 const poi = await cv.download({ modelId: 3 }).catch((e) => e)
 expect('real-person model refused', poi instanceof Error && !fs.existsSync(path.join(loras, 'Civitai', 'Test_Style_3')), poi.message)
 
+// the cloud-only case (RunPod, no local ComfyUI): the app's own loras store is where a download lands,
+// and it is the folder scans read and the cloud uploads from
+const solo = new Civitai({ dataDir: temp, comfy: { req: async () => { throw new Error('no local ComfyUI here') } }, key: () => 'test-key' })
+solo.site = () => `http://127.0.0.1:${port}`
+const folders = await solo.loraFolders()
+expect('no local ComfyUI: the app\'s own loras store is offered', folders.some((f) => f === path.join(temp, 'models', 'loras')), folders.join(', '))
+const soloDl = await solo.download({ modelId: 1 }).catch((e) => e)
+expect('a download lands in the app\'s store without any local ComfyUI', !(soloDl instanceof Error) && fs.existsSync(path.join(temp, 'models', 'loras', 'Civitai', 'Test_Style_1', 'test_style_1.safetensors')), soloDl instanceof Error ? soloDl.message : soloDl.lora)
+
+// the cloud-only Yours list: no local ComfyUI answering, the app's store is the list
+const quiet = new Civitai({ dataDir: temp, comfy: { req: async () => { throw new Error('no local ComfyUI here') }, objectInfo: async () => { throw new Error('ComfyUI is not running at http://127.0.0.1:8188') } }, key: () => 'test-key' })
+const yours = await quiet.yours()
+expect('the Yours list works with no local ComfyUI', yours.some((x) => x.name === 'Civitai/Test_Style_1/test_style_1.safetensors'), yours.map((x) => x.name).join(', ') || '(empty)')
+
 server.close()
 fs.rmSync(temp, { recursive: true, force: true })
 console.log(failures ? `${failures} failed` : 'all passed')

@@ -19,7 +19,8 @@ const TESTS = [
   'credits', 'comfy-starting', 'freefield', 'lora-families', 'comfy-restart', 'openai-writer', 'filmcraft', 'interchange',
   'recommended', 'describe', 'softmouth', 'dailies', 'terms', 'continue-full', 'portable-update', 'chat-extras',
   'picture-setup', 'chat-text', 'hermes-acp', 'ollama-start', 'writer-pick', 'agent-names', 'writer-json', 'codex-images',
-  'createmem', 'localchat', 'cloudspend', 'customflows', 'gptimages', 'beats', 'preflight', 'shotstatus', 'look', 'camera'
+  'createmem', 'localchat', 'cloudspend', 'customflows', 'gptimages', 'beats', 'preflight', 'shotstatus', 'look', 'camera',
+  'contract', 'motion', 'grammar', 'review', 'planner', 'film-contract', 'previz'
 ]
 // These also take a Python with aiohttp for their live gate tests; without one they run their service tests and skip the gate.
 const PY_TESTS = ['runpod', 'cloudprep', 'cloudvoice']

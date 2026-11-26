@@ -39,7 +39,7 @@ export default function MovieDashboard({ id, back, notify }) {
   }, [id])
   if (!f || !stats) return null
 
-  const rate = dash?.rate || 18
+  const rate = dash?.rate || 180
   const inr = (v) => `₹${(Number(v) * rate).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
   const perHour = dash?.pod?.perHour ?? dash?.gpuPerHour ?? null
   const costOf = (shots) => (perHour != null ? ((shots * GPU_MIN_PER_SHOT) / 60) * perHour : null)

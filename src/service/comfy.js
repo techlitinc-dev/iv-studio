@@ -104,7 +104,14 @@ export class Comfy {
         } catch {}
         throw Object.assign(new Error(`ComfyUI ${route} ${res.status}: ${detail.slice(0, 800)}`), { status: res.status })
       }
-      return text ? JSON.parse(text) : {}
+      if (!text) return {}
+      try {
+        return JSON.parse(text)
+      } catch {
+        // a proxy in front of ComfyUI (the cloud's pod proxy does this) can answer 200 with an error page or a
+        // cut-off body: say what happened instead of dying mid-parse
+        throw Object.assign(new Error(`ComfyUI answered ${route} with something that isn't JSON (${res.status}, ${text.length} bytes — its reply was likely cut off). Try again.`), { status: res.status })
+      }
     } catch (err) {
       // busy: the server took the connection (so ComfyUI is running) but didn't reply in time; down: nothing listens
       if (err.name === 'AbortError')

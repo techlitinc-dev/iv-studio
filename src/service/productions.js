@@ -23,6 +23,9 @@ import { LTX, writeLtx } from './ltx.js'
 import { gptModelOk } from './gptimages.js'
 import { DEFAULT_LOCAL_MODEL, jpegOf, writeHarness, writeLocal } from './prompter.js'
 import { askWriter, continuityCheck, writerSees, coverageRules, promptVariants, rewritePrompt, shotListCsv, shotListMarkdown } from './filmcraft.js'
+import { grammarAdvise, grammarCheck } from './grammar.js'
+import { cleanIntent } from './contract.js'
+import { planContract } from './planner.js'
 import { parseScript, sceneText } from './screenplay.js'
 import { applyOps } from './timeline.js'
 
@@ -71,6 +74,7 @@ const SHOT_RULES = `You are a film director breaking one scene of a screenplay i
 - characters: the names of the people on screen (from the cast list, or as the script names them).
 - speaker and line: who speaks in this shot and their exact words, or "" for both.
 - seconds: 3 to 10. A spoken line needs about 1 second per 2.5 words plus 1 second.
+- intent (every shot): why the shot exists and what changes in it — purpose (one line), the feeling where the shot starts and where it ends, and its role: coverage (the story moves), transition (getting somewhere), reaction (someone feels something) or pause (the cut breathes). The grammar check and the take review read these; write what the shot truly does, not decoration.
 - Don't add lines, people, props or camera moves the script doesn't have. A quiet reaction can carry a moment.`
 const SHOT_SCHEMA = {
   type: 'object',
@@ -81,7 +85,26 @@ const SHOT_SCHEMA = {
       items: {
         type: 'object',
         // length limits keep a small local writer from running on in one field until its answer is cut off (#27)
-        properties: { action: { type: 'string', maxLength: 500 }, staging: { type: 'string', maxLength: 500 }, camera: { type: 'string', maxLength: 160 }, characters: { type: 'array', maxItems: 8, items: { type: 'string', maxLength: 60 } }, speaker: { type: 'string', maxLength: 60 }, line: { type: 'string', maxLength: 800 }, seconds: { type: 'number' }, ends: { type: 'string', maxLength: 400 } },
+        properties: {
+          action: { type: 'string', maxLength: 500 },
+          staging: { type: 'string', maxLength: 500 },
+          camera: { type: 'string', maxLength: 160 },
+          characters: { type: 'array', maxItems: 8, items: { type: 'string', maxLength: 60 } },
+          speaker: { type: 'string', maxLength: 60 },
+          line: { type: 'string', maxLength: 800 },
+          seconds: { type: 'number' },
+          ends: { type: 'string', maxLength: 400 },
+          intent: {
+            type: 'object',
+            properties: {
+              purpose: { type: 'string', maxLength: 300 },
+              objective: { type: 'string', maxLength: 300 },
+              obstacle: { type: 'string', maxLength: 300 },
+              emotion: { type: 'object', properties: { start: { type: 'string', maxLength: 120 }, end: { type: 'string', maxLength: 120 } } },
+              role: { type: 'string', maxLength: 40 }
+            }
+          }
+        },
         required: ['action', 'staging', 'camera', 'characters', 'speaker', 'line', 'seconds', 'ends']
       }
     }
@@ -916,6 +939,7 @@ export class Productions {
         character: this.mainCharacter(p, s),
         projectId: null,
         voiceLine: null,
+        intent: cleanIntent(s.intent),
         ...(plan?.shots[k] ? { slot: plan.shots[k].slot } : {})
       }))
       this.patch(id, (q) => {
@@ -1145,6 +1169,135 @@ export class Productions {
     return issues
   }
 
+  // The grammar read (grammar.js): the deterministic checks always, the writer's advice when asked (it
+  // costs a writer call). Kept on the scene as grammar { findings, intentional, at, writer? }.
+  async checkGrammar(id, sceneId, { advice = true } = {}) {
+    const p = this.get(id)
+    const sc = p.scenes.find((s) => s.id === sceneId)
+    if (!sc) throw new Error('No such scene.')
+    const i = p.scenes.indexOf(sc)
+    const shots = sc.shots.map((sh, j) => ({
+      name: `${i + 1}.${j + 1}`,
+      seconds: sh.seconds,
+      prompt: sh.prompt,
+      action: sh.action,
+      staging: sh.staging,
+      ends: sh.ends,
+      stage: sh.stage,
+      beats: sh.beats,
+      intent: sh.intent,
+      overrides: sh.overrides
+    }))
+    const det = grammarCheck({ heading: sc.heading || sc.location || '', shots })
+    let findings = det.findings
+    let writer = null
+    if (advice && shots.filter((s) => String(s.prompt || s.action || '').trim()).length >= 2) {
+      writer = this.writer()?.engine || 'local'
+      const overrides = Object.fromEntries([...det.intentional, ...(sc.grammar?.intentional || [])].map((f) => [f.code, f.note || 'intentional']))
+      const advised = await grammarAdvise(this.writer(), {
+        scene: sc.heading || sc.location || '',
+        look: lookWords(p.look),
+        shots,
+        overrides,
+        cpu: await this.studio().gpuBusy().catch(() => false)
+      })
+      findings = [...findings, ...advised]
+    }
+    const out = { findings, intentional: det.intentional, at: now(), writer }
+    this.patch(id, (q) => {
+      const t = q.scenes.find((s) => s.id === sceneId)
+      if (t) t.grammar = out
+    })
+    return out
+  }
+
+  // Mark a grammar finding intentional on every shot it names (or, with empty names, take the mark back
+  // scene-wide); returns the fresh deterministic read so the window can show it without another writer call.
+  grammarOverride(id, sceneId, code, names = [], note = '') {
+    this.patch(id, (q) => {
+      const t = q.scenes.find((s) => s.id === sceneId)
+      if (!t) return
+      const i = q.scenes.indexOf(t)
+      t.shots.forEach((sh, j) => {
+        const name = `${i + 1}.${j + 1}`
+        if (names.includes(name)) sh.overrides = { ...(sh.overrides || {}), [code]: note || 'intentional' }
+        else if (sh.overrides && code in sh.overrides) {
+          const rest = { ...sh.overrides }
+          delete rest[code]
+          sh.overrides = rest
+        }
+      })
+    })
+    const p = this.get(id)
+    const sc = p.scenes.find((s) => s.id === sceneId)
+    const i = p.scenes.indexOf(sc)
+    return grammarCheck({
+      heading: sc.heading || sc.location || '',
+      shots: sc.shots.map((sh, j) => ({ name: `${i + 1}.${j + 1}`, seconds: sh.seconds, prompt: sh.prompt, action: sh.action, staging: sh.staging, ends: sh.ends, stage: sh.stage, beats: sh.beats, intent: sh.intent, overrides: sh.overrides }))
+    })
+  }
+
+  // The planning assistant (planner.js) for one shot: the brief goes to the writer with the shot's current
+  // contract (and prompt) as fixed ground; the proposal comes back as a diff for the director to approve,
+  // then editShot applies it (beats, motion_style, intent, locks are whitelisted there). ask is injectable.
+  async planShotContract(id, sceneId, shotId, { brief, locked = [], ask } = {}) {
+    const { sh } = this.find(this.get(id), shotId)
+    if (!sh) throw new Error('No such shot.')
+    const current = { beats: sh.beats || [], motion_style: sh.motion_style || null, intent: sh.intent || null, locks: sh.locks || null }
+    return planContract(
+      this.writer(),
+      { brief, seconds: sh.seconds, prompt: sh.prompt, current, locked, cpu: await this.studio().gpuBusy().catch(() => false) },
+      ask ? { ask } : {}
+    )
+  }
+
+  // ---------- previz ----------
+  // The Prev step: which shots need a cheap draft — a prompt, not cut, and no usable takes nor any on the way.
+  // Shots that failed are wanted again (a retry); shots already rendering are left alone.
+  previzWanted(p, sceneId = null) {
+    const scenes = sceneId ? p.scenes.filter((s) => s.id === sceneId) : p.scenes
+    const out = []
+    for (const sc of scenes)
+      for (const [i, sh] of sc.shots.entries()) {
+        if (sh.cut || !String(sh.prompt || '').trim()) continue
+        if (!['ready', 'error'].includes(this.shotState(sh).status)) continue
+        if (sh.continues && !['pick', 'finished', 'finishing'].includes(this.shotState(sc.shots[i - 1] || {}).status)) continue
+        out.push(sh.id)
+      }
+    return out
+  }
+  // One draft take per wanted shot (0.4 MP, single take — the cut is judged, not admired).
+  async previzDrafts(id, sceneId = null) {
+    const p = this.get(id)
+    if (this.filming.has(id)) throw new Error('This film is already being filmed. Wait for its lines to be said.')
+    const ids = this.previzWanted(p, sceneId)
+    return ids.length ? this.filmShots(id, ids, { draft: true, previews: 1 }) : []
+  }
+  // Finalize: every shot with takes that isn't cut and isn't finished or finishing yet.
+  finalizeWanted(p) {
+    const out = []
+    for (const sc of p.scenes)
+      for (const sh of sc.shots) {
+        if (sh.cut) continue
+        const st = this.shotState(sh)
+        if (st.status === 'pick') out.push({ shot: sh.id, candidate: st.picked || 1 })
+      }
+    return out
+  }
+  // The finalize sweep: finish them one at a time (each finish is a job of its own; onShot reports progress).
+  async finalizeFilm(id, { onShot = () => {} } = {}) {
+    const started = []
+    for (const want of this.finalizeWanted(this.get(id))) {
+      const r = await this.finish(id, want.shot, want.candidate).then(
+        (job) => ({ shot: want.shot, job: job.id }),
+        (e) => ({ shot: want.shot, error: e.message })
+      )
+      started.push(r)
+      onShot(r)
+    }
+    return started
+  }
+
   // ---------- shots ----------
   // Change a shot (any of action, staging, camera, ends, characters, speaker, line, seconds, prompt, character), add one after
   // another (add: { after }), remove one, or move one (move: -1 | 1).
@@ -1177,7 +1330,7 @@ export class Productions {
       const looks = ['action', 'staging', 'camera', 'stage'].some((k) => patch[k] !== undefined && JSON.stringify(patch[k]) !== JSON.stringify(sh[k] ?? null))
       if (looks && (sh.sketch || sh.sketchSet)) sh.sketchStale = true
       if (patch.prompt !== undefined && patch.prompt !== sh.prompt) remember(sh, patch.why || 'edited')
-      for (const k of ['action', 'staging', 'camera', 'ends', 'characters', 'speaker', 'line', 'seconds', 'prompt', 'character', 'stage', 'continues']) if (patch[k] !== undefined) sh[k] = patch[k]
+      for (const k of ['action', 'staging', 'camera', 'ends', 'characters', 'speaker', 'line', 'seconds', 'prompt', 'character', 'stage', 'continues', 'overrides', 'intent', 'locks', 'motion_style', 'beats', 'cut']) if (patch[k] !== undefined) sh[k] = patch[k]
       // a seed of the shot's own: every Film it starts from it (null: a new one each time)
       if (patch.seed !== undefined) sh.seed = patch.seed === null || patch.seed === '' ? null : Math.max(0, Math.floor(Number(patch.seed)) || 0)
       // its place in the film's schedule (the Plan view): { start, end } as YYYY-MM-DD days, or null
@@ -1535,7 +1688,20 @@ export class Productions {
   }
   // What Film it sends for a shot (generatePreviews' input) and what the shot records once it's sent. The shot gets
   // its project (in Shots) here if it has none yet.
-  async shotRequest(id, shotId, { previews, seed, fromSketch = true, room: useRoom = true, previs: usePrevis = true } = {}) {
+  // The shot's Shot Contract (contract.js): what the shot means and how its moments are timed. plan.js
+  // compiles it into the prompt and the take review judges the take against it, exactly as on a Create
+  // request. A shot without a contract renders as it always did.
+  contractFor(sh) {
+    if (!sh.intent && !sh.locks && !sh.beats?.length && !sh.motion_style) return {}
+    return {
+      ...(sh.intent ? { intent: sh.intent } : {}),
+      ...(sh.locks ? { locks: sh.locks } : {}),
+      ...(sh.motion_style ? { motion_style: sh.motion_style } : {}),
+      ...(sh.beats?.length ? { beats: sh.beats } : {})
+    }
+  }
+
+  async shotRequest(id, shotId, { previews, seed, fromSketch = true, room: useRoom = true, previs: usePrevis = true, draft = false } = {}) {
     const studio = this.studio()
     const p = this.get(id)
     const { sc, sh } = this.find(p, shotId)
@@ -1547,7 +1713,7 @@ export class Productions {
     }
     if (!projectId) {
       const n = sc.shots.indexOf(sh) + 1
-      const shot = studio.createProject(`${p.name} · ${sc.location || sc.heading} · ${n}`)
+      const shot = studio.createProject(`${p.name} · ${sc.location || sc.heading} · ${n}`, null, null, null, { id: p.id, name: p.name })
       projectId = shot.id
       this.patch(id, (q) => (this.find(q, shotId).sh.projectId = projectId))
     }
@@ -1562,8 +1728,10 @@ export class Productions {
     }
     const said = oneTake(sh.line ? sh.prompt : withSilence(sh.prompt))
     previews = previews ?? (this.speedFor(p).speed ? undefined : 3)
-    if (sh.continues) return this.continuedRequest(p, sc, sh, { projectId, said, previews, seed })
+    if (sh.continues) return this.continuedRequest(p, sc, sh, { projectId, said, previews, seed, draft })
     const seconds = sh.voiceLine ? Math.min(15, Math.max(sh.seconds, Math.ceil(sh.voiceLine.duration + 0.5))) : sh.seconds
+    // previz drafts render small: the cut is judged, not admired
+    const draftSize = draft ? { megapixels: 0.4 } : {}
     const sketch = fromSketch && sh.sketch && !sh.sketchStale && fs.existsSync(sh.sketch) ? sh.sketch : null
     // with a picture of the place too, reference to video keeps the room the same however the camera moves
     const loc = p.locations.find((l) => l.name.toLowerCase() === (sc.location || '').toLowerCase())
@@ -1590,17 +1758,19 @@ export class Productions {
       seconds,
       aspect: p.aspect,
       ...this.speedFor(p),
+      ...draftSize,
       previews,
       extraLoras: p.look?.loras || [],
       voiceLine: sh.voiceLine?.file || null,
-      seed: seed ?? shotSeed(sh)
+      seed: seed ?? shotSeed(sh),
+      ...this.contractFor(sh)
     }
     return { input, filmed: { filmedFrom: sketch ? 'sketch' : 'prompt', previs: clip?.file || null } }
   }
   // A continuous shot carries straight on from the previous shot's take (its finished take, else the picked or first
   // preview) as one unbroken take: Continue mode from that take's last 4 seconds. Its takes open with a replay of
   // the previous take, which the cut leaves out (roughCut).
-  async continuedRequest(p, sc, sh, { projectId, said, previews, seed }) {
+  async continuedRequest(p, sc, sh, { projectId, said, previews, seed, draft = false }) {
     const n = sc.shots.indexOf(sh)
     const prev = sc.shots[n - 1]
     if (!prev) throw new Error('The first shot of a scene has nothing to carry on from.')
@@ -1625,10 +1795,12 @@ export class Productions {
       overlapFrames: 22,
       aspect: p.aspect,
       ...this.speedFor(p),
+      ...(draft ? { megapixels: 0.4 } : {}),
       previews,
       extraLoras: p.look?.loras || [],
       seed: seed ?? shotSeed(sh),
-      media: [{ kind: 'video', file: src, duration: cut.duration, width: cut.width, height: cut.height, hasAudio: true }]
+      media: [{ kind: 'video', file: src, duration: cut.duration, width: cut.width, height: cut.height, hasAudio: true }],
+      ...this.contractFor(sh)
     }
     return { input, filmed: { filmedFrom: 'continue', previs: null } }
   }
@@ -1667,7 +1839,7 @@ export class Productions {
     if (this.filming.has(id)) throw new Error('This film is already being filmed. Wait for its lines to be said.')
     // a continuous shot waits until the shot before it has a take to carry on from
     const hasTake = (sh) => !!sh?.projectId && ['pick', 'finished', 'finishing'].includes(this.shotState(sh).status)
-    const ids = scenes.flatMap((sc) => sc.shots.filter((sh, i) => sh.prompt.trim() && !sh.projectId && (!sh.continues || hasTake(sc.shots[i - 1]))).map((sh) => sh.id))
+    const ids = scenes.flatMap((sc) => sc.shots.filter((sh, i) => !sh.cut && sh.prompt.trim() && !sh.projectId && (!sh.continues || hasTake(sc.shots[i - 1]))).map((sh) => sh.id))
     return ids.length ? this.filmShots(id, ids, opts) : []
   }
   // Previews for the board's selection, across scenes: every picked shot with a prompt that isn't in flight
@@ -1679,7 +1851,7 @@ export class Productions {
     const wanted = new Set(shotIds)
     const busy = new Set(['speaking', 'queued', 'rendering', 'finishing'])
     const hasTake = (sh) => !!sh?.projectId && ['pick', 'finished', 'finishing'].includes(this.shotState(sh).status)
-    const ids = p.scenes.flatMap((sc) => sc.shots.filter((sh, i) => wanted.has(sh.id) && sh.prompt.trim() && !busy.has(this.shotState(sh).status) && (!sh.continues || hasTake(sc.shots[i - 1]))).map((sh) => sh.id))
+    const ids = p.scenes.flatMap((sc) => sc.shots.filter((sh, i) => wanted.has(sh.id) && !sh.cut && sh.prompt.trim() && !busy.has(this.shotState(sh).status) && (!sh.continues || hasTake(sc.shots[i - 1]))).map((sh) => sh.id))
     return ids.length ? this.filmShots(id, ids, opts) : []
   }
   // Finishes preview n of the shot's latest hunt (2 MP; with the voice line as its sound when it has one).
@@ -1728,9 +1900,17 @@ export class Productions {
     const studio = this.studio()
     for (const sc of p.scenes)
       for (const sh of sc.shots)
-        if (sh.projectId)
-          for (const j of studio.listJobs(sh.projectId))
-            if (!DONE.includes(j.status)) await studio.refreshJob(j.id).catch(() => {})
+        if (sh.projectId) {
+          // a shot whose project was deleted from the Library must not take the whole film down with it:
+          // shotState already reads it as not filmed, and Film it gives it a fresh project
+          let jobs = []
+          try {
+            jobs = studio.listJobs(sh.projectId)
+          } catch {
+            continue
+          }
+          for (const j of jobs) if (!DONE.includes(j.status)) await studio.refreshJob(j.id).catch(() => {})
+        }
     const run = this.filming.get(id)
     const stateOf = (sh) => (run?.speaking === sh.id ? { status: 'speaking' } : run?.waiting.has(sh.id) && !sh.projectId ? { status: 'queued' } : this.shotState(sh))
     const scenes = p.scenes.map((sc) => ({ ...sc, shots: sc.shots.map((sh) => ({ ...sh, state: stateOf(sh) })) }))
@@ -1766,6 +1946,7 @@ export class Productions {
     let placed = 0
     for (const sc of v.scenes)
       for (const sh of sc.shots) {
+        if (sh.cut) continue // removed in the Prev step: never in the cut, never counted missing
         const st = sh.state
         const src = st.final || (st.candidates?.length ? st.candidates.find((c) => c.n === (st.picked || 1)) || st.candidates[0] : null)
         if (!src) {

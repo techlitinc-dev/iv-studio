@@ -157,6 +157,20 @@ function ReviewCard({ review, title, videoKey, before, onRun }) {
           ))}
         </ul>
       )}
+      {review.beats?.length > 0 && (
+        <ul className="review-issues review-beat-verdicts" data-tour="review-beats">
+          {review.beats.map((b, i) => (
+            <li key={i}>
+              <button className="link-btn mono small" onClick={() => seek(b.from)}>
+                {b.from}–{b.to} s
+              </button>{' '}
+              <span className={`mono small ${b.pass ? 'dim' : 'pink'}`}>beat {b.index} {b.pass ? 'landed' : 'failed'}</span>{' '}
+              <span className="dim small">wanted {b.wantFrom}–{b.wantTo}s</span>
+              {b.note ? ` — ${b.note}` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="small">
         <span className="mono">{review.fix?.label}</span>
         {review.fix?.kind === 'clean_stretch' && (
