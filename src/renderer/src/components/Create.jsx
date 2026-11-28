@@ -642,7 +642,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
       const job = await window.ivstudio.render.previews({ ...request, projectId: form.projectId || undefined, projectName: form.projectName || undefined, ...(spend ? { spend } : {}) })
       // the last run: Create opens on it next time
       window.ivstudio.createMemory.saveLast('video', form, { ran: true }).catch(() => {})
-      notify('Previews started. You can keep working; they appear here as they finish.', 'info')
+      notify(job.note || 'Previews started. You can keep working; they appear here as they finish.', 'info')
       openShot(job.projectId)
     } catch (err) {
       notify(err.message)

@@ -147,7 +147,10 @@ export function renderFacts({ job, jobs = [], output = {}, request = {}, charact
   add('RefMods', refmods.join(', ') || null)
   const seed = rr.seeds && candidate ? rr.seeds[candidate - 1] : null
   add('Seed', seed)
-  if (!seedance && (request.variant || rr.variant) === 'pika' && (request.fast || rr.fast)) add('Render', 'Fast: SelfLift two-stage + Sol-Attn')
+  // a cloud run downgrades fast (SelfLift crashes the cloud ComfyUI — see generatePreviews), so the fact comes
+  // from the resolved plan when there is one, not the ask
+  const fastFact = (request.variant || rr.variant) === 'pika' && (rr.variant ? !!rr.fast : !!request.fast)
+  if (!seedance && fastFact) add('Render', 'Fast: SelfLift two-stage + Sol-Attn')
   if (!seedance && (request.steps || rr.steps)) add('Steps', request.steps || rr.steps)
   if (job.kind === 'previews') add('Take', candidate ? `Preview ${candidate} of ${rr.previews || '?'}` : null)
   // how it was finished, and enhanced
@@ -500,7 +503,9 @@ export class Studio {
     const bible = this.h3Character(applySpeed(withPreviewSize(given, this.previewSize?.())))
     const { request, notes: said } = resolveMentions(withCast(bible.request, members), members)
     const notes = [...bible.notes, ...said]
-    const plan = planPreviews(request, this.characters())
+    // generatePreviews skips the SelfLift fast stack on the person's own cloud (it aborts the cloud ComfyUI);
+    // the summary shows what would actually run
+    const plan = planPreviews(this.comfy.ownCloud && request.fast ? { ...request, fast: false } : request, this.characters())
     // compiled: the prompt the model actually reads (the brief plus the beats' timeline), for the manifest panel
     const out = { resolved: plan.resolved, groups: plan.groups, notes, mode: request.mode, compiled: plan.values['87'] }
     if (finish !== false) out.finish = planFinish(plan, { candidate: 1, ...(finish || {}) }).resolved
@@ -552,7 +557,12 @@ export class Studio {
     }
     const voiceLine = request.voiceLine ? await this.stage(request.voiceLine, 'iv_studio') : null
     const characters = characterOverride ? [...this.characters(), characterOverride] : this.characters()
-    const plan = planPreviews({ ...request, media, voiceLine, ...(characterOverride && { character: characterOverride.id }) }, characters)
+    // Pika's fast stack aborts the own-cloud ComfyUI (SIGABRT inside SelfLift's low-res sampling, twice
+    // reproduced on a RunPod Blackwell pod) and a crashed cloud ComfyUI loses the render, so there the fast
+    // stack is skipped and the shot renders on Pika's standard six-step schedule. The ask is kept as it was
+    // (plan.asked below) and the job carries a note saying why.
+    const cloudFast = request.fast && this.comfy.ownCloud
+    const plan = planPreviews({ ...(cloudFast ? { ...request, fast: false } : request), media, voiceLine, ...(characterOverride && { character: characterOverride.id }) }, characters)
     const unet = this.models[plan.request.mode]
     if (unet) plan.values[`${MODEL_NODES[plan.request.mode]}.unet_name`] = unet
     // Pika H3 Flex: its adapter LoRA (an optional model Setup downloads) must sit in this ComfyUI's loras, or the
@@ -586,7 +596,8 @@ export class Studio {
     const run = project.jobs.length + 1
     const name = `${slug(project.name)}_${project.id}_r${run}`
     plan.values['80'] = name
-    return this.submit({ kind: 'previews', project, plan, name })
+    const job = await this.submit({ kind: 'previews', project, plan, name })
+    return cloudFast ? this.updateJob(job.id, { note: 'Fast render (SelfLift) crashes the cloud GPU’s ComfyUI, so this shot rendered on Pika’s standard schedule instead.' }) : job
   }
 
   // What a finish of this previews job would produce, without rendering.
