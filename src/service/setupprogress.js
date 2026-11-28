@@ -26,8 +26,10 @@ const short = (s, n = 110) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
 
 export class SetupProgress {
   // models: [{ id, label, size }] the setup downloads (Modal), for a byte-weighted percentage
-  constructor(provider, { now = Date.now, onChange = () => {}, models = [] } = {}) {
+  // what: 'setup' (the Set up flow) or 'wake' (starting the pod for a render) — the views label themselves
+  constructor(provider, { now = Date.now, onChange = () => {}, models = [], what = 'setup' } = {}) {
     this.provider = provider
+    this.what = what
     this.now = now
     this.onChange = onChange
     this.models = models
@@ -127,8 +129,10 @@ export class SetupProgress {
     const detail = h.detail ? h.detail[0].toUpperCase() + h.detail.slice(1) : ''
     if (h.stage === 'booting') return this.update('pod', { detail: detail || 'The pod is booting' })
     if (h.stage === 'installing') {
+      // the boot script reports a real percentage across the install (runpod_boot.py); older pods only said which
+      // pack they're on — fall back to that
       const n = String(h.detail || '').match(/node pack (\d+) of (\d+)/)
-      return this.update('install', { detail, percent: n ? (Number(n[1]) / Number(n[2])) * 100 : null })
+      return this.update('install', { detail, percent: h.percent != null ? h.percent : n ? (Number(n[1]) / Number(n[2])) * 100 : null })
     }
     if (h.stage === 'models') {
       const pct = h.total ? (((h.done || 0) + (h.percent || 0) / 100) / h.total) * 100 : h.percent
@@ -168,6 +172,7 @@ export class SetupProgress {
     const t = this.now()
     return {
       provider: this.provider,
+      what: this.what,
       startedAt: this.startedAt,
       finishedAt: this.finishedAt,
       elapsed: Math.round(((this.finishedAt || t) - this.startedAt) / 1000),

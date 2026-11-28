@@ -1194,6 +1194,27 @@ input.mini {
   background: currentColor;
   opacity: 0.5;
 }
+
+/* This-PC mode: the pod widget floats bottom-left over the page (the title bar is full). Same chip, full figures. */
+.pod-float {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--line-strong);
+  background: rgba(16, 12, 14, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.pod-float .cloud-meter {
+  border: 0;
+  padding: 0;
+}
 .cloud-meter.on .cloud-meter-dot {
   opacity: 1;
   animation: cloud-meter-pulse 1.6s ease-in-out infinite;
@@ -3053,8 +3074,16 @@ body.resizing * {
   font-size: 13px;
   color: var(--pink);
 }
-.cast-grid {
-  display: grid;
+.cast-group {
+  margin-bottom: 18px;
+}
+.cast-group-name {
+  margin: 0 0 8px;
+  color: var(--pink);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+.cast-grid {  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 240px));
   gap: 14px;
 }
@@ -14723,6 +14752,28 @@ button.set-chip:hover {
   gap: 10px;
 }
 
+/* ---------- Previz (Workflows): clay takes and their made-real versions ---------- */
+.previz-run {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.previz-run-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.previz-character {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.previz-character select {
+  max-width: 280px;
+}
+
 /* ---------- Effects dialog: themed sliders, the close button, New angle's camera rig ---------- */
 .modal-head .spacer {
   flex: 1;
@@ -15682,6 +15733,12 @@ html.rm .agent-dot.live {
    covered; on smaller windows, where the page would get too cramped, it slides over the page instead. */
 .app.chat-on {
   grid-template-columns: var(--nav-w) minmax(0, 1fr) 380px;
+}
+/* auto-placement would drop the page into the dead --nav-w column (the removed sidebar's slot), squashing it to its
+   padding: pin it to the middle column. Not in focus mode (app-focus): there the grid is a single column. */
+.app.chat-on:not(.app-focus) > .page {
+  grid-column: 2;
+  grid-row: 2;
 }
 .chat-panel {
   grid-column: 3;
@@ -20363,6 +20420,504 @@ html.chat-window body {
   border-radius: 3px;
   overflow: hidden;
   vertical-align: middle;
+}
+/* the pipeline: how far the shots got, stage by stage */
+.mdash-pipe {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.mdash-stage {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--ink-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mdash-stage strong {
+  font: 600 22px/1 var(--display);
+  color: var(--cream);
+}
+.mdash-stage .mdash-cell-bar {
+  width: 100%;
+}
+/* velocity: shots finished per day, and the ETA it gives */
+.mdash-vel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+.mdash-vel-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 26px;
+}
+.mdash-vel-bar {
+  width: 10px;
+  background: var(--red);
+  border-radius: 2px 2px 0 0;
+}
+.mdash-vel-bar.empty {
+  background: var(--ink-3);
+}
+
+/* ---------- Render queue (overnight): overall and per-shot progress ---------- */
+.rqueue-overall {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rqueue-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--ink-3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.rqueue-bar.big {
+  height: 12px;
+}
+.rqueue-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--pink);
+  transition: width 0.4s ease;
+}
+.rqueue-bar > span.rqueue-indet {
+  animation: rqueue-indet 1.4s ease-in-out infinite;
+}
+@keyframes rqueue-indet {
+  0% {
+    margin-left: 0;
+    width: 30%;
+  }
+  50% {
+    margin-left: 70%;
+    width: 30%;
+  }
+  100% {
+    margin-left: 0;
+    width: 30%;
+  }
+}
+.rqueue-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+/* the shot picker, grouped by scene */
+.rqueue-pick {
+  display: grid;
+  gap: 12px;
+  max-height: 380px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+.rqueue-scene {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+}
+.rqueue-scene-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.rqueue-scene-head .dim {
+  margin-left: auto;
+  font-weight: 400;
+}
+.rqueue-shot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 22px;
+}
+.rqueue-shot .dim {
+  margin-left: auto;
+}
+.rqueue-shot.off {
+  opacity: 0.45;
+}
+
+/* ---------- Story explorer: stats, proportional timeline, navigator tree ---------- */
+.sx-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+.sx-stat {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--ink-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sx-stat strong {
+  font: 600 18px/1.1 var(--display);
+  color: var(--cream);
+}
+.sx-timeline {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  margin-bottom: 6px;
+}
+.sx-block {
+  min-width: 90px;
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: var(--ink-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sx-block-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sx-block-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sx-parts {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+}
+.sx-part {
+  position: relative;
+  background: var(--ink-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.sx-part-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--pink);
+}
+.sx-tree {
+  display: grid;
+  gap: 2px;
+  max-height: 480px;
+  overflow-y: auto;
+  margin-bottom: 24px;
+}
+.sx-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  padding-left: calc(6px + var(--depth) * 18px);
+  border-radius: 6px;
+}
+.sx-row[role='button'] {
+  cursor: pointer;
+}
+.sx-row[role='button']:hover {
+  background: var(--ink-2);
+}
+.sx-act > .sx-row .sx-title,
+.sx-sequence > .sx-row .sx-title {
+  font-weight: 600;
+}
+.sx-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sx-meta {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.sx-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sx-shot .sx-row {
+  font-size: 13px;
+}
+
+/* ---------- Story explorer v2: the story-development desk ---------- */
+.sx2-main {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  gap: 14px;
+  align-items: start;
+  margin-top: 8px;
+}
+@media (max-width: 1200px) {
+  .sx2-main {
+    grid-template-columns: 1fr;
+  }
+}
+.sx2-nav,
+.sx2-center,
+.sx2-assist {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ink-2);
+  padding: 10px;
+  min-height: 200px;
+}
+.sx2-nav-head {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.sx2-nav-head input {
+  flex: 1;
+  min-width: 0;
+}
+.sx2-nav-head select {
+  max-width: 130px;
+}
+.sx-row.on {
+  background: var(--ink-3);
+}
+.sx-chev {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.sx-chev:hover {
+  opacity: 1;
+}
+.sx-artifacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding-left: calc(6px + var(--depth) * 18px + 16px);
+  margin: -2px 0 4px;
+}
+.sx-art {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 11px;
+}
+.sx-art.small.dim {
+  border: none;
+  font-style: italic;
+}
+.sx2-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+  align-items: center;
+}
+.sx2-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: inherit;
+  opacity: 0.65;
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+.sx2-tab.on {
+  opacity: 1;
+  border-bottom-color: var(--pink);
+}
+.sx2-zoom {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.sx2-zoom .on {
+  color: var(--pink);
+}
+.sx2-doc h3 {
+  margin: 0;
+}
+.sx2-doc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sx2-pre {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+.sx2-concept textarea,
+.sx2-doc textarea {
+  width: 100%;
+}
+.sx2-concept .mono {
+  margin: 12px 0 4px;
+}
+.sx2-scene-shot {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sx2-assist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sx2-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sx2-log {
+  flex: 1;
+  min-height: 120px;
+  max-height: 380px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sx2-msg {
+  border-left: 2px solid var(--pink);
+  padding-left: 8px;
+}
+.sx2-ask {
+  display: flex;
+  gap: 6px;
+}
+.sx2-ask input {
+  flex: 1;
+  min-width: 0;
+}
+.sx2-bottom {
+  margin-top: 16px;
+}
+.sx-ruler {
+  position: relative;
+  height: 16px;
+  margin-bottom: 2px;
+}
+.sx-ruler-mark {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  border-left: 1px solid var(--line);
+  padding-left: 3px;
+}
+.sx-arcs td {
+  text-align: center;
+}
+.sx2-report p {
+  margin: 4px 0;
+}
+
+/* ---------- the playable story timeline ---------- */
+.sx-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.sx-player-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sx-scope {
+  max-width: 240px;
+}
+.sx-screen {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #000;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.sx-screen video {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
+.sx-screen-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 140px;
+  color: var(--cream);
+  text-align: center;
+  padding: 12px;
+}
+.sx-timeline.playable {
+  position: relative;
+  cursor: pointer;
+}
+.sx-playhead {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--red);
+  z-index: 2;
+  pointer-events: none;
+}
+.sx-playhead::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -4px;
+  border: 5px solid transparent;
+  border-top-color: var(--red);
+}
+.rqueue-items {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.rqueue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rqueue-status.waiting {
+  opacity: 0.6;
+}
+.rqueue-status.rendering,
+.rqueue-status.finishing {
+  color: var(--pink);
+}
+.rqueue-status.done {
+  color: #7bc47f;
+}
+.rqueue-status.error {
+  color: var(--red);
 }
 .mdash-cell-bar > span {
   display: block;

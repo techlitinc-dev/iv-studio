@@ -80,6 +80,13 @@ export const WORKFLOWS = [
     needs: ['Shinobi’s engine (one click, about 440 MB)', 'Claude or ChatGPT, or a one-click style']
   },
   {
+    page: 'previz',
+    name: 'Previz',
+    tag: 'A cinematic greybox, then made real',
+    about: 'Describe a shot and MiniMax H3 films it as a full greybox: everything plain grey blocks and mannequins, like a Blender viewport. Pick the take you like and H3’s refine pass paints the real scene over the blocks — the motion stays.',
+    needs: ['H3 on this PC or your own cloud']
+  },
+  {
     page: 'rebuild',
     name: 'Rebuild',
     tag: 'A video, taken apart and rebuilt',

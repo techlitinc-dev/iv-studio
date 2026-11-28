@@ -109,6 +109,8 @@ const FRESH_FORM = {
   projectId: null, // set when editing a shot's run: the new run joins that shot
   projectName: '',
   engine: 'h3', // 'h3' (this PC) or 'seedance' (Comfy credits)
+  variant: 'h3', // with engine 'h3': 'h3' (MiniMax H3) or 'pika' (Pika H3 Flex: its adapter + six-step schedule)
+  fast: false, // with variant 'pika': SelfLift two-stage sampling + sol-attn sparse attention + the Sol VAE
   tier: 'draft',
   audio: true,
   mode: 'text',
@@ -278,7 +280,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
   }
   const engineName = (id) => ENGINES.find(([e]) => e === id)?.[1] || 'MiniMax H3'
   const templateSummary = (f) =>
-    [engineName(f.engine), MODES.find(([id]) => id === f.mode)?.[1], characters?.find?.((c) => c.id === f.character)?.name, f.aspect, f.seconds && `${f.seconds} s`, f.extraLoras?.length && `${f.extraLoras.length} LoRA${f.extraLoras.length > 1 ? 's' : ''}`].filter(Boolean).join(' · ')
+    [f.engine === 'h3' && f.variant === 'pika' ? `Pika H3 Flex${f.fast ? ' · fast' : ''}` : engineName(f.engine), MODES.find(([id]) => id === f.mode)?.[1], characters?.find?.((c) => c.id === f.character)?.name, f.aspect, f.seconds && `${f.seconds} s`, f.extraLoras?.length && `${f.extraLoras.length} LoRA${f.extraLoras.length > 1 ? 's' : ''}`].filter(Boolean).join(' · ')
   // an iv:go with a mode (App.jsx) can open Create on that mode
   useEffect(() => {
     const go = (e) => e.detail?.create === 'video' && e.detail.mode && set({ mode: e.detail.mode, media: [] })
@@ -312,8 +314,8 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
   const charName = characters?.find?.((c) => c.id === form.character)?.name
   useSelection(
     'create',
-    { setup: `${sd ? 'Seedance 2.5' : lx ? 'LTX 2.5' : 'MiniMax H3'}, ${form.mode} mode, ${charName || 'no character'}${h3 && form.with?.length ? ` with ${form.with.map((id) => characters.find((c) => c.id === id)?.name).filter(Boolean).join(', ')}` : ''}, ${form.aspect}, ${form.seconds} s, ${form.media.length} reference${form.media.length === 1 ? '' : 's'}${form.extraLoras.length ? `, ${form.extraLoras.length} LoRA${form.extraLoras.length === 1 ? '' : 's'}` : ''}, prompt ${form.prompt.trim() ? `${form.prompt.trim().split(/\s+/).length} words` : 'empty'}` },
-    [form.engine, form.mode, form.character, (form.with || []).join(','), form.aspect, form.seconds, form.media.length, form.extraLoras.length, form.prompt.length > 0, Math.round(form.prompt.length / 40)]
+    { setup: `${sd ? 'Seedance 2.5' : lx ? 'LTX 2.5' : form.variant === 'pika' ? `Pika H3 Flex${form.fast ? ' fast' : ''}` : 'MiniMax H3'}, ${form.mode} mode, ${charName || 'no character'}${h3 && form.with?.length ? ` with ${form.with.map((id) => characters.find((c) => c.id === id)?.name).filter(Boolean).join(', ')}` : ''}, ${form.aspect}, ${form.seconds} s, ${form.media.length} reference${form.media.length === 1 ? '' : 's'}${form.extraLoras.length ? `, ${form.extraLoras.length} LoRA${form.extraLoras.length === 1 ? '' : 's'}` : ''}, prompt ${form.prompt.trim() ? `${form.prompt.trim().split(/\s+/).length} words` : 'empty'}` },
+    [form.engine, form.variant, form.fast, form.mode, form.character, (form.with || []).join(','), form.aspect, form.seconds, form.media.length, form.extraLoras.length, form.prompt.length > 0, Math.round(form.prompt.length / 40)]
   )
   // the shot has a spoken line (or a voice line): a reference video's mouth can't be softened then (softmouth.js)
   const talks = !!form.voiceLine || /<d>[\s\S]*?\S[\s\S]*?<\/d>/.test(form.prompt || '')
@@ -448,6 +450,8 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
       projectName,
       mode: asked?.mode || q.mode,
       engine: asked?.engine || q.engine || 'h3',
+      variant: q.variant || 'h3',
+      fast: q.fast || false,
       tier: asked?.tier || q.tier || f.tier,
       audio: asked?.audio ?? q.audio ?? true,
       character: q.character ?? 'none',
@@ -682,10 +686,10 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
     let alive = true
     const fps = r.fps || 24
     window.ivstudio.timing
-      .estimate({ kind: 'previews', megapixels: (r.width * r.height) / 1e6, seconds: r.frames / fps, fps, previews: r.previews, steps: form.steps })
+      .estimate({ kind: 'previews', megapixels: (r.width * r.height) / 1e6, seconds: r.frames / fps, fps, previews: r.previews, steps: form.variant === 'pika' ? 6 : form.steps })
       .then((e) => alive && setEta(e), () => alive && setEta(null))
     return () => (alive = false)
-  }, [sd, r?.width, r?.height, r?.frames, r?.previews, form.steps])
+  }, [sd, r?.width, r?.height, r?.frames, r?.previews, form.steps, form.variant, form.fast])
   const comfyOk = setup?.items?.some((i) => i.id === 'comfyui' && i.status === 'ok')
   const blocked = setup && (sd ? !comfyOk : !setup.ready)
 
@@ -808,6 +812,42 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
             })()}
             {h3 && (
             <>
+            <div className="create-field">
+              <span className="create-label mono">Version</span>
+              <div className="segmented">
+                {[
+                  ['h3', 'MiniMax H3'],
+                  ['pika', 'Pika H3 Flex']
+                ].map(([v, l]) => (
+                  <button key={v} className={form.variant === v ? 'on' : ''} onClick={() => set({ variant: v })}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              {form.variant === 'pika' && (
+                <span className="dim small">Pika's adapter on the same H3 pipeline: six-step takes, 2–4× faster, tuned for character consistency. Takes use Pika's fixed schedule, so the Steps and sampler choices don't apply. The adapter (about 4 GB) downloads once in Settings → Setup; your cloud storage fetches it on first use.</span>
+              )}
+            </div>
+            {form.variant === 'pika' && (
+            <div className="create-field">
+              <span className="create-label mono">Render</span>
+              <div className="segmented">
+                {[
+                  [false, 'Standard'],
+                  [true, 'Fast']
+                ].map(([v, l]) => (
+                  <button key={l} className={!!form.fast === v ? 'on' : ''} onClick={() => set({ fast: v })}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              {form.fast ? (
+                <span className="dim small">The tutorial's speed stack: SelfLift two-stage sampling, sol-attn sparse attention and the experimental Sol VAE — about 30 s for a 5-second take on a 4090-class card. Needs the SelfLift node pack and the Sol VAE (Settings → Setup, about 2 GB); your cloud pod takes one longer reinstall when this update first wakes it.</span>
+              ) : (
+                <span className="dim small">Pika's released six-step schedule on plain H3 attention.</span>
+              )}
+            </div>
+            )}
             <div className="create-field">
               <span className="create-label mono">LoRAs</span>
               <div className="lora-tray">
@@ -1396,6 +1436,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
                   </div>
                   <p className="dim small adv-note">
                     For the previews. {samplers && !samplers.samplers.length ? 'Start ComfyUI to see every choice. ' : ''}er_sde with beta is what Techlit Studio is tuned on; the full-size finish keeps its own refine settings.
+                    {form.variant === 'pika' && ' Pika H3 Flex keeps its own released six-step schedule (lcm with Pika’s sigmas), whatever is chosen here.'}
                     {(form.sampler !== SAMPLER_DEFAULT || form.scheduler !== SCHEDULER_DEFAULT) && (
                       <>
                         {' '}
@@ -1472,7 +1513,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
             ) : null}
             <div>
               <dt>Quality</dt>
-              <dd>{sd ? `${TIERS.find(([id]) => id === form.tier)?.[1]} · ${form.audio ? 'with sound' : 'silent'}` : `${QUALITY.find(([s]) => s === form.steps)?.[1] || `${form.steps} steps`} · seed ${form.seed}`}</dd>
+              <dd>{sd ? `${TIERS.find(([id]) => id === form.tier)?.[1]} · ${form.audio ? 'with sound' : 'silent'}` : form.variant === 'pika' ? `6 steps (Pika schedule) · seed ${form.seed}` : `${QUALITY.find(([s]) => s === form.steps)?.[1] || `${form.steps} steps`} · seed ${form.seed}`}</dd>
             </div>
           </dl>
           <details className="manifest" data-tour="create-manifest">
@@ -1484,7 +1525,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
               <div>
                 <dt>Engine</dt>
                 <dd>
-                  {sd ? 'Seedance 2.5' : lx ? 'LTX 2.5' : 'MiniMax H3'}
+                  {sd ? 'Seedance 2.5' : lx ? 'LTX 2.5' : form.variant === 'pika' ? `Pika H3 Flex${form.fast ? ' · fast' : ''}` : 'MiniMax H3'}
                   {plan?.mode && plan.mode !== form.mode ? ' · renders in References mode' : ''}
                 </dd>
               </div>
@@ -1503,7 +1544,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
               <div>
                 <dt>Seed</dt>
                 <dd className="mono">
-                  {form.seed} · {form.steps} steps · {form.sampler} / {form.scheduler}
+                  {form.seed} · {form.variant === 'pika' ? (form.fast ? '6 steps · euler / beta (SelfLift)' : '6 steps · lcm / Pika sigmas') : `${form.steps} steps · ${form.sampler} / ${form.scheduler}`}
                 </dd>
               </div>
               <div>
@@ -1592,7 +1633,7 @@ export default function Create({ setup, characters, notify, openShot, go, incomi
           {r ? (
             <>
               <span className="mono">
-                {r.previews} {sd ? 'take' : 'preview'}{r.previews > 1 ? 's' : ''} · {r.width} × {r.height} · {r.seconds} s · {sd ? 'Seedance 2.5' : r.model}
+                {r.previews} {sd ? 'take' : 'preview'}{r.previews > 1 ? 's' : ''} · {r.width} × {r.height} · {r.seconds} s · {sd ? 'Seedance 2.5' : form.variant === 'pika' ? `Pika H3 Flex${form.fast ? ' · fast' : ''}` : r.model}
                 {h3 && plan.mode && plan.mode !== form.mode ? ' · References (for the @ pictures)' : ''}
               </span>
               <span className="mono dim">{sd ? (price ? price.label : 'Working out the price…') : lx ? `${r.frames} frames · finish with LTX's 2× upscale → ${plan.finish.width} × ${plan.finish.height}` : `${r.frames} frames · finish at ${finishLabel(finishFor(finishSpeed, { upscale2x: setup?.caps?.upscale2x !== false }))} → ${plan.finish.width} × ${plan.finish.height}`}</span>

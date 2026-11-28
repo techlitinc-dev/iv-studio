@@ -82,13 +82,20 @@ export default function RenderQueue({ remote, notify, open }) {
   const waiting = items.length - running
   return (
     <div className={`render-queue ${items.length ? 'busy' : ''}`}>
-      <button className={`live-switch ${pip ? 'on' : ''}`} role="switch" aria-checked={pip} onClick={() => setPipSaved(!pip)} title={pip ? 'Turn the live preview off: renders started from now on skip the step pictures. Takes you’ve already hunted still finish without rendering again.' : 'Show what’s rendering, step by step, in a corner of every page. Renders started from now on send step pictures; one already running finishes without them. Step pictures use a little GPU time each step, so renders can run slightly slower. Switching it on or off between hunting and finishing doesn’t lose your takes.'}>
+      <button
+        className={`live-switch ${pip ? 'on' : ''}`}
+        role="switch"
+        aria-checked={pip}
+        disabled={!!remote}
+        onClick={() => setPipSaved(!pip)}
+        title={remote ? 'Live preview is for renders on this PC: its step pictures stream over this PC’s ComfyUI connection, and the cloud has no way to send them yet. Switch rendering to My PC to watch a render live.' : pip ? 'Turn the live preview off: renders started from now on skip the step pictures. Takes you’ve already hunted still finish without rendering again.' : 'Show what’s rendering, step by step, in a corner of every page. Renders started from now on send step pictures; one already running finishes without them. Step pictures use a little GPU time each step, so renders can run slightly slower. Switching it on or off between hunting and finishing doesn’t lose your takes.'}
+      >
         <span className="switch-track">
           <span className="switch-knob" />
         </span>
         Live preview
       </button>
-      {pip && <LivePip items={items} now={now} kindLabel={kindLabel} open={open} onOff={() => setPipSaved(false)} />}
+      {pip && !remote && <LivePip items={items} now={now} kindLabel={kindLabel} open={open} onOff={() => setPipSaved(false)} />}
       <div className="render-queue-head">
         <span>Queue</span>
         <span className="dim">{items.length ? [running && `${running} rendering`, waiting && `${waiting} waiting`].filter(Boolean).join(' · ') : 'idle'}</span>

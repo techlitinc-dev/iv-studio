@@ -13,14 +13,14 @@ const TESTS = [
   'facerefine', 'editgen', 'news', 'tours', 'lint', 'productions', 'reel', 'screenplay', 'sizzle-cut', 'staging',
   'timeline-tracks', 'private-outputs', 'comfylauncher', 'comfy-busy', 'ranking', 'prompt-guide', 'ollama-address',
   'nodepacks', 'model-versions', 'remake', 'remake-voice', 'rebuild-voice', 'comfycloud', 'image-families', 'refmods',
-  'hardware', 'training-recipe', 'training-runpod', 'sampler-choice', 'sequence-links', 'sequence-kinds', 'h3-image',
+  'hardware', 'training-recipe', 'training-runpod', 'sampler-choice', 'pika-flex', 'sequence-links', 'sequence-kinds', 'h3-image',
   'iv-workspace-import', 'live-preview-all', 'latent-cache-key', 'music-remix', 'pricing', 'seedance', 'words',
   'modal-account', 'setup-progress', 'library-facts', 'speed', 'effects', 'comfy-install', 'comfy-address', 'mac-update',
   'credits', 'comfy-starting', 'freefield', 'lora-families', 'comfy-restart', 'openai-writer', 'filmcraft', 'interchange',
   'recommended', 'describe', 'softmouth', 'dailies', 'terms', 'continue-full', 'portable-update', 'chat-extras',
   'picture-setup', 'chat-text', 'hermes-acp', 'ollama-start', 'writer-pick', 'agent-names', 'writer-json', 'codex-images',
   'createmem', 'localchat', 'cloudspend', 'customflows', 'gptimages', 'beats', 'preflight', 'shotstatus', 'look', 'camera',
-  'contract', 'motion', 'grammar', 'review', 'planner', 'film-contract', 'previz'
+  'contract', 'motion', 'grammar', 'review', 'planner', 'film-contract', 'previz', 'claypreviz', 'renderqueue'
 ]
 // These also take a Python with aiohttp for their live gate tests; without one they run their service tests and skip the gate.
 const PY_TESTS = ['runpod', 'cloudprep', 'cloudvoice']

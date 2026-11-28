@@ -5,68 +5,85 @@ import Stage from './Stage'
 import { ask } from './Confirm'
 import { BetaJoin, useUsage } from './Privacy'
 
-// The title-bar meter while rendering in the cloud: GPU time and its estimated cost since Techlit Studio opened,
-// ticking while a GPU is up. Modal is asked every 30 s which containers run; each one counts from its own
-// start until it was last seen. Clicking it opens the Cloud page (Shut down GPU is there).
-const seen = new Map() // container id -> { start, last }, kept while the window is open
+// "0:07", "1:02:30"
 const clock = (s) => {
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   const sec = String(Math.floor(s % 60)).padStart(2, '0')
   return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
 }
-export function CloudMeter({ onOpen, notify = () => {} }) {
-  const [usage, setUsage] = useState(null)
+// The cloud-GPU meter: whether the person's own cloud GPU (RunPod, Modal) is up — its kind, rate, time running
+// and cost so far — with the shut-off beside it. In cloud mode (where renders go) it's the compact inline title-bar
+// chip; in This-PC mode it's a floating widget bottom-left with the full figures, because a leftover pod bills
+// either way — there it is the alarm that money is burning for nothing. Nothing here can wake a GPU: cloud:usage
+// only lists what runs (RunPod) or asks Modal, both free reads, and a cloud that was never set up hides the widget
+// (looked for again every five minutes).
+export function PodMeter({ onOpen, notify = () => {}, floating = false }) {
+  const [u, setU] = useState(null)
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     let live = true
+    let timer = null
+    let gap = 1500
     const poll = () =>
       window.ivstudio.cloud
         .usage()
-        .then((u) => {
+        .then((x) => {
           if (!live) return
-          const t = Date.now()
-          for (const c of u.running) seen.set(c.id, { start: c.startedAt || t, last: t })
-          setUsage(u)
+          setU(x)
+          gap = x?.setup ? 30000 : 300000
         })
         .catch(() => {})
-    poll()
-    const p = setInterval(poll, 30000)
-    const tick = setInterval(() => setNow(Date.now()), 1000)
+        .finally(() => {
+          if (live) timer = setTimeout(poll, gap)
+        })
+    timer = setTimeout(poll, 400)
+    const tick = setInterval(() => live && setNow(Date.now()), 1000)
     return () => {
       live = false
-      clearInterval(p)
+      clearTimeout(timer)
       clearInterval(tick)
     }
   }, [])
-  if (!usage) return null
-  if (usage.hosted)
+  if (!u?.setup) return null
+  const rate = u.rate || 1620
+  const inr = (v) => `₹${(v * rate).toFixed(2)}`
+  if (u.hosted)
     return (
-      <button className="mono cloud-meter" onClick={onOpen} title="Rendering on Comfy Cloud: each run is billed to your Comfy account, and nothing runs between renders. Click for the Cloud page.">
+      <button className="mono cloud-meter" onClick={onOpen} title="Comfy Cloud: each render is billed to your Comfy account, and nothing runs between renders. Click for the Cloud page.">
         <span className="cloud-meter-dot" />
-        Comfy Cloud · billed per run
+        Comfy Cloud · per run
       </button>
     )
-  const on = usage.running.length > 0
-  const ids = new Set(usage.running.map((c) => c.id))
-  const seconds = [...seen].reduce((sum, [id, c]) => sum + Math.max(0, ((ids.has(id) ? now : c.last) - c.start) / 1000), 0)
-  const cost = (seconds / 3600) * usage.perHour
-  const rate = usage.rate || 180
-  const inr = (v) => `₹${(v * rate).toFixed(2)}`
-  const perHour = `${inr(usage.perHour)}/h`
-  return (
-    <span className="cloud-meter-wrap">
+  const pod = u.running[0]
+  const on = !!pod
+  const seconds = on ? Math.max(0, (now - (pod.startedAt || now)) / 1000) : 0
+  const cost = (seconds / 3600) * (u.perHour || 0)
+  const local = u.target !== 'cloud'
+  const idle = on && u.idleLeft != null ? ` · idles off in ${Math.max(1, Math.round(u.idleLeft / 60))} min` : ''
+  const where = u.provider === 'runpod' ? 'RunPod' : 'Modal'
+  const short = u.gpu.replace(/^NVIDIA /, '')
+  // the inline chip shares the title bar with Start ComfyUI and the PC meter, so it carries less than the
+  // floating widget: the tooltip always has the full story
+  const today = floating && u.today != null ? ` · today ${inr(u.today)}${u.budget?.on ? ` of ${inr(u.budget.daily)}` : ''}` : ''
+  const inner = (
+    <>
       <button
         className={`mono cloud-meter ${on ? 'on' : ''}`}
         onClick={onOpen}
-        title={`Cloud GPU time and estimated cost since Techlit Studio opened (${usage.gpu} at ${perHour}, billed by the second)${usage.today != null ? `. Today: ${inr(usage.today)}` : ''}. Click for the Cloud page.`}
+        title={
+          on
+            ? `Cloud GPU running on your ${where} account (${u.gpu}${u.dataCenter ? `, ${u.dataCenter}` : ''}) at ${inr(u.perHour)}/h, billed by the second${idle.replace(/^ · /, '; ')}${local ? '. Rendering is switched to This PC — this pod is not needed; shut it down to stop the billing' : ''}. Today: ${inr(u.today)}. Click for the Cloud page.`
+            : `Cloud GPU off. ${u.gpu} on your ${where} account costs ${inr(u.perHour)}/h while it runs; today ${inr(u.today)}. Click for the Cloud page.`
+        }
       >
         <span className="cloud-meter-dot" />
-        {on ? `GPU on · ${usage.gpu} · ${perHour} · ${clock(seconds)} · ${inr(cost)}` : `GPU off · ${usage.gpu} ${perHour} when on`}
+        {on ? `GPU on · ${floating ? `${short} · ` : ''}${inr(u.perHour)}/h · ${clock(seconds)} · ${inr(cost)}${today}` : `GPU off · ${short} · ${inr(u.perHour)}/h${today}`}
       </button>
       {on && <ShutDownGpu notify={notify} className="btn btn-small cloud-meter-stop" />}
-    </span>
+    </>
   )
+  return floating ? <div className="pod-float">{inner}</div> : <span className="cloud-meter-wrap">{inner}</span>
 }
 
 // The cloud dashboard: what's up (with the pod's own idle countdown), what today cost against the daily
@@ -140,7 +157,7 @@ function CloudDash({ notify }) {
   const pod = dash.pod
   const idleLeft = pod?.idleLeft != null ? Math.max(0, pod.idleLeft - (now - dashAt) / 1000) : null
   const pct = dash.budget.on && dash.budget.daily > 0 ? Math.min(100, (dash.today / dash.budget.daily) * 100) : 0
-  const inr = (v) => `₹${(v * (dash.rate || 180)).toFixed(2)}`
+  const inr = (v) => `₹${(v * (dash.rate || 1620)).toFixed(2)}`
   const list = files?.files ? Object.entries(files.files).sort((a, b) => b[1] - a[1]) : null
   const usedGb = list ? list.reduce((s, [, b]) => s + b, 0) / 1e9 : null
   return (
@@ -534,6 +551,15 @@ function RunPodSteps({ st, busy, run, notify, refresh, links }) {
               onClick={() => run('Syncing LoRAs', () => window.ivstudio.cloud.syncLoras())}
             >
               Sync LoRAs
+            </button>
+            {' · '}
+            <button
+              className="link-btn mono small"
+              disabled={!!busy || !rp.ready}
+              title="The pod’s own ComfyUI canvas in your browser: try nodes and workflows against the cloud GPU. Starts nothing — the pod must already be up. Anything installed there lasts until the next Techlit Studio update; the models and workflows you save stay on the volume."
+              onClick={() => run('Opening ComfyUI', () => window.ivstudio.cloud.openComfy())}
+            >
+              Open ComfyUI
             </button>
           </p>
         )}

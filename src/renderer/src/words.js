@@ -127,6 +127,7 @@ export function plainText(text) {
 // where the words are kept exactly: things people type, prompts, names, paths, code and other people's text
 export const EXACT = [
   'input', 'textarea', 'select', 'option', 'pre', 'code', 'kbd', '[contenteditable]', '[data-words="exact"]', '.words-exact',
+  '.toast', // error and status lines stay raw ("seed", "/prompt"): plain words must not rewrite what support reads back
   '.prompt', '.run-prompt', '.prompt-diff', '.compare-diff', '.set-path', '.set-code', '.system-meter',
   '.lora-name', '.lora-desc', '.lora-tags', '.lora-words', '.lora-details-title', '.lora-full-prompt', '.lora-modal-file', '.lora-group-name', '.lora-chip-name',
   '.shot-name', '.shelf-name', '.tile-name', '.viewer-name', '.viewer-words', '.portrait-name', '.cast-chip-name', '.cast-modal-name', '.train-path-name'

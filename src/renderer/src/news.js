@@ -2,6 +2,13 @@
 // version's once, until it's dismissed; Settings → Updates lists the last few versions'.
 export const NEWS = [
   {
+    version: '1.1.26',
+    items: [
+      { text: 'New: Pika H3 Flex in Create → Video. With MiniMax H3 picked, choose Version: Pika H3 Flex: Pika’s adapter runs on the same H3 pipeline — six-step takes, 2–4× faster, tuned for character consistency. Looks LoRAs stack with it as they do on H3. The two adapter files (about 4 GB) download once in Settings → Setup; your own cloud fetches them on first use.' },
+      { text: 'Pika H3 Flex, Fast render: the speed stack from Pika’s own two-stage workflows — SelfLift progressive sampling, sol-attn sparse attention and the experimental Sol VAE — about 30 seconds for a 5-second take on a 4090-class card. Needs the SelfLift node pack and the Sol VAE (about 2 GB) in Settings → Setup; the first wake of your cloud pod after this update takes one longer reinstall.' }
+    ]
+  },
+  {
     version: '1.1.25',
     items: [
       { text: 'New: Replace swaps the voice too. When you swap someone for a character with a saved voice, the new person says the same words at the same moments in that voice, and H3 speaks them as it remakes the video, so the lips follow the new voice. Pick the voice per person (a character’s own voice is chosen for you), check the words in “The voice”, change a line or untick it, or keep the original voice.' },

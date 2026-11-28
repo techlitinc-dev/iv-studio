@@ -243,7 +243,7 @@ export function ProjectsList({ notify, openProject, openStoryMap }) {
 }
 
 // ---------- one film ----------
-export function ProjectPage({ productionId, notify, go, openShot, openEdit, characters, filmShotToCreate, openStoryMap }) {
+export function ProjectPage({ productionId, notify, go, openShot, openEdit, characters, filmShotToCreate, filmShotToPreviz, openStoryMap }) {
   const [v, setV] = useState(null)
   const top = useRef(null)
   const timer = useRef(null)
@@ -286,7 +286,7 @@ export function ProjectPage({ productionId, notify, go, openShot, openEdit, char
     setBoardFocus({ sceneId, shotId, at: Date.now() })
   }
   const at = STEPS.findIndex(([id]) => id === v.step)
-  const ctx = { v, setV, act, load, notify, go, openShot, openEdit, characters, setStep, filmShotToCreate, boardFocus, clearBoardFocus: () => setBoardFocus(null) }
+  const ctx = { v, setV, act, load, notify, go, openShot, openEdit, characters, setStep, filmShotToCreate, filmShotToPreviz, boardFocus, clearBoardFocus: () => setBoardFocus(null) }
   const t = v.totals
   const filmed = t.finished + t.pick
   const status = {
@@ -853,7 +853,7 @@ function FilmSettings({ v, act }) {
 }
 
 // ---------- 4 · Storyboard and 5 · Film it: one board of panels ----------
-function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate, boardFocus, clearBoardFocus }) {
+function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate, filmShotToPreviz, boardFocus, clearBoardFocus }) {
   const [open, setOpen] = useState(null) // { sceneId, shotId } in the drawer
   const [takes, setTakes] = useState(null) // shot id whose takes are being picked
   // takes per shot, remembered on this PC
@@ -1162,7 +1162,7 @@ function Board({ v, act, characters, openShot, setStep, mode, filmShotToCreate, 
       ) : (
         <Foot back={() => setStep('cast')} next={() => setStep('film')} label="Next: film it" disabled={planning || !all.some((s) => s.prompt)} />
       )}
-      {shotAt && <ShotDrawer v={v} sceneId={open.sceneId} sh={shotAt} act={act} characters={characters} face={face} openShot={openShot} toCreate={filmShotToCreate} film={film} previews={previews} fromSketch={fromSketch} onTakes={() => (setOpen(null), setTakes(shotAt.id))} onClose={() => setOpen(null)} />}
+      {shotAt && <ShotDrawer v={v} sceneId={open.sceneId} sh={shotAt} act={act} characters={characters} face={face} openShot={openShot} toCreate={filmShotToCreate} toPreviz={filmShotToPreviz} film={film} previews={previews} fromSketch={fromSketch} onTakes={() => (setOpen(null), setTakes(shotAt.id))} onClose={() => setOpen(null)} />}
       {takesShot && <Takes v={v} sh={takesShot} act={act} onClose={() => setTakes(null)} onOpen={() => (setTakes(null), setOpen({ sceneId: v.scenes.find((s) => s.shots.some((x) => x.id === takesShot.id)).id, shotId: takesShot.id }))} />}
       {(animatic?.open || (animatic?.making && animatic.voice)) && <Animatic v={v} a={animatic} unvoiced={unvoiced} onVoice={() => playAnimatic(true)} onClose={() => setAnimatic(null)} />}
       {previz?.open && <Previz v={v} act={act} onClose={() => setPreviz(null)} />}
@@ -1461,7 +1461,7 @@ function Panel({ v, sh, n, film, ch, face, onClick, picking = false, picked = fa
 }
 
 // A shot opened from the board: what happens, the camera, the line and its length, plus its sketch and prompt.
-function ShotDrawer({ v, sceneId, sh, act, characters, face, openShot, toCreate, film, previews, fromSketch, onTakes, onClose }) {
+function ShotDrawer({ v, sceneId, sh, act, characters, face, openShot, toCreate, toPreviz, film, previews, fromSketch, onTakes, onClose }) {
   const [changed, setChanged] = useState(false)
   const slate = useSlate()
   const [working, setWorking] = useState('')
@@ -1741,6 +1741,20 @@ function ShotDrawer({ v, sceneId, sh, act, characters, face, openShot, toCreate,
               })}
             >
               {working === 'create' ? 'Getting it ready…' : 'Open in Create'}
+            </button>
+          )}
+          {/* the same shot as a greybox previz: opens Previz prefilled from the story */}
+          {sh.prompt && toPreviz && !['rendering', 'finishing'].includes(st.status) && (
+            <button
+              className="btn btn-small"
+              disabled={!!working}
+              title="Opens Previz with this shot prefilled: its words, length, shape and first frame. H3 films it as a cinematic greybox; a take you like is then made real."
+              onClick={busy('previz', async () => {
+                const r = await act(() => P().createRequest(v.id, sh.id, { previews, fromSketch }))
+                if (r?.projectId) toPreviz(r)
+              })}
+            >
+              {working === 'previz' ? 'Getting it ready…' : 'Previz this video'}
             </button>
           )}
           <span className="wiz-drawer-moves">

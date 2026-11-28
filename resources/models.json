@@ -84,6 +84,62 @@
       "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48"
     },
     {
+      "id": "pika_fl2va",
+      "label": "Pika H3 Flex adapter, fl2va (bf16)",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "pika_h3_flex_fl2va_v1_bf16.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/loras/pika_h3_flex_fl2va_v1_bf16.safetensors",
+      "size": 1956172304,
+      "needed_for": [
+        "text",
+        "frames",
+        "continue"
+      ],
+      "accept": [
+        "^pika_h3_flex_fl2va_"
+      ],
+      "sha256": "cc5453aeecd6189468409003fe4cf1b57e52ff3a830a0a154b87decbe07358b7",
+      "optional": true,
+      "optionalFor": "Pika H3 Flex shots in Create"
+    },
+    {
+      "id": "pika_ref2va",
+      "label": "Pika H3 Flex adapter, ref2va (bf16)",
+      "loader": "LoraLoaderModelOnly.lora_name",
+      "match": "pika_h3_flex_ref2va_v1_bf16.safetensors",
+      "folder": "loras",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/loras/pika_h3_flex_ref2va_v1_bf16.safetensors",
+      "size": 1956172304,
+      "needed_for": [
+        "reference"
+      ],
+      "accept": [
+        "^pika_h3_flex_ref2va_"
+      ],
+      "sha256": "de3745ceb7d8d5c20898dd8fa3a05f1c0b00089ccd55297b2a8bab95c766b0e0",
+      "optional": true,
+      "optionalFor": "Pika H3 Flex shots in Create"
+    },
+    {
+      "id": "sol_video_vae",
+      "label": "Sol VAE for H3 video (int8, Kijai's experimental)",
+      "loader": "VAELoader.vae_name",
+      "match": "minimax_h3_sol_vae_int8_convrot.safetensors",
+      "folder": "vae",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_sol_vae_int8_convrot.safetensors",
+      "size": 1988306504,
+      "needed_for": [
+        "video"
+      ],
+      "accept": [
+        "^minimax_h3_sol_vae"
+      ],
+      "sha256": "a742069ba173bc3aba64cf8d8289d073e0818f2753f2fc2768f0342645089682",
+      "optional": true,
+      "optionalFor": "Pika H3 Flex fast renders in Create"
+    },
+    {
       "id": "dmad",
       "label": "DMAD 4-step turbo LoRA",
       "loader": "LoraLoaderModelOnly.lora_name",
@@ -1840,6 +1896,19 @@
       "commit": "3c8c8c66e69362e5abf9cf4c4e693baddab90ca3",
       "for": "Turnaround sheets",
       "cloud": false
+    },
+    {
+      "label": "SelfLift progressive sampling (MiniMax H3)",
+      "classes": [
+        "SelfLiftH3Sampler",
+        "SelfLiftImageSampler",
+        "SelfLiftH3TST"
+      ],
+      "url": "https://github.com/facok/comfyui-SelfLift",
+      "dir": "comfyui-SelfLift",
+      "git": "https://github.com/facok/comfyui-SelfLift",
+      "commit": "835c3cf7919410f71f414688f049c6ca497789d0",
+      "for": "Shots"
     }
   ]
 }

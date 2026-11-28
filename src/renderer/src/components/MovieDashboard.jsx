@@ -16,11 +16,13 @@ export default function MovieDashboard({ id, back, notify }) {
   const [days, setDays] = useState(null) // the last two weeks' cloud spend, one number a day
   const [costs, setCosts] = useState(null) // cloud GPU seconds per project (the shots' actual billed time)
   const [pics, setPics] = useState(null) // what GPT Image panels cost, per film tag (images.gptSpend)
+  const [deep, setDeep] = useState(null) // the pipeline, render statistics and per-sequence rows (features:dashStats)
   useEffect(() => {
     const load = () => {
       F().get(id).then(setF, (e) => notify(e.message))
       F().stats(id).then(setStats, () => setStats(null))
       F().explore(id).then(setTree, () => setTree(null))
+      F().dashStats(id).then(setDeep, () => setDeep(null))
       window.ivstudio.cloud.dash().then(setDash, () => setDash(null))
       window.ivstudio.cloud.spendDays().then(setDays, () => setDays(null))
       window.ivstudio.jobs.cloudSeconds().then(setCosts, () => setCosts(null))
@@ -39,7 +41,7 @@ export default function MovieDashboard({ id, back, notify }) {
   }, [id])
   if (!f || !stats) return null
 
-  const rate = dash?.rate || 180
+  const rate = dash?.rate || 1620
   const inr = (v) => `₹${(Number(v) * rate).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
   const perHour = dash?.pod?.perHour ?? dash?.gpuPerHour ?? null
   const costOf = (shots) => (perHour != null ? ((shots * GPU_MIN_PER_SHOT) / 60) * perHour : null)
@@ -97,6 +99,23 @@ export default function MovieDashboard({ id, back, notify }) {
   const saveDate = (k, v) => F().update(id, { [k]: v || null }).catch((e) => notify(e.message))
   const maxDay = days ? Math.max(0, ...days.map((d) => d.usd)) : 0
 
+  // render statistics and velocity (features:dashStats): how long renders take, and how fast shots finish
+  const fmtDur = (s) => (s >= 3600 ? `${(s / 3600).toFixed(1)} h` : s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`)
+  const velDays = (() => {
+    const out = []
+    for (let i = 13; i >= 0; i--) {
+      const day = isoDay(nowMs - i * DAY_MS)
+      out.push({ day, n: deep?.renders?.finishedDays?.[day] || 0 })
+    }
+    return out
+  })()
+  const velMax = Math.max(0, ...velDays.map((d) => d.n))
+  const velAvg = velDays.reduce((t, d) => t + d.n, 0) / 14
+  const leftToFilm = Math.max(0, stats.total.shots - stats.total.finished)
+  const etaMs = velAvg > 0 ? nowMs + (leftToFilm / velAvg) * DAY_MS : null
+  const deadlineMs = Date.parse(f.deadline || '') || null
+  const seqTree = (seqId) => (tree?.acts || []).flatMap((a) => a.sequences).find((x) => x.id === seqId)
+
   return (
     <div className="project feature mdash">
       <button className="link-btn mono" onClick={back}>
@@ -148,6 +167,34 @@ export default function MovieDashboard({ id, back, notify }) {
         Act width = planned minutes · bar = footage finished · block = a sequence in running order, filled by its finished shots · dashed = not written · dot = has a cut
       </p>
 
+      {deep && (
+        <>
+          <p className="mono label">The pipeline</p>
+          <div className="mdash-pipe">
+            {[
+              ['Shots', deep.pipeline.shots, null],
+              ['Sketched', deep.pipeline.sketched, deep.pipeline.shots],
+              ['Prompted', deep.pipeline.prompted, deep.pipeline.shots],
+              ['Filmed', deep.pipeline.filmed, deep.pipeline.shots],
+              ['Finished', deep.pipeline.finished, deep.pipeline.shots]
+            ].map(([label, n, of]) => {
+              const pct = of ? Math.round((n / of) * 100) : 100
+              return (
+                <div key={label} className="mdash-stage">
+                  <span className="mono small dim">{label}</span>
+                  <strong>{n}</strong>
+                  <span className="mdash-cell-bar">
+                    <span style={{ width: `${pct}%` }} />
+                  </span>
+                  <span className="small dim">{pct}%</span>
+                </div>
+              )
+            })}
+          </div>
+          <p className="small dim mdash-legend">how far the shots got: written → a sketch panel → a written prompt → takes filmed → a finished shot</p>
+        </>
+      )}
+
       <p className="mono label">The schedule</p>
       <div className="mdash-gantt">
         <div className="mdash-gantt-dates">
@@ -182,6 +229,23 @@ export default function MovieDashboard({ id, back, notify }) {
           ))}
         </div>
         <p className="small dim mdash-legend">bar = the act's planned window (acts share the schedule by their minutes) · fill = shots finished · the red line = today · "behind" = less finished than the calendar says it should be</p>
+        {deep && (
+          <div className="mdash-vel">
+            <span className="mono small dim">Velocity</span>
+            <div className="mdash-vel-bars">
+              {velDays.map((d) => (
+                <span key={d.day} className={`mdash-vel-bar ${d.n ? '' : 'empty'}`} style={{ height: `${velMax ? Math.max(8, (d.n / velMax) * 100) : 8}%` }} title={`${d.day}: ${d.n} shot${d.n === 1 ? '' : 's'} finished`} />
+              ))}
+            </div>
+            <span className="small dim">
+              {velAvg > 0
+                ? `${velAvg.toFixed(1)} shots finished a day, last two weeks · ${leftToFilm} left → done around ${fmt(etaMs)}${
+                    deadlineMs ? (etaMs <= deadlineMs ? ` · ${Math.round((deadlineMs - etaMs) / DAY_MS)} days ahead of the deadline` : ` · ${Math.round((etaMs - deadlineMs) / DAY_MS)} days past the deadline`) : ''
+                  }`
+                : 'no shots finished in the last two weeks — the ETA appears once finishes land'}
+            </span>
+          </div>
+        )}
       </div>
 
       <p className="mono label">The cost</p>
@@ -225,6 +289,42 @@ export default function MovieDashboard({ id, back, notify }) {
             {Math.round(stats.footageSeconds)} s of {f.targetMinutes * 60} s filmed · {stats.total.finished}/{stats.total.shots} shots finished
           </span>
         </div>
+        {deep && (
+          <>
+            <div className="mdash-card">
+              <span className="mono small dim">Renders</span>
+              <strong>{deep.renders.jobs}</strong>
+              <span className="small dim">
+                {deep.renders.previews} hunts · {deep.renders.finishes} finishes{deep.renders.failed ? ` · ${deep.renders.failed} failed` : ''}
+              </span>
+            </div>
+            <div className="mdash-card">
+              <span className="mono small dim">GPU time</span>
+              <strong>{fmtDur(deep.renders.seconds)}</strong>
+              <span className="small dim">
+                {deep.renders.cloudSeconds ? `${fmtDur(deep.renders.cloudSeconds)} cloud` : ''}
+                {deep.renders.cloudSeconds && deep.renders.localSeconds ? ' · ' : ''}
+                {deep.renders.localSeconds ? `${fmtDur(deep.renders.localSeconds)} this PC` : ''}
+                {!deep.renders.seconds ? 'no renders yet' : ''}
+              </span>
+            </div>
+            <div className="mdash-card">
+              <span className="mono small dim">Avg per finished shot</span>
+              <strong>{deep.pipeline.finished ? fmtDur(deep.renders.seconds / deep.pipeline.finished) : '—'}</strong>
+              <span className="small dim">render time, hunts and finishes together</span>
+            </div>
+            <div className="mdash-card">
+              <span className="mono small dim">Per finished minute</span>
+              <strong>{spentTotal != null && stats.footageSeconds > 0 ? inr(spentTotal / (stats.footageSeconds / 60)) : '—'}</strong>
+              <span className="small dim">the actual cloud cost of one minute of film</span>
+            </div>
+            <div className="mdash-card">
+              <span className="mono small dim">Projected total</span>
+              <strong>{spentTotal != null && estTotal != null ? inr(spentTotal + estTotal) : '—'}</strong>
+              <span className="small dim">spent filming + what&apos;s left to film</span>
+            </div>
+          </>
+        )}
       </div>
 
       {days && days.some((d) => d.usd > 0) && (
@@ -298,6 +398,53 @@ export default function MovieDashboard({ id, back, notify }) {
           </tr>
         </tbody>
       </table>
+
+      {deep && deep.sequences.length > 0 && (
+        <>
+          <p className="mono label">Analytics by sequence</p>
+          <table className="mdash-table">
+            <thead>
+              <tr className="mono small dim">
+                <th>#</th>
+                <th>Sequence</th>
+                <th>Act</th>
+                <th>Shots</th>
+                <th>Filmed</th>
+                <th>Finished</th>
+                <th>Footage</th>
+                <th>Progress</th>
+                <th>Spent</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deep.sequences.map((s) => {
+                const pct = s.shots ? Math.round((s.finished / s.shots) * 100) : 0
+                const act = stats.acts.find((a) => a.id === s.actId)
+                const t = seqTree(s.id)
+                const spent = t ? spentOf(t.scenes.flatMap((sc) => sc.shots)) : null
+                return (
+                  <tr key={s.id} className="small">
+                    <td className="dim">{s.order}</td>
+                    <td>{s.title}</td>
+                    <td className="dim">{act?.title || '—'}</td>
+                    <td>{s.shots}</td>
+                    <td>{s.filmed}</td>
+                    <td>{s.finished}</td>
+                    <td>{Math.round(s.seconds)} s</td>
+                    <td>
+                      <span className="mdash-cell-bar">
+                        <span style={{ width: `${pct}%` }} />
+                      </span>{' '}
+                      <span className="dim">{pct}%</span>
+                    </td>
+                    <td>{spent != null ? inr(spent) : '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
 
       <p className="small dim">
         Production: {f.cast?.length || 0} characters · {f.songs?.length || 0} songs · trailer {f.trailerId ? 'started' : 'not started'} · master cut {f.editId ? 'assembled' : 'not yet'}

@@ -72,6 +72,28 @@ ok('a RunPod setup, from the pod’s boot health; storage that exists is skipped
   assert.ok(p.overall() > 0.95)
 })
 
+ok('a wake: it says so, storage and characters are out of the plan, and the boot script’s own percent wins', () => {
+  let t = 0
+  const p = new SetupProgress('runpod', { now: () => t, what: 'wake' })
+  const step = (id) => p.snapshot().steps.find((s) => s.id === id)
+  p.skip('storage')
+  p.skip('characters')
+  p.start('pod')
+  p.fromHealth({ stage: 'installing', detail: 'Python and torch (first time only, about 5 minutes)', percent: 5 })
+  assert.equal(p.snapshot().what, 'wake')
+  assert.equal(step('install').percent, 5, 'the boot script’s percent is the install step’s')
+  p.fromHealth({ stage: 'installing', detail: 'node pack 1 of 2: comfyui-SelfLift', percent: 80 })
+  assert.equal(step('install').percent, 80, 'a real percent beats the pack-count fallback')
+  p.fromHealth({ stage: 'installing', detail: 'node pack 1 of 2: older-pod-without-percent' })
+  assert.equal(step('install').percent, 50, 'pods running the older boot script still fall back to the pack count')
+  p.fromHealth({ stage: 'ready' })
+  p.finish()
+  const s = p.snapshot()
+  assert.equal(s.what, 'wake')
+  assert.equal(s.overall, 100)
+  assert.equal(step('characters').status, 'skipped')
+})
+
 ok('a setup that stops says where and why', () => {
   let t = 0
   const p = new SetupProgress('modal', { now: () => t })

@@ -14,11 +14,42 @@ export const MODES = {
 // Keyframes' one take (H3 Multishot's H3Keyframes): this many pictures at most in one shot
 export const KEYFRAME_MAX = 6
 
+// Pika H3 Flex: Pika's adapter LoRAs for H3's two trunks (Model Derivatives of MiniMax H3, under the MiniMax H3
+// Community License), applied at strength 1, and the six-step sampling schedule the adapters are released with —
+// the official workflows' ManualSigmas values with the lcm sampler. The adapters are trained for exactly these
+// sigmas, so a Pika shot ignores the request's own sampler/steps and the finish keeps its own tuned refine.
+export const PIKA_VARIANT = 'pika'
+export const PIKA_LORA = { fl2va: 'pika_h3_flex_fl2va_v1_bf16.safetensors', ref2va: 'pika_h3_flex_ref2va_v1_bf16.safetensors' }
+const PIKA_SIGMAS = '1.0, 0.972973, 0.923077, 0.8, 0.571429, 0.333333, 0.0'
+
+// Pika fast render (the speed stack from the Pika H3 Flex two-stage workflows): the core BlockSparseAttention node
+// (8) switches from the template's 'sla' to 'sol-attn', KJNodes' sage attention patch (already a pack) drops in
+// ahead of it, and every preview take samples with comfyui-SelfLift's SelfLiftH3Sampler — a low-resolution prefix,
+// the H3 latent upscaler's lift, then the full-resolution pass — on an empty (zeroed) negative at cfg 1, decoding
+// through Kijai's experimental Sol VAE. Widget values are the released workflows' own. Node ids 1201+ are free in
+// the template (its max is 1104); patch additions splice these nodes in (applyPatch below).
+export const PIKA_SOL_VAE = 'minimax_h3_sol_vae_int8_convrot.safetensors'
+const H3_LATENT_UPSCALER = 'minimax_h3_latent_upscaler_3d_conv_v1_fp16.safetensors'
+const FAST_NODES = {
+  sage: '1201', // MiniMaxH3MemoryEfficientSageAttentionPatch, model 7 -> 8
+  zero: '1204', // ConditioningZeroOut(1103), the empty negative every take shares
+  takes: [
+    { add: '1202', cache: '151', dy: 0 },
+    { add: '1203', cache: '152', dy: 1000 },
+    { add: '1205', cache: '153', dy: 2000 }
+  ]
+}
+
 // A node swapped or extended after the graph is built (plan.patch): { id: { class_type, remove: [inputs], inputs } }.
+// An entry whose id is not in the graph and that carries a class_type ADDS the node instead (the Pika fast stack's
+// spliced-in patch nodes); without a class_type it stays a no-op, so rewrites of nodes a mode left out are safe.
 export function applyPatch(graph, patch) {
   if (!patch) return graph
   for (const [id, change] of Object.entries(patch)) {
-    if (!(id in graph)) continue
+    if (!(id in graph)) {
+      if (change.class_type) graph[id] = { class_type: change.class_type, inputs: { ...(change.inputs || {}) } }
+      continue
+    }
     const inputs = { ...graph[id].inputs }
     for (const k of change.remove || []) delete inputs[k]
     graph[id] = { ...graph[id], ...(change.class_type ? { class_type: change.class_type } : {}), inputs: { ...inputs, ...(change.inputs || {}) } }
@@ -76,6 +107,10 @@ export const DEFAULTS = {
   // keeps its own tuned refine (er_sde, linear_quadratic, 2 steps at 0.4)
   sampler: 'er_sde',
   scheduler: 'beta',
+  // 'h3' (MiniMax H3) or PIKA_VARIANT: Pika H3 Flex, its adapter LoRA on the mode's trunk + its six-step schedule
+  variant: 'h3',
+  // with variant 'pika': the fast stack — SelfLift two-stage sampling, sol-attn sparse attention, the Sol VAE
+  fast: false,
   seed: 4242,
   previews: 3,
   overlapFrames: 22,
@@ -104,6 +139,7 @@ export function planPreviews(request, characters) {
   if (!r.prompt?.trim()) errors.push('A prompt is required.')
   if (!/^[\w.+-]{1,60}$/.test(String(r.sampler || ''))) errors.push(`Unknown sampler "${r.sampler}".`)
   if (!/^[\w.+-]{1,60}$/.test(String(r.scheduler || ''))) errors.push(`Unknown scheduler "${r.scheduler}".`)
+  if (!['h3', PIKA_VARIANT].includes(r.variant)) errors.push(`Unknown variant "${r.variant}". Use h3 or ${PIKA_VARIANT}.`)
   const character = r.character === 'none' ? null : characters.find((c) => c.id === r.character)
   if (r.character !== 'none' && !character) errors.push(`Unknown character "${r.character}".`)
   // a RefMod character (refmods.js) is RefMod 1, ahead of any RefMods picked for the shot; a LoRA character loads its LoRA
@@ -155,6 +191,10 @@ export function planPreviews(request, characters) {
   r.camera = cleanCamera(r.camera)
   r.intent = intent
   r.locks = locks
+  // Pika's six-step schedule is fixed: the steps a speed preset set only feed the record and the estimates now.
+  // Fast is a Pika option; silently off for anything else (the UI only offers it there).
+  if (r.variant === PIKA_VARIANT) r.steps = 6
+  r.fast = r.variant === PIKA_VARIANT && !!r.fast
 
   // Continue makes one take for the app's own chains (Extend, one-take film shots, sequences); a shot from Create
   // (continueFull) hunts 1-3 takes like any other and finishes at full size (planFinish)
@@ -173,10 +213,14 @@ export function planPreviews(request, characters) {
     '501.megapixels': r.megapixels,
     '82': r.seconds,
     '503': r.steps,
-    '12.sampler_name': r.sampler,
+    // standard Pika takes the lcm sampler of its released schedule; the fast stack's SelfLift wants plain euler
+    '12.sampler_name': r.variant === PIKA_VARIANT ? (r.fast ? 'euler' : 'lcm') : r.sampler,
     '13.scheduler': r.scheduler,
     '81.seed': r.seed,
-    '410.LoraLoaderState': loraState(r.extraLoras)
+    // fast: decode the takes through the experimental Sol VAE (the video VAE node 3; audio VAE untouched)
+    ...(r.fast ? { '3.vae_name': PIKA_SOL_VAE } : {}),
+    // Pika's adapter loads first, at its released strength 1; Looks LoRAs the shot carries chain after it
+    '410.LoraLoaderState': loraState([...(r.variant === PIKA_VARIANT ? [{ name: PIKA_LORA[mode.model], strength: 1 }] : []), ...r.extraLoras])
   }
   if (refChar) values['1004'] = refChar.name
   else if (character) {
@@ -192,7 +236,54 @@ export function planPreviews(request, characters) {
   if (r.mode === 'continue' && pictures.length === 1) values['611.last_frame'] = ['603', 0]
   // one take through several keyframes: node 204 (H3's first/last frame) becomes H3 Multishot's H3Keyframes, fed by
   // the pictures in order at their frame positions; same outputs (conditioning, latent), so the rest of the graph stays
-  const patch = keyframes ? { 204: { class_type: 'H3Keyframes', remove: ['first_frame', 'last_frame'], inputs: { positions: keyframes.positions.map((n) => String(Math.round(n))).join(', '), ...Object.fromEntries(pictures.map((_, k) => [`image_${k + 1}`, ['203', k]])) } } } : null
+  const patch = {}
+  if (keyframes) patch[204] = { class_type: 'H3Keyframes', remove: ['first_frame', 'last_frame'], inputs: { positions: keyframes.positions.map((n) => String(Math.round(n))).join(', '), ...Object.fromEntries(pictures.map((_, k) => [`image_${k + 1}`, ['203', k]])) } }
+  if (r.variant === PIKA_VARIANT && !r.fast) {
+    // Pika's schedule: the preview samplers' BasicScheduler (13) becomes ManualSigmas with the released six-step
+    // values. Every preview take reads sigmas from [13:0] (15, 115, 125), so one swap covers them all; the finish's
+    // own tuned refine (24/25) is untouched, and node 503's steps value is left feeding nothing.
+    patch[13] = { class_type: 'ManualSigmas', remove: ['model', 'steps', 'denoise', 'scheduler'], inputs: { sigmas: PIKA_SIGMAS } }
+  }
+  if (r.fast) {
+    // The speed stack, spliced onto the template: sage attention ahead of the core sparse node, the node switched
+    // to sol-attn (its 'sla' keep-percent widget gives way to sol-attn's tau), and each preview take's latent cache
+    // fed by its own SelfLift two-stage sampler instead of the stock SamplerCustomAdvanced (15/115/125 stay in the
+    // graph, unexecuted orphans). Sigmas come from the stock BasicScheduler (13, beta, the forced 6 steps) and the
+    // sampler from node 12 (euler, set above) — the released 2-stage workflows' wiring. The positive conditioning
+    // is where the guider gets it from: the RefModApply node with RefMods on, its pass-through without (graph.js
+    // bypasses those nodes the same way).
+    const positive = refmods.length ? '1103' : '402'
+    patch[FAST_NODES.sage] = { class_type: 'MiniMaxH3MemoryEfficientSageAttentionPatch', inputs: { model: ['7', 0] } }
+    patch[FAST_NODES.zero] = { class_type: 'ConditioningZeroOut', inputs: { conditioning: [positive, 0] } }
+    for (const t of FAST_NODES.takes.slice(0, previews)) {
+      patch[t.add] = {
+        class_type: 'SelfLiftH3Sampler',
+        inputs: {
+          model: ['8', 0],
+          positive: [positive, 0],
+          negative: [FAST_NODES.zero, 0],
+          vae: ['3', 0],
+          latent_image: ['806', 0],
+          sampler: ['12', 0],
+          sigmas: ['13', 0],
+          // the seed rides in the patch: values only reach nodes the template already has, and this node is spliced
+          // in afterwards — without it ComfyUI refuses the prompt (required input missing: seed)
+          seed: r.seed + t.dy,
+          cfg: 1,
+          transition_step: 3,
+          lowres_scale: 0.5,
+          rho: 0,
+          w_min: 0.5,
+          w_max: 1,
+          upscaler_model: H3_LATENT_UPSCALER,
+          highres_tiling: false,
+          upscaler_unload: true
+        }
+      }
+      patch[t.cache] = { inputs: { samples: [t.add, 0] } }
+    }
+    patch[8] = { inputs: { model: [FAST_NODES.sage, 0], selection: 'sol-attn', 'selection.tau': 1.3 }, remove: ['selection.keep_percent'] }
+  }
   if (refmods.length) {
     for (let k = 1; k <= 8; k++) {
       const m = refmods[k - 1]
@@ -206,8 +297,8 @@ export function planPreviews(request, characters) {
     request: r,
     groups,
     values,
-    ...(patch ? { patch } : {}),
-    resolved: { ...size, frames, seconds: +(frames / 24).toFixed(3), fps: 24, previews, model: mode.model, seeds: [r.seed, r.seed + 1000, r.seed + 2000].slice(0, previews) }
+    ...(Object.keys(patch).length ? { patch } : {}),
+    resolved: { ...size, frames, seconds: +(frames / 24).toFixed(3), fps: 24, previews, model: mode.model, variant: r.variant, fast: r.fast, seeds: [r.seed, r.seed + 1000, r.seed + 2000].slice(0, previews) }
   }
 }
 

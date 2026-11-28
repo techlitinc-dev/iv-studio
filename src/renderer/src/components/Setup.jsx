@@ -22,6 +22,7 @@ const VIEW_KEY = 'iv.setupView'
 const AREAS = [
   ['Live preview', /live step/i, 'The Live preview switch above the queue', 'Sharper step-by-step pictures of H3 shots and sequences while they render (a tiny H3 decoder, 0.1 GB). Without it, they show ComfyUI’s rougher colour preview.'],
   ['LTX 2.5 shots', /ltx 2\.5 shots/i, 'Create → Video → LTX 2.5, and a film\'s Video setting in Projects', 'A second video model on this PC: quicker takes with sound, good for cartoons and animation. Uses the LTX-2.5 files from Video effects, plus its 2× upscaler (1 GB) for finishing.'],
+  ['Pika H3 Flex shots', /pika h3 flex/i, 'Create → Video → MiniMax H3 → Version: Pika H3 Flex', 'Pika’s adapter on the MiniMax H3 pipeline: six-step takes, 2–4× faster, tuned for character consistency. Two adapter files, about 4 GB. Your Looks LoRAs stack with it as on H3; the Steps and sampler choices don’t apply. Fast render (the Render switch) adds the SelfLift node pack (Settings → Setup → Node packs), the experimental Sol VAE (about 2 GB) and the H3 latent upscaler you already have — about 30 s for a 5-second take on a 4090-class card.'],
   ['Refine faces', /refine faces/i, 'Shots → a finished version → Enhance → Refine faces', 'Finds the face in a finished shot so H3 can redraw it at full size, matched to the character. Best on wide shots with small faces. Also needs the H3 FaceRefine node pack (Node packs above).'],
   ['Picture tools', /relight|remove background|depth maps/i, 'Create → Image → Tools', 'Relight a picture, remove the background of a picture or a video clip (also in the editor), and make depth and normal maps.'],
   ['Replace', /^replace/i, 'Workflows → Replace', 'Swap a person in a video for one of your characters, or change the whole scene in words, keeping the motion and sound.'],
@@ -246,7 +247,7 @@ export default function Setup({ setup, recheck, checking, remote, go, notify }) 
       m.get(a).push(i)
     }
     // shown in this order (AREAS is in match order); anything unknown last
-    const ORDER = ['Picture models', 'Picture tools', 'Video effects', 'Photo effects and transitions', 'Slow motion', 'Music and sounds', 'Replace', 'Places in Projects', 'LTX 2.5 shots', 'Refine faces', 'Live preview']
+    const ORDER = ['Picture models', 'Picture tools', 'Video effects', 'Photo effects and transitions', 'Slow motion', 'Music and sounds', 'Replace', 'Places in Projects', 'LTX 2.5 shots', 'Pika H3 Flex shots', 'Refine faces', 'Live preview']
     const rank = (n) => (ORDER.includes(n) ? ORDER.indexOf(n) : ORDER.length)
     return [...m.entries()].sort((a, b) => rank(a[0]) - rank(b[0]))
   }, [optional])

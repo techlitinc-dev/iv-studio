@@ -575,6 +575,25 @@ export class Productions {
         return { id: p.id, name: p.name, logline: p.logline, aspect: p.aspect, step: p.step || (shots.length ? 'board' : p.scenes.length ? 'cast' : 'idea'), scenes: p.scenes.length, shots: shots.length, cover: shots.find((s) => s.sketch)?.sketch || null, updatedAt: p.updatedAt }
       })
   }
+  // Which projects each character preset plays in (the cast entries' characterId links), for the Characters
+  // page's grouping: { characterId: [{ id, name, updatedAt }] }, each list most-recent project first.
+  characterProjects() {
+    const out = {}
+    if (!fs.existsSync(this.dir)) return out
+    const films = fs
+      .readdirSync(this.dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => readJson(path.join(this.dir, f), null))
+      .filter(Boolean)
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
+    for (const p of films) {
+      for (const c of p.cast || []) {
+        if (!c.characterId) continue
+        ;(out[c.characterId] ||= []).push({ id: p.id, name: p.name, updatedAt: p.updatedAt })
+      }
+    }
+    return out
+  }
   get(id) {
     const p = readJson(this.file(id), null)
     if (!p) throw new Error(`No project ${id}`)

@@ -57,7 +57,7 @@ export default function SetupProgress({ progress: p, log = [], name }) {
     <div className={`setup-progress ${done ? 'is-done' : failed ? 'is-failed' : 'is-running'}`}>
       <div className="setup-progress-head">
         <div>
-          <span className="setup-progress-kicker mono">{done ? 'Ready' : failed ? 'Stopped' : `Setting up ${who}`}</span>
+          <span className="setup-progress-kicker mono">{done ? 'Ready' : failed ? 'Stopped' : p.what === 'wake' ? 'Starting your cloud GPU' : `Setting up ${who}`}</span>
           <strong className="setup-progress-pct">{done ? '100%' : `${Math.floor(p.overall)}%`}</strong>
         </div>
         <div className="setup-progress-times">
@@ -139,7 +139,7 @@ export default function SetupProgress({ progress: p, log = [], name }) {
   )
 }
 
-// The title-bar pill while a setup runs: its percentage and clock; opens the Cloud page.
+// The title-bar pill while a setup or a wake runs: its percentage and clock; opens the Cloud page.
 export function SetupPill({ onOpen }) {
   const [initial, setInitial] = useState(null)
   useEffect(() => {
@@ -147,10 +147,16 @@ export function SetupPill({ onOpen }) {
   }, [])
   const p = useSetupProgress(initial)
   if (!p || p.finishedAt) return null
+  const wake = p.what === 'wake'
+  const left = Math.max(0, p.remaining - since(p))
   return (
-    <button className="setup-pill" onClick={onOpen} title="Cloud setup is running. Open the Cloud page.">
+    <button
+      className="setup-pill"
+      onClick={onOpen}
+      title={wake ? `Your cloud GPU is starting — about ${about(left)} left (the pod reports each stage; a reinstall after an update takes longest). Open the Cloud page.` : 'Cloud setup is running. Open the Cloud page.'}
+    >
       <span className="setup-step-spin" aria-hidden="true" />
-      <span className="mono">Cloud setup {Math.floor(p.overall)}%</span>
+      <span className="mono">{wake ? 'Cloud GPU' : 'Cloud setup'} {Math.floor(p.overall)}%</span>
       <span className="mono dim">{clock(p.elapsed + since(p))}</span>
     </button>
   )

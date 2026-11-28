@@ -15,7 +15,14 @@ const shotNode = (sh) => ({
   chip: true,
   projectId: sh.projectId || sh.state?.final?.projectId || null,
   staging: sh.staging || '',
-  ends: sh.ends || ''
+  ends: sh.ends || '',
+  // for the story explorer's navigator and character arcs: who is in it, and what exists for it already
+  who: [sh.speaker, ...(sh.characters || [])].filter(Boolean),
+  sketch: !!sh.sketch,
+  sound: !!sh.voiceLine,
+  takes: sh.state?.candidates?.length || 0,
+  // the footage the playable timeline plays: the finished video, else the first take
+  video: sh.state?.final?.path || sh.state?.final?.url || sh.state?.candidates?.[0]?.path || sh.state?.candidates?.[0]?.url || null
 })
 
 const sceneNode = (sc) => ({

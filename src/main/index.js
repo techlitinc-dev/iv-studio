@@ -44,6 +44,8 @@ import { AnimalCams } from '../service/animalcam'
 import { Cutouts } from '../service/cutout'
 import { Reframes } from '../service/reframe'
 import { offeredFx, CLIP_FX, FreefieldApps } from '../service/freefield'
+import { ClayPreviz } from '../service/claypreviz'
+import { RenderQueue, estimate as queueEstimate } from '../service/renderqueue'
 import { DEFAULT_TRACKS } from '../service/timeline'
 import { SCENE_KINDS, SIZZLE_FORMATS, Sizzles } from '../service/sizzle'
 import { initUpdater, updateState, MANUAL as UPDATE_MANUAL } from './updater'
@@ -880,6 +882,21 @@ app.whenReady().then(() => {
     const main = r.files.find((f) => f.kind === 'video') || r.files[0]
     return { ...r, media: main ? await edits.addMedia(main.file, { type: 'clipfx', fx, from: file, label: r.title }) : null }
   })
+  // Workflows → Previz (claypreviz.js): a grey clay previz of a shot by LTX 2.5, then one take made real by H3.
+  // Separate from Create's H3 flow; runs on this PC's ComfyUI or the person's own cloud.
+  const claypreviz = new ClayPreviz({ dataDir: DATA, studio: () => studio, writer: () => writerOf(readSettings(BASE)) })
+  handle('claypreviz:status', () => claypreviz.status())
+  handle('claypreviz:runs', () => claypreviz.runs())
+  handle('claypreviz:deleteRun', (id) => claypreviz.deleteRun(id))
+  handle('claypreviz:write', (opts) => claypreviz.write(opts))
+  handle('claypreviz:take', async (opts) => {
+    await voices.release()
+    return claypreviz.take({ ...opts, onProgress: (j) => send('claypreviz:progress', { status: j.status, progress: j.progress }) })
+  })
+  handle('claypreviz:realism', async (opts) => {
+    await voices.release()
+    return claypreviz.realism({ ...opts, onProgress: (j) => send('claypreviz:progress', { status: j.status, progress: j.progress }) })
+  })
   // Reframe: a shot or picture in a new frame shape, with what lies beyond its edges drawn (H3 / Qwen outpaint).
   const reframes = new Reframes({ dataDir: DATA, studio: () => studio, edits, images: () => images })
   handle('reframes:make', async (opts) => {
@@ -1048,6 +1065,7 @@ app.whenReady().then(() => {
     }
     for (const s of music.all()) if (s.file && fs.existsSync(s.file)) items.push({ key: `music:${s.id}`, type: 'music', group: 'Music', label: s.name, detail: `${s.engine === 'minimax' ? 'MiniMax Music 3' : 'ACE-Step 1.5'}${s.instrumental ? ' · instrumental' : ''}`, duration: s.duration, at: s.finishedAt || s.createdAt, file: { path: s.file }, set: `music:${s.id}`, setName: s.name, variant: 'Song', rank: 0 })
     for (const r of clipfx.runs()) if (r.status === 'success') (r.files || []).forEach((f, i) => f.kind === 'video' && fs.existsSync(f.file) && items.push({ key: `clipfx:${r.id}:${i}`, type: 'video', group: 'Effects', label: r.title, detail: `${r.label} · ${f.label}`, at: r.finishedAt || r.createdAt, file: { path: f.file }, set: `clipfx:${r.id}`, setName: r.title, variant: f.label, rank: i }))
+    for (const r of claypreviz.runs()) if (r.status === 'success') (r.files || []).forEach((f, i) => f.kind === 'video' && fs.existsSync(f.file) && items.push({ key: `claypreviz:${r.id}:${i}`, type: 'video', group: 'Previz', label: r.title, detail: `${r.kind === 'realism' ? 'Made real' : 'Clay take'} · ${f.label}`, at: r.finishedAt || r.createdAt, file: { path: f.file }, set: `claypreviz:${r.id}`, setName: r.title, variant: f.label, rank: i }))
     for (const s of sounds.all()) (s.files || []).forEach((f, i) => fs.existsSync(f.file) && items.push({ key: `sound:${s.id}:${i}`, type: 'music', group: 'Sounds', label: s.name, detail: `Sound · ${SOUND_KINDS.find((k) => k.id === s.kind)?.label || 'Sound'}`, duration: f.duration, at: s.finishedAt || s.createdAt, file: { path: f.file }, set: `sound:${s.id}`, setName: s.name, variant: s.files.length > 1 ? `Take ${i + 1}` : 'Sound', rank: i }))
     for (const r of images.all()) (r.files || []).forEach((f, i) => fs.existsSync(f) && items.push({ key: `image:${r.id}:${i}`, type: 'image', group: 'Images', label: r.name, detail: r.mode === 'frame' ? 'Last frame of a video' : `${r.familyLabel} · ${r.mode === 'edit' ? 'edit' : 'generate'}`, at: r.finishedAt || r.createdAt, file: { path: f }, set: `image:${r.id}`, setName: r.name, variant: `Picture ${i + 1}`, rank: i, imageId: r.id }))
     for (const l of voices.lines()) if (fs.existsSync(l.file)) items.push({ key: `line:${l.id}`, type: 'voice', group: 'Voice lines', label: l.text, detail: l.voice, duration: l.duration, at: l.createdAt, file: { path: l.file }, set: `line:${l.id}`, setName: l.text, variant: `Seed ${l.seed}`, rank: 0 })
@@ -1360,6 +1378,15 @@ app.whenReady().then(() => {
   const customFlows = new CustomFlows({ dataDir: DATA, studio: () => studio })
   // Feature films (feature.js): acts and sequences over the productions above, with the trailer (a Sizzle) and songs (Music)
   const features = new Features({ dataDir: DATA, productions: () => productions, edits: () => edits, studio: () => studio, writer: () => writerOf(readSettings(BASE)), onChange: (id) => send('features:changed', { id }) })
+  // The overnight render queue (renderqueue.js): every pending shot of a film, one after another, with progress
+  const renderQueue = new RenderQueue({ studio: () => studio, productions: () => productions, features: () => features, onEvent: (s) => send('renderqueue:state', s) })
+  handle('renderqueue:pending', (kind, id, mode = 'previz', speed = 'balanced', retakes = false) => {
+    const items = renderQueue.board(kind, id, mode, retakes)
+    return { items, estimate: queueEstimate(items.filter((i) => i.queueable), speed, mode) }
+  })
+  handle('renderqueue:start', (opts) => renderQueue.start(opts))
+  handle('renderqueue:cancel', () => renderQueue.cancel())
+  handle('renderqueue:state', () => renderQueue.state())
   handle('features:list', () => features.list())
   handle('features:get', (id) => features.get(id))
   handle('features:create', (opts) => features.create(opts))
@@ -1370,8 +1397,80 @@ app.whenReady().then(() => {
   handle('features:detach', (id, productionId) => features.detach(id, productionId))
   handle('features:stats', (id) => features.stats(id))
   handle('features:explore', (id) => features.explore(id))
+  // The movie dashboard's deep numbers: the pipeline (how far each shot got), render statistics from the job
+  // records (counts, GPU time, the days finishes landed), and a per-sequence breakdown.
+  handle('features:dashStats', (id) => {
+    const f = features.get(id)
+    const projectIds = []
+    const pipeline = { shots: 0, sketched: 0, prompted: 0, filmed: 0, finished: 0 }
+    const sequences = []
+    for (const seq of [...f.sequences].sort((a, b) => (a.order || 0) - (b.order || 0))) {
+      const p = productions.get(seq.id)
+      const shots = (p.scenes || []).flatMap((s) => s.shots || [])
+      const row = { id: seq.id, title: seq.title, order: seq.order, actId: seq.actId, shots: shots.length, filmed: 0, finished: 0, seconds: 0 }
+      for (const sh of shots) {
+        pipeline.shots++
+        if (sh.sketch && !sh.sketchStale) pipeline.sketched++
+        if (String(sh.prompt || '').trim()) pipeline.prompted++
+        const filmed = sh.state?.candidates?.length || sh.state?.final
+        const finished = sh.state?.final || sh.state?.status === 'success'
+        if (filmed) {
+          pipeline.filmed++
+          row.filmed++
+        }
+        if (finished) {
+          pipeline.finished++
+          row.finished++
+          row.seconds += sh.state?.final?.duration ?? sh.seconds ?? 0
+        }
+        const pid = sh.projectId || sh.state?.final?.projectId
+        if (pid) projectIds.push(pid)
+      }
+      sequences.push(row)
+    }
+    return { pipeline, renders: studio.renderStats(projectIds), sequences }
+  })
   // The mindmap tree for anything (service/storymap.js): a feature, a short film (Project) or a song
   handle('storymap:explore', ({ kind, id }) => storyTree({ productions, features, music }, kind, id))
+  // The story explorer's assistant: the person's own writer (Settings → Prompt writer) answers about the story,
+  // with the scene they're working on as context. action: one of the quick actions, or null with a free question.
+  handle('story:assist', async ({ kind, id, action = null, question = null, sceneId = null }) => {
+    const tree = storyTree({ productions, features, music }, kind, id)
+    const findNode = (nodes, nid) => {
+      for (const nd of nodes || []) {
+        if (nd.id === nid) return nd
+        const hit = findNode(nd.children, nid)
+        if (hit) return hit
+      }
+      return null
+    }
+    const scene = sceneId ? findNode(tree.children, sceneId) : null
+    const context = [
+      `The story: ${tree.root.title}. ${tree.root.sub || ''}`,
+      tree.root.meta || '',
+      scene
+        ? `The scene the person is working on: ${scene.title}${scene.sub ? ` (${scene.sub})` : ''}.\nIts shots:\n${(scene.children || []).map((sh) => `- ${sh.title} (${sh.sub})${sh.body ? ` — says: "${sh.body}"` : ''}`).join('\n')}`
+        : `The structure: ${(tree.children || []).map((a) => `${a.title}${a.meta ? ` (${a.meta})` : ''}`).join(' · ')}`
+    ].join('\n')
+    const ASKS = {
+      improve: 'Improve this scene: stronger conflict, clearer beats. Give the improved version.',
+      dialogue: 'Rewrite the dialogue of this scene: natural, in character, tighter. Keep what each line means.',
+      expand: 'Expand this scene: more detail and texture, without changing what happens.',
+      continuity: 'Check continuity: what in this scene could contradict the rest of the story? List the issues, or say it holds.',
+      next: 'Suggest the next scene: a sentence of premise, then a beat outline.',
+      analyze: 'Analyze the story structure: the acts, the pacing, where it sags, what to cut or move. Be specific.'
+    }
+    const ask = question ? `Question from the person: ${question}` : ASKS[action] || ASKS.analyze
+    const out = await askWriter(writerOf(readSettings(BASE)), {
+      system: 'You are a story editor for a film. Answer in plain words: short paragraphs or tight lists, no headings unless asked. Be specific to the story given, never generic.',
+      user: `${context}\n\n${ask}\n\nAnswer as JSON: { "answer": "..." }`,
+      schema: { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'] },
+      cpu: await busyGpu()
+    })
+    const text = String(out?.answer || '').trim()
+    if (!text) throw new Error('The writer gave no answer back. Try again.')
+    return { text }
+  })
   handle('features:masterCut', (id) => features.masterCut(id))
   handle('features:auto', (id, opts) => features.auto(id, opts))
   handle('features:planAll', (id, opts) => features.planAll(id, opts))
@@ -1732,8 +1831,10 @@ app.whenReady().then(() => {
     } catch {}
   }
   const overBudgetError = () => new Error(`Today's cloud budget is spent ($${cloudBudget().daily.toFixed(2)} a day). Raise it on the Cloud page, or wait for tomorrow.`)
-  // The director's display rate: rupees per $1, shown beside every cloud cost (topbar meter, dashboard, feature page)
-  const RUPEES_PER_USD = 180
+  // The director's display rate: rupees per $1, shown beside every cloud cost (topbar meter, dashboard, feature page).
+  // Deliberately exaggerated 9x (180 x 9) so cloud time looks as expensive as it feels; the ledger and the daily
+  // budget still count real dollars — only the rupee display is inflated. A saved "₹ per $1" overrides it.
+  const RUPEES_PER_USD = 1620
   const rateOf = (s) => (Number(s.rupeesPerUsd) > 0 ? Number(s.rupeesPerUsd) : RUPEES_PER_USD)
   // character training on RunPod uses the same account
   if (trainings) trainings.runpod = runpod
@@ -1779,35 +1880,80 @@ app.whenReady().then(() => {
       return cloudPrepFor('runpod', null).syncLocal()
     })
   )
+  // the pod's own ComfyUI canvas in a browser: the gate wants the token on every call, which a browser can't send,
+  // so the first URL carries ?iv_token= and the gate answers with a cookie the canvas's own calls then carry
+  handle('cloud:openComfy', async () => {
+    const s = readSettings(BASE)
+    const url = s.runpod?.url
+    if (!url || (await runpod.health(url))?.stage !== 'ready') throw new Error('The cloud GPU isn’t up — open this once the Cloud page says ComfyUI is ready.')
+    await shell.openExternal(`${url.replace(/\/$/, '')}/?iv_token=${runpodToken()}`)
+    return { ok: true }
+  })
   // A running pod's address: the current one when its ComfyUI answers, else a booting one of ours, else a new
   // pod in the volume's data center. Single flight: the window and a render asking at once start one pod.
+  // A pod may start only while rendering is switched to this cloud (Cloud page → Render on → The cloud): in
+  // This-PC mode nothing here may wake a GPU, whatever calls it (a render, Sync LoRAs, the storage view). The
+  // one deliberate exception is the RunPod Set up flow (evenLocal): it runs from My PC by design, and its pod
+  // installs ComfyUI onto the volume while the person watches.
   let waking = null
-  const wakeRunpod = () =>
+  const wakeRunpod = ({ evenLocal = false } = {}) =>
     (waking ||= (async () => {
-      const r = readSettings(BASE).runpod || {}
+      const s = readSettings(BASE)
+      if (!evenLocal && (s.target !== 'cloud' || (s.cloudProvider || 'modal') !== 'runpod')) throw new Error('Techlit Studio renders on This PC, so no cloud GPU will start. Switch Render on to the cloud on the Cloud page first.')
+      const r = s.runpod || {}
       if (!r.volumeId) throw new Error('Set up RunPod on the Cloud page first.')
-      const current = r.url && (await runpod.health(r.url))
-      if (current?.stage === 'ready') return r.url
-      let url = current ? r.url : (await runpod.pods())[0]?.url
-      if (!url) {
-        if (cloudBudgetCheck(cloudBudget(), cloudToday()).over) throw overBudgetError()
-        send('cloud:log', 'Starting a cloud GPU on RunPod…')
-        const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, perHour: r.gpuPerHour ?? null, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300, hf: hfToken(), ask: askGpu }).catch((e) => {
-          // a wake can't make a new volume itself (the models would reinstall for 30+ minutes): say what to do
-          if (/network volume .*not found/i.test(e.message)) throw new Error('Your RunPod network volume no longer exists. Run Set up again on the Cloud page to make a new one (the first boot then reinstalls the models).')
-          throw e
-        })
-        url = pod.url
-        saveRunpod({ url, podId: pod.id, podGpu: pod.gpu, podStamp: cloudStamp() })
-      } else saveRunpod({ url })
-      await runpod.waitReady(url)
-      // the pod is up: push any new or changed LoRAs to the volume in the background, so no render waits on them
-      cloudPrepFor('runpod', null)
-        .syncLocal()
-        .catch(() => {})
-      // and bring home, in the background, the renders that finished while no pod was up to send them
-      bringHomeCloudJobs().catch(() => {})
-      return url
+      // a wake's progress, tracked like a setup's: the title-bar pill and the Cloud page's progress view follow it
+      // (cloud:progress, cloud:status after a reload). Storage exists and characters don't move on a wake.
+      let last = 0
+      const t = new SetupProgress('runpod', {
+        what: 'wake',
+        onChange: (snap) => {
+          const now = Date.now()
+          if (snap.finishedAt || now - last > 250 || snap.steps.some((x) => x.status === 'running' && x.seconds === 0)) (send('cloud:progress', snap), (last = now))
+        }
+      })
+      t.skip('storage')
+      t.skip('characters')
+      setupNow = t
+      t.changed()
+      try {
+        const current = r.url && (await runpod.health(r.url))
+        if (current?.stage === 'ready') {
+          t.finish()
+          return r.url
+        }
+        let url = current ? r.url : (await runpod.pods())[0]?.url
+        if (!url) {
+          if (cloudBudgetCheck(cloudBudget(), cloudToday()).over) throw overBudgetError()
+          send('cloud:log', 'Starting a cloud GPU on RunPod…')
+          t.start('pod', 'Asking RunPod for a GPU')
+          const pod = await runpod.createPod({ gpu: r.gpu || RUNPOD_GPUS[0].id, perHour: r.gpuPerHour ?? null, volume: { id: r.volumeId, dataCenter: r.dataCenter }, token: runpodToken(), idleSeconds: r.idleSeconds || 300, hf: hfToken(), ask: askGpu }).catch((e) => {
+            // a wake can't make a new volume itself (the models would reinstall for 30+ minutes): say what to do
+            if (/network volume .*not found/i.test(e.message)) throw new Error('Your RunPod network volume no longer exists. Run Set up again on the Cloud page to make a new one (the first boot then reinstalls the models).')
+            throw e
+          })
+          url = pod.url
+          saveRunpod({ url, podId: pod.id, podGpu: pod.gpu, podStamp: cloudStamp() })
+        } else saveRunpod({ url })
+        runpod.onHealth = (h) => t.fromHealth(h)
+        try {
+          await runpod.waitReady(url)
+        } finally {
+          runpod.onHealth = null
+        }
+        t.finish()
+        send('cloud:setupDone', { ok: true, title: 'Cloud GPU is ready', body: `ComfyUI is up on your RunPod (${about(t.snapshot().elapsed)}).` })
+        // the pod is up: push any new or changed LoRAs to the volume in the background, so no render waits on them
+        cloudPrepFor('runpod', null)
+          .syncLocal()
+          .catch(() => {})
+        // and bring home, in the background, the renders that finished while no pod was up to send them
+        bringHomeCloudJobs().catch(() => {})
+        return url
+      } catch (err) {
+        t.fail(err)
+        throw err
+      }
     })().finally(() => (waking = null)))
   // For the ComfyUI client: null when the pod it talks to still answers, else the address of one that does.
   runpodWake = async () => {
@@ -2134,7 +2280,7 @@ app.whenReady().then(() => {
       runpod.onHealth = (h) => t.fromHealth(h)
       let url
       try {
-        url = await wakeRunpod()
+        url = await wakeRunpod({ evenLocal: true })
       } finally {
         runpod.onHealth = null
       }
@@ -2168,10 +2314,14 @@ app.whenReady().then(() => {
   })
   // What the cloud GPU is doing, for the title-bar meter: the running containers and the chosen GPU's rate.
   // Each poll also adds the GPU-seconds since the last one to the spend ledger, and enforces the daily budget.
+  // setup: whether this cloud is set up at all — the meter shows only when it is. target: where renders go, so the
+  // meter can flag a GPU that burns money while Techlit Studio renders on This PC. A running RunPod pod also gets
+  // its gate's idle countdown (the pod is up, so the question is quick; asleep, nothing is asked).
   handle('cloud:usage', async () => {
     const s = readSettings(BASE)
+    const base = { provider: provider(), target: s.target, rate: rateOf(s), budget: cloudBudget() }
     // Comfy Cloud bills per run on the person's Comfy account: no GPU of theirs runs between renders
-    if (provider() === 'comfycloud') return { gpu: 'Comfy Cloud', perHour: 0, running: [], hosted: true }
+    if (provider() === 'comfycloud') return { ...base, gpu: 'Comfy Cloud', perHour: 0, running: [], today: 0, hosted: true, setup: !!comfyCloudKey(s) }
     if (provider() === 'runpod') {
       const running = s.runpodKey ? await runpod.pods() : []
       const gpu = RUNPOD_GPUS.find((g) => g.id === (running[0]?.gpu || s.runpod?.gpu)) || RUNPOD_GPUS[0]
@@ -2179,14 +2329,15 @@ app.whenReady().then(() => {
       const boxes = running.map((p) => ({ id: p.id, startedAt: Date.parse(p.startedAt) }))
       const { today } = cloudSpend.record(boxes, perHour, 'runpod', running[0]?.gpu || s.runpod?.gpu)
       await enforceCloudBudget(boxes)
-      return { gpu: gpu.label.split(' · ')[0], perHour, running: boxes, today, budget: cloudBudget(), rate: rateOf(s) }
+      const h = boxes.length ? await runpod.health(running[0].url).catch(() => null) : null
+      return { ...base, gpu: gpu.label.split(' · ')[0], perHour, running: boxes, today, setup: !!s.runpodKey, dataCenter: s.runpod?.dataCenter ?? null, idleLeft: h?.idleLeft ?? null }
     }
     const gpu = GPUS.find((g) => g.id === s.cloud?.gpu) || GPUS[0]
     const running = cloud.toolkitReady() ? await cloud.containers() : []
     const boxes = running.map((c) => ({ id: c.id, startedAt: Date.parse(String(c.startedAt).replace(' ', 'T')) }))
     const { today } = cloudSpend.record(boxes, gpu.perHour, 'modal', gpu.id)
     await enforceCloudBudget(boxes)
-    return { gpu: gpu.id, perHour: gpu.perHour, running: boxes, today, budget: cloudBudget(), rate: rateOf(s) }
+    return { ...base, gpu: gpu.id, perHour: gpu.perHour, running: boxes, today, setup: !!(s.cloud?.url && s.cloudToken) }
   })
   // The Cloud page's dashboard: what's up (with the pod's idle countdown), what today cost, the budget, the volume.
   handle('cloud:dash', async () => {
@@ -3245,6 +3396,8 @@ app.whenReady().then(() => {
   } catch {}
   handle('models:hfLogin', () => ({ from: hfLoginFrom() }))
   handle('characters:list', async () => (await catalog?.attachVoices().catch(() => {}), studio.characters()))
+  // Which projects each character plays in (productions' cast links), for the Characters page's grouping
+  handle('characters:projects', () => productions.characterProjects())
   // Ready-made characters: bundled picture, LoRA downloaded on request (resources/characters/catalog.json).
   catalog = new CharacterCatalog({ studio, voices, resourcesDir: resourcesDir(path.join(app.getAppPath(), 'resources')) })
   handle('characters:catalog', () => catalog.list())

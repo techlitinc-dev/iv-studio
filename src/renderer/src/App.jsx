@@ -15,7 +15,7 @@ import { ConfirmHost, ask } from './components/Confirm'
 import CloudModels from './components/CloudModels'
 import { H3TermsHost } from './components/H3Terms'
 import Library from './components/Library'
-import Cloud, { CloudMeter } from './components/Cloud'
+import Cloud, { PodMeter } from './components/Cloud'
 import StartComfy from './components/StartComfy'
 import SystemMeter from './components/SystemMeter'
 import { BalanceChip } from './components/ComfyAccount'
@@ -28,6 +28,9 @@ import Reel from './components/Reel'
 import MusicVideo from './components/MusicVideo'
 import Keyframes from './components/Keyframes'
 import LipSync from './components/LipSync'
+import Previz from './components/Previz'
+import OvernightQueue from './components/OvernightQueue'
+import StoryExplorer from './components/StoryExplorer'
 import Flows from './components/Flows'
 import AnimalCam from './components/AnimalCam'
 import Effects from './components/Effects'
@@ -63,8 +66,11 @@ const SECTIONS = {
   video: [
     ['home', 'Dashboard'],
     ['create', 'Create'],
+    ['previz', 'Previz'],
+    ['queue', 'Render queue'],
     ['projects', 'Projects'],
     ['features', 'Features'],
+    ['story', 'Story explorer'],
     ['library', 'Shots'],
     ['edits', 'Edit'],
     ['workflows', 'Workflows'],
@@ -190,6 +196,8 @@ export default function App() {
   const [characterForCreate, setCharacterForCreate] = useState(null)
   // a shot's run on its way back to Create to be edited and run again in the same shot
   const [runForCreate, setRunForCreate] = useState(null)
+  // a film shot on its way to Previz, 100% prefilled from the story (Previz this video)
+  const [shotForPreviz, setShotForPreviz] = useState(null)
   const [projectId, setProjectId] = useState(null)
   const [sequenceId, setSequenceId] = useState(null)
   const [sequenceFocus, setSequenceFocus] = useState(null)
@@ -474,6 +482,13 @@ export default function App() {
     switchSection('video')
     setPage('create')
   }
+  // A film shot opened in Previz with everything the story knows: its plain words, length, shape and first
+  // frame prefill the page (Previz this video, next to Open in Create).
+  const filmShotToPreviz = (r) => {
+    setShotForPreviz(r)
+    switchSection('video')
+    setPage('previz')
+  }
   // A new shot that starts where a finished version ends: Continue mode with the version as its source video, or
   // Frames mode with its last frame as the first frame. The run's character, LoRAs, shape, size and length come
   // along; the prompt starts empty, because it says what happens next (Write it for me looks at the last frame).
@@ -549,7 +564,7 @@ export default function App() {
     window.addEventListener('iv:cloud-wizard', cloud)
     return () => (window.removeEventListener('iv:welcome', open), window.removeEventListener('iv:cloud-wizard', cloud), window.removeEventListener('iv:settings', words))
   }, [])
-  const ctx = { setup, caps: setup?.caps, remote: !!setup?.remote, ownCloud: !!setup?.remote && !setup?.hosted, recheck, checking, characters, setCharacters, notify, openShot, editRun, filmShotToCreate, openSequence, openProject, openStoryMap, openEdit, openCharacter, openShinobi, jobs, setJobs, info, go: setPage, sendToCreate, addLoraToCreate, pictureToShot, shotFromVersion, pictureToEdit, focus, setFocus, openSizzle, openRebuild, openSetupWizard: () => setSetupWizard(true), remakeClip, replaceSeed }
+  const ctx = { setup, caps: setup?.caps, remote: !!setup?.remote, ownCloud: !!setup?.remote && !setup?.hosted, recheck, checking, characters, setCharacters, notify, openShot, editRun, filmShotToCreate, filmShotToPreviz, openSequence, openProject, openStoryMap, openEdit, openCharacter, openShinobi, jobs, setJobs, info, go: setPage, sendToCreate, addLoraToCreate, pictureToShot, shotFromVersion, pictureToEdit, focus, setFocus, openSizzle, openRebuild, openSetupWizard: () => setSetupWizard(true), remakeClip, replaceSeed }
   const missing = setup?.items?.filter((i) => i.status === 'missing').length || 0
   // ComfyUI on this PC isn't there: the title bar offers to start it (not when it's running but busy)
   const comfyDown = !setup?.remote && setup?.items?.some((i) => i.id === 'comfyui' && i.status !== 'ok' && !i.busy)
@@ -672,7 +687,12 @@ export default function App() {
           {/* on a Mac the cloud comes first; Start ComfyUI stays on Settings → Setup */}
           {comfyDown && info?.platform !== 'darwin' && <StartComfy notify={notify} recheck={recheck} className="btn btn-small engine-start" />}
           <SetupPill onOpen={() => setPage('cloud')} />
-          {setup?.remote ? <CloudMeter onOpen={() => setPage('cloud')} notify={notify} /> : setup && <SystemMeter notify={notify} />}
+          {setup?.remote ? <PodMeter onOpen={() => setPage('cloud')} notify={notify} /> : setup && (
+            <>
+              <SystemMeter notify={notify} />
+              <PodMeter floating onOpen={() => setPage('cloud')} notify={notify} />
+            </>
+          )}
           <BalanceChip />
         </div>
       </header>
@@ -711,6 +731,9 @@ export default function App() {
         {page === 'keyframes' && <Keyframes {...ctx} />}
         {page === 'animalcam' && <AnimalCam {...ctx} />}
         {page === 'effects' && <Effects {...ctx} />}
+        {page === 'previz' && <Previz {...ctx} incomingShot={shotForPreviz} clearIncomingShot={() => setShotForPreviz(null)} />}
+        {page === 'queue' && <OvernightQueue {...ctx} />}
+        {page === 'story' && <StoryExplorer {...ctx} />}
         {page === 'shinobi' && <ShinobiList {...ctx} />}
         {page === 'sizzle' && <SizzleList {...ctx} />}
         {page === 'sizzle-project' && sizzleId && <SizzleProject key={sizzleId} sizzleId={sizzleId} {...ctx} />}

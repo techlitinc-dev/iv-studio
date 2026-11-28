@@ -101,7 +101,7 @@ def install():
     try:
         if (W / "stamp").exists() and (W / "stamp").read_text().strip() == stamp() and PY.exists():
             return
-        status("installing", "Python and torch (first time only, about 5 minutes)")
+        status("installing", "Python and torch (first time only, about 5 minutes)", percent=5)
         if not shutil.which("uv"):
             sh(f"{sys.executable} -m pip install -q --break-system-packages uv")
         shutil.rmtree(VENV, ignore_errors=True)
@@ -110,18 +110,57 @@ def install():
         torch = CLOUD["torch"]
         sh(f"uv pip install --python {PY} {' '.join(torch['packages'])} --index-url {torch['index']}")
         comfy = CLOUD["comfyui"]
-        status("installing", f"ComfyUI {comfy['tag']}")
+        status("installing", f"ComfyUI {comfy['tag']}", percent=45)
         sh(f"git clone --depth 1 --branch {comfy['tag']} {comfy['repo']} {COMFY}")
+        status("installing", f"ComfyUI {comfy['tag']}: its requirements", percent=55)
         sh(f"grep -viE '^[[:space:]]*(torch|torchvision|torchaudio)([^A-Za-z0-9_.-]|$)' {COMFY}/requirements.txt > /tmp/comfy-req.txt && uv pip install --python {PY} -r /tmp/comfy-req.txt")
         cmds = ivcloud.pack_commands(PACKS, str(COMFY / "custom_nodes"), f"uv pip install --python {PY}")
         downloaded = [p for p in PACKS if not p.get("bundled")]
         for i, p in enumerate(downloaded):
-            status("installing", f"node pack {i + 1} of {len(downloaded)}: {p['dir']}")
+            # packs are the last stretch of the install: 60% → 100% across them
+            status("installing", f"node pack {i + 1} of {len(downloaded)}: {p['dir']}", percent=60 + round(((i + 1) / len(downloaded)) * 40) if downloaded else None)
             sh(cmds[2 * i])
             sh(cmds[2 * i + 1])
         (W / "stamp").write_text(stamp())
     finally:
         lock.unlink(missing_ok=True)
+
+
+def ensure_sage():
+    """KJNodes' MiniMax H3 sage attention patch imports sageattention.core — the SageAttention 2 codebase with its
+    compiled CUDA kernels. The PyPI `sageattention` wheel is pure-python WITHOUT those kernels (its core import
+    fails), so the check is the same import KJNodes runs, not a module lookup. Built for EVERY GPU Techlit Studio
+    can land the pod on (a wake may fall back to another card; sm_89 binaries can't run on an H100's sm_90), with a
+    marker recording the arch list so an older single-arch build rebuilds by itself. Guarded throughout: --no-deps
+    so it can never drag other packages, a free-space floor (a full disk truncates compiles and poisons the venv),
+    verify-then-uninstall so a bad build never lingers, and non-fatal — the boot must not stop over it."""
+    if not PY.exists():
+        return
+    probe = "from sageattention.core import per_thread_int8_triton, get_cuda_arch_versions, attn_false"
+    marker = VENV / "sage_iv_arches"
+    want = "8.0;8.6;8.9;9.0;12.0+PTX"  # A100, L40S, RTX 4090/6000 Ada, H100, RTX 5090 (PTX: forward-compatible)
+    if subprocess.run([str(PY), "-c", probe], capture_output=True).returncode == 0 and marker.exists() and marker.read_text().strip() == want:
+        return
+    try:
+        free = shutil.disk_usage("/workspace").free
+    except OSError:
+        free = 1 << 40
+    if free < 8 * (1 << 30):
+        status("installing", "sageattention skipped: less than 8 GB free on the volume, and its build needs scratch space. Free some space (Cloud page → storage) and wake again.")
+        return
+    status("installing", "sageattention 2 (for the fast render's attention patch; a one-time multi-GPU source build, 10–25 min)")
+    subprocess.run(f"uv pip install --python {PY} -q ninja", shell=True)
+    subprocess.run(f"uv pip uninstall --python {PY} -y sageattention", shell=True)
+    r = subprocess.run(
+        f"TORCH_CUDA_ARCH_LIST='{want}' uv pip install --python {PY} --no-deps --no-build-isolation 'git+https://github.com/thu-ml/SageAttention.git@v2.2.0'",
+        shell=True, capture_output=True, text=True)
+    if subprocess.run([str(PY), "-c", probe], capture_output=True).returncode == 0:
+        marker.write_text(want)
+        status("installing", "sageattention ready (all GPUs)")
+    else:
+        subprocess.run(f"uv pip uninstall --python {PY} -y sageattention", shell=True)
+        tail = "\n".join(((r.stderr or "") + "\n" + (r.stdout or "")).splitlines()[-3:])
+        status("installing", f"sageattention failed to build and was removed — fast renders can't use it. {tail[:220]}")
 
 
 def fetch_models():
@@ -205,6 +244,7 @@ def main():
     try:
         system_packages()
         install()
+        ensure_sage()
         fetch_models()
         comfy = start_comfy()
         # only a ComfyUI that came up and then died gets the plain "stopped" line; a failed start keeps its own

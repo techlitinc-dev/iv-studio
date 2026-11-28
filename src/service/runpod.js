@@ -291,7 +291,7 @@ export class RunPod {
       // the setup's progress view follows every answer (model percentages change within a stage)
       this.onHealth?.(h)
       if (h?.stage === 'ready') return { seconds: Math.round((Date.now() - t0) / 1000) }
-      if (h?.stage === 'error') throw new Error(`The cloud pod stopped: ${h.detail}`)
+      if (h?.stage === 'error') throw new Error(`The cloud pod stopped: ${h.detail}${h.log ? `\n${h.log}` : ''}`)
       if (Date.now() - t0 > timeoutMs) throw new Error(`The cloud pod took too long to start.${said ? ` Last sign of it: ${said}` : ''}`)
       await new Promise((r) => setTimeout(r, 5000))
     }
@@ -340,13 +340,20 @@ export class RunPod {
   }
 
   // Downloads models (by id) onto the volume in the running pod, and waits. onProgress gets the gate's report.
+  // The pod can die mid-download (stopped, replaced, network blip): unanswered polls give up after ~2 minutes
+  // instead of waiting forever, so the job fails with words instead of sitting queued at 0% GPU.
   async fetchModels(url, token, ids, { hf = null, onProgress, pollMs = 3000 } = {}) {
     const start = await this.fetch(`${url}/iv/fetch`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, hf: hf || '' }) })
     if (!start.ok && start.status !== 409) throw new Error(`Starting the download in the cloud failed (${start.status}): ${(await start.text()).slice(0, 300)}`)
+    let unanswered = 0
     for (;;) {
       await new Promise((r) => setTimeout(r, pollMs))
       const res = await this.fetch(`${url}/iv/fetch`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30000) }).catch(() => null)
-      if (!res?.ok) continue
+      if (!res?.ok) {
+        if (++unanswered > 40) throw new Error('The cloud pod stopped answering during the model download. Stop the cloud GPU on the Cloud page and try again (the download resumes where it can).')
+        continue
+      }
+      unanswered = 0
       const f = await res.json()
       onProgress?.(f)
       if (f.state === 'done') return f.done || ids

@@ -48,6 +48,8 @@ export function CharacterList({ openCharacter, openShot, notify, characters, set
   const [progress, setProgress] = useState({})
   const [voices, setVoices] = useState([])
   const [refmods, setRefmods] = useState([])
+  // which projects each character plays in (characters:projects), for grouping the grid by project name
+  const [charProjects, setCharProjects] = useState({})
   // adding: 'choose' (LoRA or RefMod), 'refmod' (the RefMod list for a new character) or a character id (another RefMod for it)
   const [adding, setAdding] = useState(null)
   // Train your own: 'lora' (design and train) or 'refmod' (make one from pictures)
@@ -61,6 +63,7 @@ export function CharacterList({ openCharacter, openShot, notify, characters, set
     window.ivstudio.training.list().then(setList)
     loadReady()
     C.loras().then(setLoras, () => {})
+    C.projects().then(setCharProjects, () => {})
     window.ivstudio.refmods.list().then(setRefmods, () => {})
     return C.onProgress(({ id, progress: p }) => setProgress((x) => ({ ...x, [id]: p })))
   }, [])
@@ -116,6 +119,51 @@ export function CharacterList({ openCharacter, openShot, notify, characters, set
   const downloadLabel = (id, size) => (progress[id] != null ? `Downloading ${Math.round(progress[id] * 100)}%` : `Download · ${Math.round(size / 1e6)} MB`)
   const open = characters.find((c) => c.id === editing)
   const unfinished = (list || []).filter((t) => !t.characterId).length
+  // the grid grouped by project name: each character under the most recent project they play in (the rest named
+  // as "also in …"), characters in no project under "No project"
+  const groups = (() => {
+    const byProject = new Map()
+    const shared = []
+    for (const c of characters) {
+      const films = charProjects[c.id] || []
+      if (!films.length) {
+        shared.push({ c, also: [] })
+        continue
+      }
+      const primary = films[0]
+      if (!byProject.has(primary.name)) byProject.set(primary.name, { name: primary.name, updatedAt: primary.updatedAt, chars: [] })
+      byProject.get(primary.name).chars.push({ c, also: films.slice(1).map((f) => f.name) })
+    }
+    const out = [...byProject.values()].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
+    if (shared.length) out.push({ name: 'No project', chars: shared })
+    return out
+  })()
+  const card = ({ c, also }) => {
+    const ok = found(c)
+    const v = voiceOf(c)
+    return (
+      <div key={c.id} className="portrait">
+        <button className="portrait-open" onClick={() => openBible(c.id)} aria-label={`${c.name}: their bible`}>
+          <span className="portrait-face">{face(c) ? <img src={fileUrl(face(c))} alt="" /> : <span className="portrait-initial">{c.name.slice(0, 1)}</span>}</span>
+          {!ok && <span className="portrait-flag mono">{isRef(c) ? 'RefMod missing' : 'LoRA missing'}</span>}
+          {ok && isRef(c) && <span className="portrait-flag mono ok">RefMod</span>}
+          {bibleOnly(c) && <span className="portrait-flag mono ok">{c.pictures?.length ? `${c.pictures.length} picture${c.pictures.length > 1 ? 's' : ''}` : 'Words only'}</span>}
+          <span className="portrait-body">
+            <span className="portrait-name">{c.name}</span>
+            <span className="portrait-meta mono">
+              {isRef(c) ? 'RefMod' : bibleOnly(c) ? c.about || 'no LoRA' : c.trigger} · {!v ? 'no voice' : v.name === c.name ? 'own voice' : v.name}
+            </span>
+            {also.length > 0 && <span className="portrait-meta mono dim">also in {also.join(', ')}</span>}
+          </span>
+        </button>
+        {ok && startShotWith && (
+          <button className="btn btn-small btn-primary portrait-action" onClick={() => startShotWith(c.id)}>
+            New shot
+          </button>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="characters">
@@ -143,34 +191,15 @@ export function CharacterList({ openCharacter, openShot, notify, characters, set
           <h2>
             Your characters <span className="cast-count mono">{characters.length}</span>
           </h2>
-          <p className="dim small">Ready to use in Create, Sequences and Replace. Click one to open their character page.</p>
+          <p className="dim small">Ready to use in Create, Sequences and Replace. Click one to open their character page. Grouped by the project they play in.</p>
         </div>
+        {groups.map((g) => (
+          <div key={g.name} className="cast-group">
+            <h3 className="cast-group-name mono small">{g.name}</h3>
+            <div className="cast-grid">{g.chars.map(card)}</div>
+          </div>
+        ))}
         <div className="cast-grid">
-          {characters.map((c) => {
-            const ok = found(c)
-            const v = voiceOf(c)
-            return (
-              <div key={c.id} className="portrait">
-                <button className="portrait-open" onClick={() => openBible(c.id)} aria-label={`${c.name}: their bible`}>
-                  <span className="portrait-face">{face(c) ? <img src={fileUrl(face(c))} alt="" /> : <span className="portrait-initial">{c.name.slice(0, 1)}</span>}</span>
-                  {!ok && <span className="portrait-flag mono">{isRef(c) ? 'RefMod missing' : 'LoRA missing'}</span>}
-                  {ok && isRef(c) && <span className="portrait-flag mono ok">RefMod</span>}
-                  {bibleOnly(c) && <span className="portrait-flag mono ok">{c.pictures?.length ? `${c.pictures.length} picture${c.pictures.length > 1 ? 's' : ''}` : 'Words only'}</span>}
-                  <span className="portrait-body">
-                    <span className="portrait-name">{c.name}</span>
-                    <span className="portrait-meta mono">
-                      {isRef(c) ? 'RefMod' : bibleOnly(c) ? c.about || 'no LoRA' : c.trigger} · {!v ? 'no voice' : v.name === c.name ? 'own voice' : v.name}
-                    </span>
-                  </span>
-                </button>
-                {ok && startShotWith && (
-                  <button className="btn btn-small btn-primary portrait-action" onClick={() => startShotWith(c.id)}>
-                    New shot
-                  </button>
-                )}
-              </div>
-            )
-          })}
           <button className="portrait portrait-add" onClick={() => setAdding('new')}>
             <span className="portrait-plus">+</span>
             <span className="portrait-name">New character</span>

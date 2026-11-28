@@ -9,7 +9,9 @@ proxied. While ComfyUI is still starting, requests get 503 so IV Studio can show
 On RunPod (IV_PLATFORM=runpod, see runpod_boot.py) the gate does more, because a RunPod pod neither stops
 by itself nor has a volume IV Studio can write to directly:
   /iv/health   also reports the boot stage (installing, downloading models, ready) from /tmp/iv-status.json,
-               and how far a model download (/iv/fetch) has got
+               and how far a model download (/iv/fetch) has got; the one route that needs no token
+  A browser can't send the bearer header (ComfyUI's canvas makes its own calls), so a valid ?iv_token= on any
+  request also earns an HttpOnly cookie the canvas then sends; everything else still asks for the header or cookie.
   /iv/upload   takes a LoRA or RefMod in chunks (RunPod's proxy refuses bodies over 100 MB)
                into /workspace/models, checked against its SHA-256 before it is kept
   /iv/files    lists the model files on the volume ({path: size})
@@ -64,7 +66,7 @@ fetching = {}  # the model download /iv/fetch started: {state: running|done|erro
 
 def allowed(req):
     bearer = req.headers.get("Authorization", "")
-    given = bearer[7:] if bearer.startswith("Bearer ") else req.query.get("iv_token", "")
+    given = bearer[7:] if bearer.startswith("Bearer ") else req.query.get("iv_token") or req.cookies.get("iv_token", "")
     return hmac.compare_digest(given.encode(), TOKEN.encode())
 
 
@@ -73,11 +75,23 @@ def upstream_url(req):
     return UPSTREAM + req.path, query
 
 
+COMFY_LOG = Path(os.environ.get("IV_COMFY_LOG", "/tmp/iv-comfy.log"))  # ComfyUI's own output, for crash reports
+
+
 def stage():
     try:
-        return json.loads(STATUS.read_text())
+        s = json.loads(STATUS.read_text())
     except (OSError, ValueError):
         return {}
+    # a stopped ComfyUI says why: the tail of its own log, so "ComfyUI stopped (exit -6)" arrives with the crash
+    if s.get("stage") == "error":
+        try:
+            lines = [l for l in COMFY_LOG.read_text(errors="replace").splitlines() if l.strip()]
+            if lines:
+                s["log"] = "\n".join(lines[-25:])
+        except OSError:
+            pass
+    return s
 
 
 async def proxy_ws(req, session):
@@ -216,6 +230,10 @@ async def handle(req):
     if RUNPOD and req.path == "/iv/fetch":
         return await fetch(req)
     session = req.app["session"]
+    # a browser canvas can't put the bearer header on its own calls (uploads, prompts, the queue websocket): a
+    # valid ?iv_token= on the first request earns a cookie, which those calls then carry (allowed() reads it)
+    handoff = req.query.get("iv_token")
+    cookie = f"iv_token={handoff}; Path=/; HttpOnly; SameSite=Lax" if handoff and allowed(req) else None
     try:
         if req.headers.get("Upgrade", "").lower() == "websocket":
             return await proxy_ws(req, session)
@@ -223,7 +241,10 @@ async def handle(req):
         headers = {k: v for k, v in req.headers.items() if k.lower() not in HOP | {"authorization", "origin", "referer", "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest"}}
         body = await req.read() if req.can_read_body else None
         async with session.request(req.method, url, params=query, headers=headers, data=body, allow_redirects=False) as up:
-            resp = web.StreamResponse(status=up.status, headers={k: v for k, v in up.headers.items() if k.lower() not in HOP})
+            resp_headers = {k: v for k, v in up.headers.items() if k.lower() not in HOP}
+            if cookie:
+                resp_headers["Set-Cookie"] = cookie
+            resp = web.StreamResponse(status=up.status, headers=resp_headers)
             await resp.prepare(req)
             async for chunk in up.content.iter_chunked(1 << 16):
                 await resp.write(chunk)

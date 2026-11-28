@@ -86,6 +86,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
     attach: call('features:attach'),
     detach: call('features:detach'),
     stats: call('features:stats'),
+    dashStats: call('features:dashStats'),
     explore: call('features:explore'),
     masterCut: call('features:masterCut'),
     auto: call('features:auto'),
@@ -93,7 +94,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
     onChanged: on('features:changed')
   },
   // The mindmap for anything: a feature, a short film (Project) or a song (src/service/storymap.js)
-  storymap: { explore: call('storymap:explore') },
+  storymap: { explore: call('storymap:explore'), assist: call('story:assist') },
   settings: { get: call('settings:get'), set: call('settings:set'), setComfyKey: call('settings:setComfyKey'), setCivitaiKey: call('settings:setCivitaiKey'), setImageKey: call('settings:setImageKey'), setOpenaiSecrets: call('settings:setOpenaiSecrets') },
   // where finished videos go: { path, custom, incognito, free }
   folders: { videos: call('folders:videos'), chooseVideos: call('folders:chooseVideos'), resetVideos: call('folders:resetVideos') },
@@ -299,6 +300,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
     runpodDeleteFile: call('cloud:runpodDeleteFile'),
     onBudgetStop: on('cloud:budgetStop'),
     runpodSetUp: call('cloud:runpodSetUp'),
+    openComfy: call('cloud:openComfy'),
     comfyCloudKey: call('cloud:comfyCloudKey'),
     comfyCloudCheck: call('cloud:comfyCloudCheck'),
     use: call('cloud:use'),
@@ -403,7 +405,7 @@ contextBridge.exposeInMainWorld('ivstudio', {
   batches: { list: call('batches:list'), dailies: call('batches:dailies') },
   turnaround: { status: call('turnaround:status'), list: call('turnaround:list'), make: call('turnaround:make'), delete: call('turnaround:delete') },
   refmods: { list: call('refmods:list'), ready: call('refmods:ready'), make: call('refmods:make'), onStatus: on('refmods:status') },
-  characters: { list: call('characters:list'), save: call('characters:save'), catalog: call('characters:catalog'), install: call('characters:install'), loras: call('characters:loras'), onProgress: on('characters:progress'), saveOne: call('characters:saveOne'), addPictures: call('characters:addPictures'), removePicture: call('characters:removePicture') },
+  characters: { list: call('characters:list'), projects: call('characters:projects'), save: call('characters:save'), catalog: call('characters:catalog'), install: call('characters:install'), loras: call('characters:loras'), onProgress: on('characters:progress'), saveOne: call('characters:saveOne'), addPictures: call('characters:addPictures'), removePicture: call('characters:removePicture') },
   projects: { list: call('projects:list'), get: call('projects:get'), rename: call('projects:rename'), delete: call('projects:delete'), setStatus: call('projects:status'), setLabel: call('projects:label') },
   sequences: {
     list: call('sequences:list'),
@@ -426,6 +428,10 @@ contextBridge.exposeInMainWorld('ivstudio', {
   rank: { job: call('rank:job'), learn: call('rank:learn'), clean: call('rank:clean') },
   review: { take: call('review:take') },
   previs: { make: call('previs:make') },
+  // Workflows → Previz (src/service/claypreviz.js): LTX clay takes, then one made real by H3
+  claypreviz: { status: call('claypreviz:status'), runs: call('claypreviz:runs'), deleteRun: call('claypreviz:deleteRun'), take: call('claypreviz:take'), realism: call('claypreviz:realism'), write: call('claypreviz:write'), onProgress: on('claypreviz:progress') },
+  // The overnight render queue (src/service/renderqueue.js)
+  renderQueue: { pending: call('renderqueue:pending'), start: call('renderqueue:start'), cancel: call('renderqueue:cancel'), state: call('renderqueue:state'), onState: on('renderqueue:state') },
   // Create's last setup and saved templates (src/service/createmem.js)
   createMemory: { get: call('createmem:get'), saveLast: call('createmem:saveLast'), clearLast: call('createmem:clearLast'), saveTemplate: call('createmem:saveTemplate'), deleteTemplate: call('createmem:deleteTemplate') },
   cast: { list: call('cast:list'), places: call('cast:places'), savePlace: call('cast:savePlace'), deletePlace: call('cast:deletePlace') },

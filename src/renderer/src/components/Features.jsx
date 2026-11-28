@@ -20,7 +20,7 @@ function Field({ label, children }) {
 // rough cost to finish the filming, in dollars and rupees (the rate set on the Cloud page; RunPod's own pod
 // rate when one is up).
 function DirectorsDesk({ f, stats, dash }) {
-  const rate = dash.rate || 180
+  const rate = dash.rate || 1620
   const inr = (v) => `₹${(v * rate).toFixed(2)}`
   const perHour = dash.pod?.perHour ?? dash.gpuPerHour ?? null
   const left = Math.max(0, stats.total.shots - stats.total.filmed)
@@ -48,7 +48,7 @@ function DirectorsDesk({ f, stats, dash }) {
   )
 }
 
-export default function Features({ notify, openSizzle, openEdit, openStoryMap, filmShotToCreate, openProject }) {
+export default function Features({ notify, openSizzle, openEdit, openStoryMap, filmShotToCreate, filmShotToPreviz, openProject }) {
   const [items, setItems] = useState(null)
   const [openId, setOpenId] = useState(null)
   const [dashId, setDashId] = useState(null) // the film whose movie dashboard is open
@@ -82,7 +82,7 @@ export default function Features({ notify, openSizzle, openEdit, openStoryMap, f
     }
   }
   if (dashId) return <MovieDashboard id={dashId} back={() => setDashId(null)} notify={notify} />
-  if (openId) return <FeatureDetail id={openId} back={() => setOpenId(null)} notify={notify} openSizzle={openSizzle} openEdit={openEdit} openStoryMap={openStoryMap} openDashboard={() => setDashId(openId)} filmShotToCreate={filmShotToCreate} openProject={openProject} />
+  if (openId) return <FeatureDetail id={openId} back={() => setOpenId(null)} notify={notify} openSizzle={openSizzle} openEdit={openEdit} openStoryMap={openStoryMap} openDashboard={() => setDashId(openId)} filmShotToCreate={filmShotToCreate} filmShotToPreviz={filmShotToPreviz} openProject={openProject} />
 
   return (
     <div className="projects shelf-page features">
@@ -149,7 +149,7 @@ export default function Features({ notify, openSizzle, openEdit, openStoryMap, f
   )
 }
 
-function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, openDashboard, filmShotToCreate, openProject }) {
+function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, openDashboard, filmShotToCreate, filmShotToPreviz, openProject }) {
   const [f, setF] = useState(null)
   const [stats, setStats] = useState(null)
   const [dash, setDash] = useState(null) // the cloud dashboard's numbers: today's spend, budget, GPU rate, ₹ rate
@@ -193,7 +193,7 @@ function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, o
   const gpuPerHour = dash?.pod?.perHour ?? dash?.gpuPerHour ?? null
   const shotCost = (sh) => {
     const sec = sh.projectId && costs ? costs[sh.projectId] || 0 : 0
-    return gpuPerHour != null && sec > 0 ? `₹${(((sec / 3600) * gpuPerHour * (dash?.rate || 180))).toFixed(2)}` : null
+    return gpuPerHour != null && sec > 0 ? `₹${(((sec / 3600) * gpuPerHour * (dash?.rate || 1620))).toFixed(2)}` : null
   }
   // a shot straight into Create, 100% prefilled from the story (What happens, prompt, references, settings)
   async function openInCreate(seqId, shotId) {
@@ -201,6 +201,18 @@ function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, o
     try {
       const r = await window.ivstudio.productions.createRequest(seqId, shotId, {})
       if (r?.projectId) filmShotToCreate(r)
+    } catch (e) {
+      notify(e.message)
+    } finally {
+      setBusy('')
+    }
+  }
+  // the same shot straight into Previz, prefilled from the story: a greybox previz first, made real after
+  async function openInPreviz(seqId, shotId) {
+    setBusy(`previz:${shotId}`)
+    try {
+      const r = await window.ivstudio.productions.createRequest(seqId, shotId, {})
+      if (r?.projectId) filmShotToPreviz(r)
     } catch (e) {
       notify(e.message)
     } finally {
@@ -456,6 +468,14 @@ function FeatureDetail({ id, back, notify, openSizzle, openEdit, openStoryMap, o
                             onClick={() => openInCreate(s.id, sh.id)}
                           >
                             {busy === `create:${sh.id}` ? 'Getting it ready…' : 'Open in Create'}
+                          </button>
+                          <button
+                            className="link-btn mono small"
+                            disabled={!!busy}
+                            title="Opens Previz prefilled from the story: the shot's words, length, shape and first frame. H3 films it as a cinematic greybox; a take you like is then made real."
+                            onClick={() => openInPreviz(s.id, sh.id)}
+                          >
+                            {busy === `previz:${sh.id}` ? 'Getting it ready…' : 'Previz this video'}
                           </button>
                         </div>
                       ))}

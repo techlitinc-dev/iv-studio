@@ -11,7 +11,7 @@ import ffmpegStatic from 'ffmpeg-ffprobe-static'
 import { Comfy } from './comfy.js'
 import { probe } from './media.js'
 import { buildPrompt, checkPrompt } from './graph.js'
-import { applyPatch, planFinish, planPreviews } from './plan.js'
+import { applyPatch, PIKA_LORA, PIKA_SOL_VAE, planFinish, planPreviews } from './plan.js'
 import { cleanLabel, SHOT_MARKS } from './shotstatus.js'
 import { cleanLocks, cleanShotLook, shotLook } from './look.js'
 import { applyFinishSpeed, applySpeed, withPreviewSize } from './speed.js'
@@ -133,7 +133,7 @@ export function renderFacts({ job, jobs = [], output = {}, request = {}, charact
   const height = r.height || rr.height
   const seconds = r.seconds || rr.seconds
   const fps = (job.kind === 'finish' && fin?.plan?.finish?.fps) || r.fps || rr.fps
-  const model = seedance ? rr.model || 'Seedance 2.5' : engine === 'ltx' ? 'LTX 2.5' : 'MiniMax H3'
+  const model = seedance ? rr.model || 'Seedance 2.5' : engine === 'ltx' ? 'LTX 2.5' : (request.variant || rr.variant) === 'pika' ? 'Pika H3 Flex' : 'MiniMax H3'
   const MODES = { text: 'Text', reference: 'References', frames: 'First / last frame', continue: 'Continue a video' }
   add('Model', model)
   add('Kind', MODES[request.mode] || request.mode)
@@ -147,6 +147,7 @@ export function renderFacts({ job, jobs = [], output = {}, request = {}, charact
   add('RefMods', refmods.join(', ') || null)
   const seed = rr.seeds && candidate ? rr.seeds[candidate - 1] : null
   add('Seed', seed)
+  if (!seedance && (request.variant || rr.variant) === 'pika' && (request.fast || rr.fast)) add('Render', 'Fast: SelfLift two-stage + Sol-Attn')
   if (!seedance && (request.steps || rr.steps)) add('Steps', request.steps || rr.steps)
   if (job.kind === 'previews') add('Take', candidate ? `Preview ${candidate} of ${rr.previews || '?'}` : null)
   // how it was finished, and enhanced
@@ -554,6 +555,29 @@ export class Studio {
     const plan = planPreviews({ ...request, media, voiceLine, ...(characterOverride && { character: characterOverride.id }) }, characters)
     const unet = this.models[plan.request.mode]
     if (unet) plan.values[`${MODEL_NODES[plan.request.mode]}.unet_name`] = unet
+    // Pika H3 Flex: its adapter LoRA (an optional model Setup downloads) must sit in this ComfyUI's loras, or the
+    // queue fails inside ComfyUI with a missing file. On the person's own cloud the lists come from the catalog and
+    // cloudprep fetches the file onto the volume, with consent, before the submit — so only a real ComfyUI is checked.
+    if (plan.request.variant === 'pika' && !this.comfy.ownCloud && known) {
+      const want = plan.request.mode === 'reference' ? PIKA_LORA.ref2va : PIKA_LORA.fl2va
+      if (!known.some((x) => String(x).split(/[\\/]/).pop() === want)) {
+        throw new Error(`Pika H3 Flex needs its adapter LoRA (${want}) in ComfyUI's loras folder. Download it in Settings → Setup (Pika H3 Flex adapters), then hunt again.`)
+      }
+    }
+    // Pika fast: the SelfLift node pack and KJNodes' sage patch must be installed, and the Sol VAE in ComfyUI's vae
+    // folder (an optional model Setup downloads). Same own-cloud split as the adapter above.
+    if (plan.request.fast && !this.comfy.ownCloud) {
+      const info = await this.comfy.objectInfo().catch(() => null)
+      if (info) {
+        if (!info.SelfLiftH3Sampler || !info.MiniMaxH3MemoryEfficientSageAttentionPatch) {
+          throw new Error('Pika H3 Flex’s fast render needs the SelfLift node pack and KJNodes’ sage attention patch. Install the missing node packs in Settings → Setup, then hunt again.')
+        }
+        const vaes = comboOptions(info, 'VAELoader', 'vae_name') || []
+        if (vaes.length && !vaes.some((v) => String(v).split(/[\\/]/).pop() === PIKA_SOL_VAE)) {
+          throw new Error(`Pika H3 Flex’s fast render needs the Sol VAE (${PIKA_SOL_VAE}) in ComfyUI’s vae folder. Download it in Settings → Setup (Pika H3 Flex shots), then hunt again.`)
+        }
+      }
+    }
     // the original voice line path: the staged name points into ComfyUI's input folder (wiped with a cloud pod),
     // and the missing-file checks must test the original, not the copy
     if (voiceLine && voiceLine !== request.voiceLine) plan.request.voiceLineSrc = request.voiceLine
@@ -1567,6 +1591,31 @@ export class Studio {
       if (!f.endsWith('.json')) continue
       const job = readJson(path.join(dir, f), null)
       if (job?.where === 'cloud' && job.seconds > 0 && job.projectId) out[job.projectId] = (out[job.projectId] || 0) + job.seconds
+    }
+    return out
+  }
+  // Render statistics for a set of projects (a film's shots), for the movie dashboard: job counts and render
+  // time by kind and by where it ran, plus the days finishes landed (the velocity chart and ETA).
+  renderStats(projectIds = []) {
+    const want = new Set(projectIds)
+    const dir = path.join(this.dataDir, 'jobs')
+    const out = { jobs: 0, previews: 0, finishes: 0, failed: 0, seconds: 0, cloudSeconds: 0, localSeconds: 0, finishedDays: {} }
+    for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
+      if (!f.endsWith('.json')) continue
+      const job = readJson(path.join(dir, f), null)
+      if (!job?.projectId || !want.has(job.projectId)) continue
+      out.jobs++
+      if (job.kind === 'previews') out.previews++
+      if (job.kind === 'finish') out.finishes++
+      if (job.status === 'error') out.failed++
+      const sec = Number(job.seconds) || 0
+      out.seconds += sec
+      if (job.where === 'cloud') out.cloudSeconds += sec
+      else out.localSeconds += sec
+      if (job.kind === 'finish' && job.status === 'success' && job.finishedAt) {
+        const day = String(job.finishedAt).slice(0, 10)
+        out.finishedDays[day] = (out.finishedDays[day] || 0) + 1
+      }
     }
     return out
   }
